@@ -21,6 +21,7 @@ app.add_middleware(
 @app.on_event("startup")
 def on_startup():
     init_db()
+    request_music.start_auto_import_watcher()
 
 # Mount routers
 app.include_router(stream.router, prefix="/api")

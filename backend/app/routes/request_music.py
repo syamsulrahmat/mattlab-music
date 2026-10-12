@@ -21,6 +21,7 @@ LIDARR_URL = os.getenv("LIDARR_URL", "http://192.168.100.200:8686")
 LIDARR_API_KEY = os.getenv("LIDARR_API_KEY", "57ef9453feb44064afba47f5af85eaec")
 QBITTORRENT_URL = os.getenv("QBITTORRENT_URL", "http://192.168.100.200:8080")
 MUSIC_DIR = Path(os.getenv("MUSIC_DIR", "/music"))
+DOWNLOADS_DIR = Path(os.getenv("DOWNLOADS_DIR", "/downloads"))
 
 # Active direct downloads tracking in memory
 # key: download_id -> dict
@@ -1118,3 +1119,111 @@ def get_download_activity():
         "active_downloads": deduped,
         "count": len(deduped),
     }
+
+def check_and_import_stuck_lidarr_items():
+    """
+    Checks Lidarr queue for completed downloads that failed automatic import
+    (e.g., single tracks that don't meet album track count thresholds, loose files).
+    Automatically moves them into /music/<Artist>/<Album>/<Track>, tags them,
+    removes the queue item from Lidarr + qBittorrent, and updates the local music catalog.
+    """
+    from mutagen import File as MutagenFile
+
+    if not DOWNLOADS_DIR.exists():
+        return
+
+    try:
+        queue_data = lidarr_get("queue", {"pageSize": 50, "includeArtist": "true", "includeAlbum": "true"})
+        if not isinstance(queue_data, dict):
+            return
+
+        records = queue_data.get("records", [])
+        if not records:
+            return
+
+        imported_any = False
+        for rec in records:
+            status = (rec.get("status") or "").lower()
+            tracked_status = (rec.get("trackedDownloadStatus") or "").lower()
+            tracked_state = (rec.get("trackedDownloadState") or "").lower()
+
+            # Process completed items that failed automated import
+            if status == "completed" or tracked_state == "importfailed" or tracked_status == "warning":
+                rec_id = rec.get("id")
+                album_info = rec.get("album") or {}
+                artist_info = rec.get("artist") or {}
+                raw_title = rec.get("title") or ""
+
+                rec_artist = artist_info.get("artistName") or ""
+                rec_album = album_info.get("title") or ""
+
+                # Look for matching files in DOWNLOADS_DIR
+                matched_files = []
+                for root, dirs, files in os.walk(DOWNLOADS_DIR):
+                    for f in files:
+                        p = Path(root) / f
+                        if p.suffix.lower() in {".mp3", ".flac", ".m4a", ".aac", ".ogg"}:
+                            p_str = str(p).lower()
+                            if (raw_title and raw_title.lower() in p_str) or (rec_artist and rec_artist.lower() in p_str):
+                                matched_files.append(p)
+
+                if matched_files:
+                    for f in matched_files:
+                        try:
+                            art = rec_artist
+                            alb = rec_album
+                            trk = f.stem
+
+                            try:
+                                audio = MutagenFile(str(f), easy=True)
+                                if audio:
+                                    art = (audio.get("artist") or [art])[0] or art
+                                    alb = (audio.get("album") or [alb])[0] or alb
+                                    trk = (audio.get("title") or [trk])[0] or trk
+                            except Exception:
+                                pass
+
+                            art_clean = sanitize_filename(art or "Various Artists")
+                            alb_clean = sanitize_filename(alb or "Singles")
+                            trk_clean = sanitize_filename(trk or f.stem)
+
+                            target_dir = MUSIC_DIR / art_clean / alb_clean
+                            target_dir.mkdir(parents=True, exist_ok=True)
+                            target_path = target_dir / f"{trk_clean}{f.suffix.lower()}"
+
+                            if not target_path.exists() or target_path.stat().st_size != f.stat().st_size:
+                                shutil.copy2(str(f), str(target_path))
+                                imported_any = True
+                        except Exception as e:
+                            print(f"[AutoImport] Failed to copy {f.name}: {e}")
+
+                    # Remove from Lidarr queue
+                    if rec_id:
+                        try:
+                            req = urllib.request.Request(
+                                f"{LIDARR_URL}/api/v1/queue/{rec_id}?apiKey={LIDARR_API_KEY}&removeFromClient=true",
+                                method="DELETE",
+                                headers={"Accept": "application/json"}
+                            )
+                            with urllib.request.urlopen(req, timeout=10):
+                                pass
+                        except Exception as e:
+                            print(f"[AutoImport] Failed to clear Lidarr queue item {rec_id}: {e}")
+
+        if imported_any:
+            scan_music_library()
+
+    except Exception as e:
+        print(f"[AutoImport] Watcher iteration error: {e}")
+
+def _auto_import_daemon_worker():
+    while True:
+        try:
+            check_and_import_stuck_lidarr_items()
+        except Exception:
+            pass
+        time.sleep(30)
+
+def start_auto_import_watcher():
+    t = threading.Thread(target=_auto_import_daemon_worker, daemon=True)
+    t.start()

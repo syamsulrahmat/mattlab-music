@@ -10,11 +10,13 @@ services:
       - ./frontend/dist:/app/frontend_dist:ro
       - /mnt/user/Media/Music:/music
       - /mnt/cache/appdata/music-app:/data
+      - /mnt/user/Downloads:/downloads
     environment:
       - MUSIC_DIR=/music
       - DATA_DIR=/data
       - DB_PATH=/data/music.db
       - COVERS_DIR=/data/covers
+      - DOWNLOADS_DIR=/downloads
     ports:
       - "8085:8085"
       - "4533:8085"
