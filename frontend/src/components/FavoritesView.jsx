@@ -17,7 +17,24 @@ export const FavoritesView = ({
 }) => {
   const [tracks, setTracks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedTrackId, setSelectedTrackId] = useState(null);
   const { currentTrack, isPlaying, playTrack, togglePlay, toggleFavorite } = usePlayer();
+
+  // Keyboard navigation: Enter or Space to play selected track
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+      if ((e.key === 'Enter' || e.code === 'Space') && selectedTrackId && tracks.length > 0) {
+        const found = tracks.find((t) => t.id === selectedTrackId);
+        if (found) {
+          e.preventDefault();
+          playTrack(found, tracks);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedTrackId, tracks, playTrack]);
 
   const fetchFavorites = () => {
     setIsLoading(true);
@@ -122,30 +139,54 @@ export const FavoritesView = ({
             {tracks.map((track, idx) => {
               const isThisTrack = currentTrack?.id === track.id;
               const isThisPlaying = isThisTrack && isPlaying;
+              const isSelected = selectedTrackId === track.id;
               return (
                 <div
                   key={track.id}
-                  onClick={() => {
-                    if (isThisTrack) {
-                      togglePlay();
-                    } else {
-                      playTrack(track, tracks);
-                    }
-                  }}
+                  onClick={() => setSelectedTrackId(track.id)}
+                  onDoubleClick={() => playTrack(track, tracks)}
                   onContextMenu={(e) => {
                     if (onContextMenu) {
                       e.preventDefault();
                       onContextMenu(e, 'track', track);
                     }
                   }}
-                  className={`grid grid-cols-[40px_1fr_1fr_40px_70px] px-4 py-3 rounded-md group transition items-center cursor-pointer ${
-                    isThisTrack ? 'bg-[#242424] text-[#1ed760]' : 'hover:bg-[#1f1f1f] text-white'
+                  draggable="true"
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('application/json', JSON.stringify({
+                      id: track.id,
+                      title: track.title,
+                      artist_name: track.artist_name,
+                      album_id: track.album_id,
+                      album_title: track.album_title,
+                      cover_url: track.cover_url
+                    }));
+                    e.dataTransfer.setData('text/plain', String(track.id));
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
+                  className={`grid grid-cols-[40px_1fr_1fr_40px_70px] px-4 py-3 rounded-md group transition items-center cursor-pointer select-none active:cursor-grabbing ${
+                    isThisTrack
+                      ? 'bg-[#242424] text-[#1ed760]'
+                      : isSelected
+                      ? 'bg-[#2a2a2a] ring-1 ring-white/20 text-white'
+                      : 'hover:bg-[#1f1f1f] text-white'
                   }`}
                 >
                   <span className="text-sm font-medium text-[#b3b3b3] group-hover:hidden">
                     {isThisPlaying ? <span className="text-[#1ed760]">▶</span> : idx + 1}
                   </span>
-                  <span className="hidden group-hover:block text-[#1ed760]">
+                  <span 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (isThisTrack) {
+                        togglePlay();
+                      } else {
+                        playTrack(track, tracks);
+                      }
+                    }}
+                    className="hidden group-hover:block text-[#1ed760] cursor-pointer"
+                    title="Play"
+                  >
                     {isThisPlaying ? (
                       <Pause size={16} className="fill-current" />
                     ) : (

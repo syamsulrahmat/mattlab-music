@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, X, Play, Pause, Disc3, Mic2, Music, Heart, Plus, DownloadCloud } from 'lucide-react';
+import { Search, X, Play, Pause, Disc3, Mic2, Music, Heart, Plus, DownloadCloud, Sparkles } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 
 export const SearchView = ({ 
@@ -9,7 +9,8 @@ export const SearchView = ({
   onContextMenu,
   onRequestMusic,
   query: propQuery, 
-  setQuery: propSetQuery 
+  setQuery: propSetQuery,
+  refreshTrigger = 0
 }) => {
   const [localQuery, setLocalQuery] = useState('');
   const query = propQuery !== undefined ? propQuery : localQuery;
@@ -17,7 +18,44 @@ export const SearchView = ({
 
   const [results, setResults] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedTrackId, setSelectedTrackId] = useState(null);
   const { playTrack, currentTrack, isPlaying, togglePlay, isFavorite, toggleFavorite } = usePlayer();
+
+  // Keyboard navigation: Enter or Space to play selected track
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+      if ((e.key === 'Enter' || e.code === 'Space') && selectedTrackId && results?.tracks) {
+        const found = results.tracks.find((t) => t.id === selectedTrackId);
+        if (found) {
+          e.preventDefault();
+          playTrack(found, results.tracks);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedTrackId, results?.tracks, playTrack]);
+
+  const performSearch = (searchVal) => {
+    const trimmed = (searchVal || '').trim();
+    if (!trimmed) {
+      setResults(null);
+      return;
+    }
+
+    setIsLoading(true);
+    fetch(`/api/search?q=${encodeURIComponent(trimmed)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setResults(data);
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        console.error('Search error:', err);
+        setIsLoading(false);
+      });
+  };
 
   useEffect(() => {
     if (!query.trim()) {
@@ -26,20 +64,21 @@ export const SearchView = ({
     }
 
     const timer = setTimeout(() => {
-      setIsLoading(true);
-      fetch(`/api/search?q=${encodeURIComponent(query.trim())}`)
-        .then((res) => res.json())
-        .then((data) => {
-          setResults(data);
-          setIsLoading(false);
-        })
-        .catch((err) => {
-          console.error('Search error:', err);
-          setIsLoading(false);
-        });
-    }, 250);
+      performSearch(query);
+    }, 200);
 
     return () => clearTimeout(timer);
+  }, [query, refreshTrigger]);
+
+  // When window regains focus, auto-refresh search results
+  useEffect(() => {
+    const handleFocus = () => {
+      if (query.trim()) {
+        performSearch(query);
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, [query]);
 
   return (
@@ -86,6 +125,18 @@ export const SearchView = ({
       {/* Results View */}
       {results && (
         <div className="space-y-10">
+          {results.corrected_query && (
+            <div className="flex items-center gap-2 px-4 py-2.5 bg-[#1ed760]/10 border border-[#1ed760]/20 rounded-xl text-xs text-white">
+              <Sparkles size={16} className="text-[#1ed760] shrink-0" />
+              <span>
+                Showing results for <strong className="text-[#1ed760] font-bold">{results.corrected_query}</strong>
+                {results.query && results.query.toLowerCase() !== results.corrected_query.toLowerCase() && (
+                  <span className="text-[#888] ml-1.5">(auto-corrected from "{results.query}")</span>
+                )}
+              </span>
+            </div>
+          )}
+
           {/* Tracks Section */}
           {results.tracks && results.tracks.length > 0 && (
             <section>
@@ -98,21 +149,33 @@ export const SearchView = ({
                   return (
                     <div
                       key={track.id}
-                      onClick={() => {
-                        if (isCurrentTrack) {
-                          togglePlay();
-                        } else {
-                          playTrack(track, results.tracks);
-                        }
-                      }}
+                      onClick={() => setSelectedTrackId(track.id)}
+                      onDoubleClick={() => playTrack(track, results.tracks)}
                       onContextMenu={(e) => {
                         if (onContextMenu) {
                           e.preventDefault();
                           onContextMenu(e, 'track', track);
                         }
                       }}
-                      className={`flex items-center justify-between p-3 rounded-lg group cursor-pointer transition select-none ${
-                        isCurrentTrack ? 'bg-[#242424] text-[#1ed760]' : 'hover:bg-[#1f1f1f] text-white'
+                      draggable="true"
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('application/json', JSON.stringify({
+                          id: track.id,
+                          title: track.title,
+                          artist_name: track.artist_name,
+                          album_id: track.album_id,
+                          album_title: track.album_title,
+                          cover_url: track.cover_url
+                        }));
+                        e.dataTransfer.setData('text/plain', String(track.id));
+                        e.dataTransfer.effectAllowed = 'copy';
+                      }}
+                      className={`flex items-center justify-between p-3 rounded-lg group cursor-pointer active:cursor-grabbing transition select-none ${
+                        isCurrentTrack
+                          ? 'bg-[#242424] text-[#1ed760]'
+                          : selectedTrackId === track.id
+                          ? 'bg-[#2a2a2a] ring-1 ring-white/20 text-white'
+                          : 'hover:bg-[#1f1f1f] text-white'
                       }`}
                     >
                       <div className="flex items-center gap-3 truncate">
@@ -287,15 +350,19 @@ export const SearchView = ({
 
           {results.tracks?.length === 0 && results.albums?.length === 0 && results.artists?.length === 0 && (
             <div className="text-center py-16 space-y-4">
-              <p className="text-sm text-[#888]">No local tracks found for "{query}".</p>
+              <p className="text-sm text-[#888]">
+                {results.corrected_query
+                  ? `No local tracks found for "${results.corrected_query}".`
+                  : `No local tracks found for "${query}".`}
+              </p>
               {onRequestMusic && (
                 <div>
                   <button
-                    onClick={() => onRequestMusic(query)}
+                    onClick={() => onRequestMusic(results.corrected_query || query)}
                     className="inline-flex items-center gap-2 bg-[#1ed760] hover:bg-[#1fdf64] text-black font-bold text-xs px-5 py-2.5 rounded-full transition shadow-lg active:scale-95"
                   >
                     <DownloadCloud size={15} />
-                    <span>Request "{query}" from Torrent / Spotify</span>
+                    <span>Request "{results.corrected_query || query}" from Torrent / Spotify</span>
                   </button>
                 </div>
               )}

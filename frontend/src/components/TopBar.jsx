@@ -5,6 +5,7 @@ import { MattLabLogo } from './MattLabLogo';
 export const TopBar = ({ 
   searchQuery, 
   setSearchQuery, 
+  onClearSearch,
   onFocusSearch, 
   onGoHome, 
   stats, 
@@ -69,9 +70,15 @@ export const TopBar = ({
           />
           {searchQuery && (
             <button
-              onClick={() => setSearchQuery('')}
+              onClick={() => {
+                if (onClearSearch) {
+                  onClearSearch();
+                } else {
+                  setSearchQuery('');
+                }
+              }}
               className="absolute right-3 text-[#b3b3b3] hover:text-white p-0.5 rounded-full"
-              title="Clear Search"
+              title="Clear Search & Return"
             >
               <X size={16} />
             </button>

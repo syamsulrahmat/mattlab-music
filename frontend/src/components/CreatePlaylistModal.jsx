@@ -11,8 +11,17 @@ export const CreatePlaylistModal = ({ isOpen, onClose, onCreatePlaylist }) => {
       setPlaylistName('');
       setIsSubmitting(false);
       setTimeout(() => inputRef.current?.focus(), 50);
+
+      const handleGlobalKeyDown = (e) => {
+        if (e.key === 'Escape') {
+          e.stopPropagation();
+          onClose();
+        }
+      };
+      window.addEventListener('keydown', handleGlobalKeyDown);
+      return () => window.removeEventListener('keydown', handleGlobalKeyDown);
     }
-  }, [isOpen]);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 

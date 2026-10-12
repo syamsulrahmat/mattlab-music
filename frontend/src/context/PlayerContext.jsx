@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { audioPreloader } from '../utils/audioPreloader';
 
 const PlayerContext = createContext(null);
@@ -115,15 +115,39 @@ export const PlayerProvider = ({ children }) => {
   const playTrack = (track, newQueue = null) => {
     const audio = audioRef.current;
     if (newQueue) {
-      setQueue(newQueue);
-      const idx = newQueue.findIndex((t) => t.id === track.id);
-      setQueueIndex(idx !== -1 ? idx : 0);
+      if (isShuffle && newQueue.length > 1) {
+        const others = newQueue.filter((t) => t.id !== track.id);
+        const shuffledOthers = [...others].sort(() => Math.random() - 0.5);
+        setQueue([track, ...shuffledOthers]);
+        setQueueIndex(0);
+      } else {
+        setQueue(newQueue);
+        const idx = newQueue.findIndex((t) => t.id === track.id);
+        setQueueIndex(idx !== -1 ? idx : 0);
+      }
     }
 
     setCurrentTrack(track);
     const preloadedAudio = audioPreloader.getPreloadedAudio(track.id);
     audio.src = preloadedAudio || track.stream_url || `/api/stream/${track.id}`;
     audio.play().catch((err) => console.warn('Autoplay prevented:', err));
+
+    // Background prefetch lyrics so they render instantly with 0ms delay
+    if (track?.id) {
+      const cacheKey = `lyrics_cache_${track.id}`;
+      if (!localStorage.getItem(cacheKey)) {
+        fetch(`/api/lyrics/${track.id}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data && !data.error) {
+              try {
+                localStorage.setItem(cacheKey, JSON.stringify(data));
+              } catch (_) {}
+            }
+          })
+          .catch(() => {});
+      }
+    }
   };
 
   const togglePlay = () => {
@@ -161,20 +185,20 @@ export const PlayerProvider = ({ children }) => {
   const nextTrack = () => {
     if (queue.length === 0) return;
 
-    if (isShuffle) {
-      const randomIndex = Math.floor(Math.random() * queue.length);
-      setQueueIndex(randomIndex);
-      playTrack(queue[randomIndex]);
-      return;
-    }
-
     const nextIdx = queueIndex + 1;
     if (nextIdx < queue.length) {
       setQueueIndex(nextIdx);
       playTrack(queue[nextIdx]);
     } else if (repeatMode === 'all') {
-      setQueueIndex(0);
-      playTrack(queue[0]);
+      if (isShuffle) {
+        const reshuffled = [...queue].sort(() => Math.random() - 0.5);
+        setQueue(reshuffled);
+        setQueueIndex(0);
+        playTrack(reshuffled[0]);
+      } else {
+        setQueueIndex(0);
+        playTrack(queue[0]);
+      }
     } else {
       setIsPlaying(false);
     }
@@ -197,7 +221,19 @@ export const PlayerProvider = ({ children }) => {
     }
   };
 
-  const toggleShuffle = () => setIsShuffle((prev) => !prev);
+  const toggleShuffle = () => {
+    setIsShuffle((prev) => {
+      const next = !prev;
+      if (next && queue.length > 1 && queueIndex >= 0) {
+        const upcoming = queue.slice(queueIndex + 1);
+        if (upcoming.length > 1) {
+          const shuffledUpcoming = [...upcoming].sort(() => Math.random() - 0.5);
+          setQueue([...queue.slice(0, queueIndex + 1), ...shuffledUpcoming]);
+        }
+      }
+      return next;
+    });
+  };
 
   const toggleRepeat = () => {
     setRepeatMode((prev) => {
@@ -249,6 +285,391 @@ export const PlayerProvider = ({ children }) => {
     }
   };
 
+  const reorderQueue = (fromIndex, toIndex) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
+    setQueue((prev) => {
+      if (fromIndex >= prev.length || toIndex >= prev.length) return prev;
+      const updated = [...prev];
+      const [moved] = updated.splice(fromIndex, 1);
+      updated.splice(toIndex, 0, moved);
+      return updated;
+    });
+
+    setQueueIndex((prevIdx) => {
+      if (prevIdx === fromIndex) return toIndex;
+      if (prevIdx > fromIndex && prevIdx <= toIndex) return prevIdx - 1;
+      if (prevIdx < fromIndex && prevIdx >= toIndex) return prevIdx + 1;
+      return prevIdx;
+    });
+  };
+
+  // Document Picture-in-Picture & Canvas Video PiP & Mini Player state
+  const [pipWindow, setPipWindow] = useState(null);
+  const [isMiniPlayerOpen, setIsMiniPlayerOpen] = useState(false);
+  const [isCanvasPiPActive, setIsCanvasPiPActive] = useState(false);
+
+  const canvasRef = useRef(null);
+  const pipVideoRef = useRef(null);
+  const fadeIntervalRef = useRef(null);
+  const coverImageCacheRef = useRef({});
+
+  // Helper to draw Spotify-style card on canvas for native OS Video PiP
+  const drawPiPCanvas = useCallback((track, time, totalDuration) => {
+    let canvas = canvasRef.current;
+    if (!canvas) {
+      canvas = document.createElement('canvas');
+      canvas.width = 640;
+      canvas.height = 360;
+      canvasRef.current = canvas;
+    }
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Background
+    ctx.fillStyle = '#121212';
+    ctx.fillRect(0, 0, 640, 360);
+
+    // Subtle dark gradient overlay
+    const grad = ctx.createLinearGradient(0, 0, 640, 360);
+    grad.addColorStop(0, '#1e1e1e');
+    grad.addColorStop(1, '#0a0a0a');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 640, 360);
+
+    // Cover art (240x240 on the left)
+    const coverUrl = track?.cover_url || '/api/covers/0';
+    let cachedImg = coverImageCacheRef.current[coverUrl];
+    if (!cachedImg) {
+      cachedImg = new Image();
+      cachedImg.crossOrigin = 'anonymous';
+      cachedImg.src = coverUrl;
+      cachedImg.onload = () => {
+        coverImageCacheRef.current[coverUrl] = cachedImg;
+        drawPiPCanvas(track, time, totalDuration);
+      };
+      coverImageCacheRef.current[coverUrl] = cachedImg;
+    }
+
+    // Helper for rounded rectangle fallback
+    const safeRoundRect = (ctx2d, x, y, w, h, r) => {
+      if (typeof ctx2d.roundRect === 'function') {
+        ctx2d.roundRect(x, y, w, h, r);
+      } else {
+        ctx2d.rect(x, y, w, h);
+      }
+    };
+
+    if (cachedImg.complete && cachedImg.naturalWidth > 0) {
+      try {
+        ctx.save();
+        // Rounded rect for cover art
+        ctx.beginPath();
+        safeRoundRect(ctx, 40, 60, 240, 240, 16);
+        ctx.clip();
+        ctx.drawImage(cachedImg, 40, 60, 240, 240);
+        ctx.restore();
+      } catch (_) {
+        ctx.fillStyle = '#282828';
+        ctx.fillRect(40, 60, 240, 240);
+      }
+    } else {
+      ctx.fillStyle = '#242424';
+      ctx.beginPath();
+      safeRoundRect(ctx, 40, 60, 240, 240, 16);
+      ctx.fill();
+      ctx.fillStyle = '#1ed760';
+      ctx.font = '64px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('🎵', 160, 200);
+      ctx.textAlign = 'left';
+    }
+
+    // Title text
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    const rawTitle = track?.title || 'No Track Selected';
+    const truncatedTitle = rawTitle.length > 22 ? rawTitle.substring(0, 20) + '...' : rawTitle;
+    ctx.fillText(truncatedTitle, 310, 140);
+
+    // Artist text
+    ctx.fillStyle = '#b3b3b3';
+    ctx.font = '500 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    const rawArtist = track?.artist_name || 'MattLab Music';
+    const truncatedArtist = rawArtist.length > 26 ? rawArtist.substring(0, 24) + '...' : rawArtist;
+    ctx.fillText(truncatedArtist, 310, 180);
+
+    // MattLab Branding pill
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.beginPath();
+    safeRoundRect(ctx, 310, 220, 120, 32, 16);
+    ctx.fill();
+    ctx.fillStyle = '#1ed760';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.fillText('● MATTLAB', 328, 241);
+
+    // Scrubber progress bar at the bottom
+    const barWidth = 560;
+    const barHeight = 8;
+    const barX = 40;
+    const barY = 325;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.beginPath();
+    safeRoundRect(ctx, barX, barY, barWidth, barHeight, 4);
+    ctx.fill();
+
+    const progressPct = totalDuration > 0 ? Math.min(1, Math.max(0, time / totalDuration)) : 0;
+    if (progressPct > 0) {
+      ctx.fillStyle = '#1ed760';
+      ctx.beginPath();
+      safeRoundRect(ctx, barX, barY, barWidth * progressPct, barHeight, 4);
+      ctx.fill();
+    }
+  }, []);
+
+  // Continuously update native Canvas Video PiP frame while active
+  useEffect(() => {
+    if (isCanvasPiPActive) {
+      drawPiPCanvas(currentTrack, currentTime, duration);
+    }
+  }, [isCanvasPiPActive, currentTrack, currentTime, duration, drawPiPCanvas]);
+
+  // Close PiP when main window unloads
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (pipWindow) {
+        try { pipWindow.close(); } catch (_) {}
+      }
+      try {
+        if (typeof document !== 'undefined' && 'pictureInPictureElement' in document && document.pictureInPictureElement) {
+          document.exitPictureInPicture();
+        }
+      } catch (_) {}
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      if (pipWindow) {
+        try { pipWindow.close(); } catch (_) {}
+      }
+      try {
+        if (typeof document !== 'undefined' && 'pictureInPictureElement' in document && document.pictureInPictureElement) {
+          document.exitPictureInPicture();
+        }
+      } catch (_) {}
+    };
+  }, [pipWindow]);
+
+  const togglePiP = async () => {
+    // 1. If native Document PiP window is open, close it immediately and RETURN
+    if (pipWindow) {
+      try { pipWindow.close(); } catch (_) {}
+      setPipWindow(null);
+      return;
+    }
+
+    // 2. If native Video Canvas PiP is open, exit it immediately and RETURN
+    const pipElem = typeof document !== 'undefined' && 'pictureInPictureElement' in document ? document.pictureInPictureElement : null;
+    if (pipElem || isCanvasPiPActive) {
+      try {
+        if (pipElem && typeof document.exitPictureInPicture === 'function') {
+          await document.exitPictureInPicture();
+        }
+      } catch (_) {}
+      setIsCanvasPiPActive(false);
+      return;
+    }
+
+    // 3. If in-page player is open, close it immediately and RETURN
+    if (isMiniPlayerOpen) {
+      setIsMiniPlayerOpen(false);
+      return;
+    }
+
+    // 4. Try native Document Picture-in-Picture window (modern Chrome on HTTPS/localhost)
+    if ('documentPictureInPicture' in window) {
+      try {
+        const savedMode = localStorage.getItem('mini_player_size_mode') || 'compact';
+        let width = 330;
+        let height = 105;
+        if (savedMode === 'micro') {
+          width = 180;
+          height = 65;
+        } else if (savedMode === 'expanded') {
+          width = 340;
+          height = 145;
+        }
+
+        const pip = await window.documentPictureInPicture.requestWindow({
+          width,
+          height,
+        });
+
+        // Copy styles to PiP window
+        [...document.styleSheets].forEach((styleSheet) => {
+          try {
+            const cssRules = [...styleSheet.cssRules].map((rule) => rule.cssText).join('');
+            const style = document.createElement('style');
+            style.textContent = cssRules;
+            pip.document.head.appendChild(style);
+          } catch (e) {
+            if (styleSheet.href) {
+              const link = document.createElement('link');
+              link.rel = 'stylesheet';
+              link.type = styleSheet.type;
+              link.media = styleSheet.media;
+              link.href = styleSheet.href;
+              pip.document.head.appendChild(link);
+            }
+          }
+        });
+
+        const links = document.querySelectorAll('link[rel="stylesheet"]');
+        links.forEach((link) => {
+          try {
+            const newLink = document.createElement('link');
+            newLink.rel = 'stylesheet';
+            newLink.href = link.href;
+            pip.document.head.appendChild(newLink);
+          } catch (_) {}
+        });
+
+        pip.document.title = 'MattLab Music';
+        pip.document.body.style.backgroundColor = '#121212';
+        pip.document.body.style.margin = '0';
+        pip.document.body.style.padding = '0';
+        pip.document.body.style.overflow = 'hidden';
+        pip.document.body.style.color = '#ffffff';
+        pip.document.body.style.userSelect = 'none';
+        pip.document.body.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+
+        pip.addEventListener('pagehide', () => {
+          setPipWindow(null);
+        });
+
+        setPipWindow(pip);
+        return;
+      } catch (err) {
+        console.warn('Document Picture-in-Picture request failed:', err);
+      }
+    }
+
+    // 5. Try Native Video Canvas PiP (Works over standard HTTP / LAN IP in Chrome/Edge/Brave!)
+    const hasCanvasPiP =
+      (typeof document !== 'undefined' && 'pictureInPictureEnabled' in document && document.pictureInPictureEnabled) ||
+      (typeof HTMLVideoElement !== 'undefined' && HTMLVideoElement?.prototype && 'requestPictureInPicture' in HTMLVideoElement.prototype);
+    if (hasCanvasPiP) {
+      try {
+        let canvas = canvasRef.current;
+        if (!canvas) {
+          canvas = document.createElement('canvas');
+          canvas.width = 640;
+          canvas.height = 360;
+          canvasRef.current = canvas;
+        }
+
+        drawPiPCanvas(currentTrack, currentTime, duration);
+
+        let video = pipVideoRef.current;
+        if (!video) {
+          video = document.createElement('video');
+          video.muted = true;
+          video.autoplay = true;
+          video.playsInline = true;
+          video.style.position = 'fixed';
+          video.style.opacity = '0';
+          video.style.pointerEvents = 'none';
+          video.style.zIndex = '-9999';
+          document.body.appendChild(video);
+          pipVideoRef.current = video;
+
+          video.addEventListener('leavepictureinpicture', () => {
+            setIsCanvasPiPActive(false);
+          });
+        }
+
+        const stream = canvas.captureStream ? canvas.captureStream(15) : null;
+        if (stream) {
+          video.srcObject = stream;
+          await video.play();
+          await video.requestPictureInPicture();
+          setIsCanvasPiPActive(true);
+          return;
+        }
+      } catch (err) {
+        console.warn('Native Video Canvas PiP request failed:', err);
+      }
+    }
+
+    // 6. Final fallback: open in-page floating mini player
+    setIsMiniPlayerOpen(true);
+  };
+
+  // Smooth Volume Fade Helpers (for 30s song previews)
+  const fadePause = useCallback((durationMs = 300) => {
+    return new Promise((resolve) => {
+      const audio = audioRef.current;
+      if (!audio || audio.paused) {
+        resolve();
+        return;
+      }
+
+      if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
+
+      const initialVol = audio.volume;
+      const steps = 12;
+      const stepTime = durationMs / steps;
+      let currentStep = 0;
+
+      fadeIntervalRef.current = setInterval(() => {
+        currentStep++;
+        const factor = Math.max(0, 1 - currentStep / steps);
+        audio.volume = initialVol * factor;
+
+        if (currentStep >= steps) {
+          clearInterval(fadeIntervalRef.current);
+          fadeIntervalRef.current = null;
+          audio.pause();
+          audio.volume = isMuted ? 0 : volume; // restore volume setting
+          resolve();
+        }
+      }, stepTime);
+    });
+  }, [volume, isMuted]);
+
+  const fadeResume = useCallback((durationMs = 300) => {
+    return new Promise((resolve) => {
+      const audio = audioRef.current;
+      if (!audio || !currentTrack) {
+        resolve();
+        return;
+      }
+
+      if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
+
+      const targetVol = isMuted ? 0 : volume;
+      audio.volume = 0;
+      audio.play().catch(() => {});
+
+      const steps = 12;
+      const stepTime = durationMs / steps;
+      let currentStep = 0;
+
+      fadeIntervalRef.current = setInterval(() => {
+        currentStep++;
+        const factor = Math.min(1, currentStep / steps);
+        audio.volume = targetVol * factor;
+
+        if (currentStep >= steps) {
+          clearInterval(fadeIntervalRef.current);
+          fadeIntervalRef.current = null;
+          audio.volume = targetVol;
+          resolve();
+        }
+      }, stepTime);
+    });
+  }, [volume, isMuted, currentTrack]);
+
   return (
     <PlayerContext.Provider
       value={{
@@ -260,10 +681,12 @@ export const PlayerProvider = ({ children }) => {
         isMuted,
         queue,
         queueIndex,
+        setQueue,
+        setQueueIndex,
         isShuffle,
         repeatMode,
         favoriteIds,
-        isFavorite: (id) => favoriteIds.has(id),
+        isFavorite: (id) => Boolean(favoriteIds?.has?.(id)),
         toggleFavorite,
         playTrack,
         togglePlay,
@@ -276,8 +699,17 @@ export const PlayerProvider = ({ children }) => {
         toggleRepeat,
         addToQueue,
         playNextInQueue,
+        reorderQueue,
         preloadedTrackIds,
-        isTrackPreloaded: (id) => preloadedTrackIds.has(id),
+        isTrackPreloaded: (id) => Boolean(preloadedTrackIds?.has?.(id)),
+        pipWindow,
+        setPipWindow,
+        isMiniPlayerOpen,
+        setIsMiniPlayerOpen,
+        isPiPActive: Boolean(pipWindow) || isCanvasPiPActive || isMiniPlayerOpen,
+        togglePiP,
+        fadePause,
+        fadeResume,
       }}
     >
       {children}

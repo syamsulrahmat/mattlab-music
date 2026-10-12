@@ -18,6 +18,7 @@ export const ArtistDetail = ({
 }) => {
   const [artist, setArtist] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedTrackId, setSelectedTrackId] = useState(null);
   const { currentTrack, isPlaying, playTrack, togglePlay, isFavorite, toggleFavorite } = usePlayer();
 
   useEffect(() => {
@@ -41,6 +42,22 @@ export const ArtistDetail = ({
       isMounted = false;
     };
   }, [artistId]);
+
+  // Keyboard navigation: Enter or Space to play selected track
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+      if ((e.key === 'Enter' || e.code === 'Space') && selectedTrackId && artist?.tracks) {
+        const found = artist.tracks.find((t) => t.id === selectedTrackId);
+        if (found) {
+          e.preventDefault();
+          playTrack(found, artist.tracks);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedTrackId, artist?.tracks, playTrack]);
 
   if (isLoading || !artist) {
     return (
@@ -134,31 +151,66 @@ export const ArtistDetail = ({
 
           <div className="divide-y divide-transparent">
             {artist.tracks?.slice(0, 20).map((track, idx) => {
-              const isThisTrackPlaying = currentTrack?.id === track.id;
+              const isThisTrack = currentTrack?.id === track.id;
+              const isThisPlaying = isThisTrack && isPlaying;
+              const isSelected = selectedTrackId === track.id;
               const isFav = isFavorite(track.id);
               return (
                 <div
                   key={track.id}
-                  onClick={() => playTrack(track, artist.tracks)}
+                  onClick={() => setSelectedTrackId(track.id)}
+                  onDoubleClick={() => playTrack(track, artist.tracks)}
                   onContextMenu={(e) => {
                     if (onContextMenu) {
                       e.preventDefault();
                       onContextMenu(e, 'track', track);
                     }
                   }}
-                  className={`grid grid-cols-[40px_1fr_1fr_40px_70px] px-4 py-3 rounded-md group transition items-center cursor-pointer ${
-                    isThisTrackPlaying ? 'bg-[#242424] text-[#1ed760]' : 'hover:bg-[#1f1f1f] text-white'
+                  draggable="true"
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('application/json', JSON.stringify({
+                      id: track.id,
+                      title: track.title,
+                      artist_name: track.artist_name || artist.name,
+                      album_id: track.album_id,
+                      album_title: track.album_title,
+                      cover_url: track.cover_url
+                    }));
+                    e.dataTransfer.setData('text/plain', String(track.id));
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
+                  className={`grid grid-cols-[40px_1fr_1fr_40px_70px] px-4 py-3 rounded-md group transition items-center cursor-pointer select-none active:cursor-grabbing ${
+                    isThisTrack
+                      ? 'bg-[#242424] text-[#1ed760]'
+                      : isSelected
+                      ? 'bg-[#2a2a2a] ring-1 ring-white/20 text-white'
+                      : 'hover:bg-[#1f1f1f] text-white'
                   }`}
                 >
                   <span className="text-sm font-medium text-[#b3b3b3] group-hover:hidden">
-                    {isThisTrackPlaying && isPlaying ? (
+                    {isThisPlaying ? (
                       <span className="text-[#1ed760]">▶</span>
                     ) : (
                       idx + 1
                     )}
                   </span>
-                  <span className="hidden group-hover:block text-[#1ed760]">
-                    <Play size={16} className="fill-current" />
+                  <span 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (isThisTrack) {
+                        togglePlay();
+                      } else {
+                        playTrack(track, artist.tracks);
+                      }
+                    }}
+                    className="hidden group-hover:block text-[#1ed760] cursor-pointer"
+                    title={isThisPlaying ? 'Pause' : 'Play'}
+                  >
+                    {isThisPlaying ? (
+                      <Pause size={16} className="fill-current" />
+                    ) : (
+                      <Play size={16} className="fill-current" />
+                    )}
                   </span>
 
                   <div className="flex items-center gap-3 truncate pr-4">
@@ -168,7 +220,7 @@ export const ArtistDetail = ({
                       className="w-10 h-10 rounded object-cover bg-[#1f1f1f] shrink-0"
                     />
                     <div className="truncate">
-                      <p className={`text-sm font-medium truncate ${isThisTrackPlaying ? 'text-[#1ed760]' : 'text-white'}`}>
+                      <p className={`text-sm font-medium truncate ${isThisPlaying ? 'text-[#1ed760]' : 'text-white'}`}>
                         {track.title}
                       </p>
                       <p className="text-xs text-[#b3b3b3] truncate md:hidden">

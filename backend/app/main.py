@@ -30,6 +30,18 @@ app.include_router(playlists.router, prefix="/api")
 app.include_router(lyrics.router, prefix="/api")
 app.include_router(request_music.router, prefix="/api")
 
+from pydantic import BaseModel
+
+class ClientError(BaseModel):
+    type: str = ""
+    message: str = ""
+    stack: str = ""
+
+@app.post("/api/client-error")
+def client_error_endpoint(data: ClientError):
+    print(f"\n🔥🔥🔥 [BROWSER ERROR] Type: {data.type}\nMessage: {data.message}\nStack: {data.stack}\n", flush=True)
+    return {"status": "ok"}
+
 from pathlib import Path
 from fastapi.staticfiles import StaticFiles
 

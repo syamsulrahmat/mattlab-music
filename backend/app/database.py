@@ -79,6 +79,7 @@ def init_db() -> None:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             description TEXT DEFAULT '',
+            position INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
@@ -98,3 +99,13 @@ def init_db() -> None:
         CREATE INDEX IF NOT EXISTS idx_tracks_title ON tracks(title);
         CREATE INDEX IF NOT EXISTS idx_playlist_tracks ON playlist_tracks(playlist_id, position);
         """)
+
+        # Migration: ensure position column exists on playlists
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA table_info(playlists)")
+        cols = [c["name"] for c in cursor.fetchall()]
+        if "position" not in cols:
+            try:
+                conn.execute("ALTER TABLE playlists ADD COLUMN position INTEGER DEFAULT 0")
+            except Exception:
+                pass

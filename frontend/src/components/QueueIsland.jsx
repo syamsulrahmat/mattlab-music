@@ -1,5 +1,5 @@
-import React from 'react';
-import { X, Play, Music, ListMusic, Compass, CheckCircle2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Play, Music, ListMusic, Compass, CheckCircle2, GripVertical } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 
 export const QueueIsland = ({ 
@@ -10,7 +10,9 @@ export const QueueIsland = ({
   onSelectArtist,
   onContextMenu
 }) => {
-  const { queue, queueIndex, currentTrack, playTrack, isTrackPreloaded } = usePlayer();
+  const { queue, queueIndex, currentTrack, playTrack, isTrackPreloaded, reorderQueue } = usePlayer();
+  const [draggedUpcomingIdx, setDraggedUpcomingIdx] = useState(null);
+  const [dropTarget, setDropTarget] = useState(null); // { idx, position: 'above' | 'below' }
 
   if (!isOpen) return null;
 
@@ -62,13 +64,26 @@ export const QueueIsland = ({
               </span>
               {currentTrack ? (
                 <div 
+                  draggable="true"
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('application/json', JSON.stringify({
+                      id: currentTrack.id,
+                      title: currentTrack.title,
+                      artist_name: currentTrack.artist_name,
+                      album_id: currentTrack.album_id,
+                      album_title: currentTrack.album_title,
+                      cover_url: currentTrack.cover_url
+                    }));
+                    e.dataTransfer.setData('text/plain', String(currentTrack.id));
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
                   onContextMenu={(e) => {
                     if (onContextMenu) {
                       e.preventDefault();
                       onContextMenu(e, 'track', currentTrack);
                     }
                   }}
-                  className="flex items-center gap-3 p-2.5 bg-[#1f1f1f] rounded-lg border border-white/5 shadow-sm group"
+                  className="flex items-center gap-3 p-2.5 bg-[#1f1f1f] rounded-lg border border-white/5 shadow-sm group cursor-grab active:cursor-grabbing select-none"
                 >
                   <img
                     src={currentTrack.cover_url || '/api/covers/0'}
@@ -117,53 +132,126 @@ export const QueueIsland = ({
 
               {upcomingTracks.length > 0 ? (
                 <div className="space-y-1">
-                  {upcomingTracks.map((track, i) => (
-                    <div
-                      key={`${track.id}-${i}`}
-                      onClick={() => playTrack(track, queue)}
-                      onContextMenu={(e) => {
-                        if (onContextMenu) {
-                          e.preventDefault();
-                          onContextMenu(e, 'track', track);
-                        }
-                      }}
-                      className="flex items-center gap-2.5 p-2 rounded-md hover:bg-[#1f1f1f] group cursor-pointer transition"
-                    >
-                      <span className="text-[11px] font-mono text-[#666] w-4 text-center">
-                        {i + 1}
-                      </span>
-                      <img
-                        src={track.cover_url || '/api/covers/0'}
-                        alt=""
-                        className="w-9 h-9 rounded object-cover bg-[#242424] shrink-0"
-                      />
-                      <div className="truncate flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-1.5">
-                          <p className="text-xs font-medium text-white group-hover:text-[#1ed760] truncate">
-                            {track.title}
-                          </p>
-                          {isTrackPreloaded(track.id) && (
-                            <span 
-                              title="Preloaded & offline ready (will play even if connection drops)"
-                              className="shrink-0 inline-flex items-center gap-0.5 text-[9px] font-medium text-[#1ed760] bg-[#1ed760]/10 px-1.5 py-0.5 rounded-full"
-                            >
-                              <CheckCircle2 size={9} />
-                              <span>Preloaded</span>
-                            </span>
-                          )}
-                        </div>
-                        <p 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (onSelectArtist) onSelectArtist(track.artist_id);
+                  {upcomingTracks.map((track, i) => {
+                    const isTargetAbove = dropTarget?.idx === i && dropTarget?.position === 'above';
+                    const isTargetBelow = dropTarget?.idx === i && dropTarget?.position === 'below';
+                    const isBeingDragged = draggedUpcomingIdx === i;
+
+                    return (
+                      <React.Fragment key={`${track.id}-${i}`}>
+                        {isTargetAbove && (
+                          <div className="h-0.5 w-full bg-[#1ed760] rounded-full my-1 shadow-sm shadow-[#1ed760]/50" />
+                        )}
+                        <div
+                          draggable="true"
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData('application/json', JSON.stringify({
+                              id: track.id,
+                              title: track.title,
+                              artist_name: track.artist_name,
+                              album_id: track.album_id,
+                              album_title: track.album_title,
+                              cover_url: track.cover_url
+                            }));
+                            e.dataTransfer.setData('text/plain', String(track.id));
+                            e.dataTransfer.setData('text/queue-upcoming-idx', String(i));
+                            e.dataTransfer.effectAllowed = 'copyMove';
+                            setDraggedUpcomingIdx(i);
                           }}
-                          className="text-[10px] text-[#b3b3b3] truncate hover:text-white hover:underline cursor-pointer"
+                          onDragEnd={() => {
+                            setDraggedUpcomingIdx(null);
+                            setDropTarget(null);
+                          }}
+                          onDragOver={(e) => {
+                            if (draggedUpcomingIdx !== null) {
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = 'move';
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const midY = rect.top + rect.height / 2;
+                              setDropTarget({
+                                idx: i,
+                                position: e.clientY < midY ? 'above' : 'below',
+                              });
+                            }
+                          }}
+                          onDrop={(e) => {
+                            if (draggedUpcomingIdx !== null) {
+                              e.preventDefault();
+                              const fromRel = draggedUpcomingIdx;
+                              let toRel = i;
+                              if (dropTarget?.position === 'below' && fromRel > i) {
+                                toRel = i + 1;
+                              } else if (dropTarget?.position === 'above' && fromRel < i) {
+                                toRel = i - 1;
+                              }
+                              toRel = Math.max(0, Math.min(upcomingTracks.length - 1, toRel));
+
+                              setDraggedUpcomingIdx(null);
+                              setDropTarget(null);
+
+                              if (fromRel === toRel) return;
+
+                              const baseQueueIdx = queueIndex >= 0 ? queueIndex + 1 : 0;
+                              reorderQueue(baseQueueIdx + fromRel, baseQueueIdx + toRel);
+                            }
+                          }}
+                          onClick={() => playTrack(track, queue)}
+                          onContextMenu={(e) => {
+                            if (onContextMenu) {
+                              e.preventDefault();
+                              onContextMenu(e, 'track', track);
+                            }
+                          }}
+                          className={`flex items-center gap-2 p-2 rounded-md hover:bg-[#1f1f1f] group cursor-pointer transition select-none border border-transparent ${
+                            isBeingDragged ? 'opacity-40 border-dashed border-white/20' : ''
+                          }`}
                         >
-                          {track.artist_name}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                          <span className="text-[11px] font-mono text-[#666] w-4 text-center shrink-0">
+                            {i + 1}
+                          </span>
+                          <img
+                            src={track.cover_url || '/api/covers/0'}
+                            alt=""
+                            className="w-9 h-9 rounded object-cover bg-[#242424] shrink-0"
+                          />
+                          <div className="truncate flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1.5">
+                              <p className="text-xs font-medium text-white group-hover:text-[#1ed760] truncate">
+                                {track.title}
+                              </p>
+                              {isTrackPreloaded(track.id) && (
+                                <span 
+                                  title="Preloaded & offline ready (will play even if connection drops)"
+                                  className="shrink-0 inline-flex items-center gap-0.5 text-[9px] font-medium text-[#1ed760] bg-[#1ed760]/10 px-1.5 py-0.5 rounded-full"
+                                >
+                                  <CheckCircle2 size={9} />
+                                  <span>Preloaded</span>
+                                </span>
+                              )}
+                            </div>
+                            <p 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (onSelectArtist) onSelectArtist(track.artist_id);
+                              }}
+                              className="text-[10px] text-[#b3b3b3] truncate hover:text-white hover:underline cursor-pointer"
+                            >
+                              {track.artist_name}
+                            </p>
+                          </div>
+                          <div 
+                            className="shrink-0 text-white/0 group-hover:text-white/30 hover:!text-white cursor-grab active:cursor-grabbing p-1 transition"
+                            title="Drag to rearrange queue order"
+                          >
+                            <GripVertical size={13} />
+                          </div>
+                        </div>
+                        {isTargetBelow && (
+                          <div className="h-0.5 w-full bg-[#1ed760] rounded-full my-1 shadow-sm shadow-[#1ed760]/50" />
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-xs text-[#666] py-6 text-center">

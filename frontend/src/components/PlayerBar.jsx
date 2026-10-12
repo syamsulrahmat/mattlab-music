@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, 
-  Volume2, VolumeX, ListMusic, Heart, Mic2 
+  Volume2, VolumeX, ListMusic, Heart, Mic2, PictureInPicture2 
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 
@@ -17,6 +17,8 @@ export const PlayerBar = ({
   setIsQueueOpen,
   isLyricsOpen,
   setIsLyricsOpen,
+  isMiniPlayerOpen,
+  setIsMiniPlayerOpen,
   onSelectAlbum,
   onSelectArtist,
   onContextMenu
@@ -41,6 +43,8 @@ export const PlayerBar = ({
     prevTrack,
     toggleShuffle,
     toggleRepeat,
+    isPiPActive,
+    togglePiP,
   } = usePlayer();
 
   const handleSeekChange = (e) => {
@@ -282,8 +286,19 @@ export const PlayerBar = ({
           </div>
         </div>
 
-        {/* Right: Lyrics Button + Queue Drawer Toggle & Volume */}
-        <div className="flex items-center justify-end gap-2.5 w-1/4 min-w-[190px]">
+        {/* Right: PiP + Lyrics Button + Queue Drawer Toggle & Volume */}
+        <div className="flex items-center justify-end gap-2.5 w-1/4 min-w-[210px]">
+          {/* Mini Player & Picture-in-Picture Toggle */}
+          <button
+            onClick={togglePiP}
+            className={`p-2 rounded-lg transition ${
+              isPiPActive ? 'text-[#1ed760] bg-[#1f1f1f]' : 'text-[#b3b3b3] hover:text-white'
+            }`}
+            title={isPiPActive ? 'Close Picture-in-Picture' : 'Picture-in-Picture (Float across tabs & desktop apps)'}
+          >
+            <PictureInPicture2 size={18} />
+          </button>
+
           {/* Lyrics Toggle Button - immediately to left of queue button */}
           <button
             onClick={() => setIsLyricsOpen && setIsLyricsOpen(!isLyricsOpen)}

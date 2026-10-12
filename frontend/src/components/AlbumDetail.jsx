@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Play, Pause, ArrowLeft, Clock, Heart, Plus } from 'lucide-react';
+import { Play, Pause, ArrowLeft, Clock, Heart, Plus, Check } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 
 const formatDuration = (seconds) => {
@@ -14,10 +14,14 @@ export const AlbumDetail = ({
   onBack, 
   onAddToPlaylist, 
   onSelectArtist, 
-  onContextMenu 
+  onContextMenu,
+  onPlaylistCreated
 }) => {
   const [album, setAlbum] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedTrackId, setSelectedTrackId] = useState(null);
+  const [addedToLibrary, setAddedToLibrary] = useState(false);
+  const [isAddingToLibrary, setIsAddingToLibrary] = useState(false);
   const { currentTrack, isPlaying, playTrack, togglePlay, isFavorite, toggleFavorite } = usePlayer();
 
   useEffect(() => {
@@ -42,6 +46,22 @@ export const AlbumDetail = ({
     };
   }, [albumId]);
 
+  // Keyboard navigation: Enter or Space to play selected track
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+      if ((e.key === 'Enter' || e.code === 'Space') && selectedTrackId && album?.tracks) {
+        const found = album.tracks.find((t) => t.id === selectedTrackId);
+        if (found) {
+          e.preventDefault();
+          playTrack(found, album.tracks);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedTrackId, album?.tracks, playTrack]);
+
   if (isLoading || !album) {
     return (
       <div className="flex items-center justify-center h-64 text-[#b3b3b3]">
@@ -58,6 +78,23 @@ export const AlbumDetail = ({
       togglePlay();
     } else if (album.tracks.length > 0) {
       playTrack(album.tracks[0], album.tracks);
+    }
+  };
+
+  const handleAddToLibrary = async () => {
+    if (!album || isAddingToLibrary) return;
+    setIsAddingToLibrary(true);
+    try {
+      const res = await fetch(`/api/playlists/from-album/${album.id}`, { method: 'POST' });
+      if (res.ok) {
+        setAddedToLibrary(true);
+        if (onPlaylistCreated) onPlaylistCreated();
+        setTimeout(() => setAddedToLibrary(false), 3500);
+      }
+    } catch (err) {
+      console.error('Failed to add album to library:', err);
+    } finally {
+      setIsAddingToLibrary(false);
     }
   };
 
@@ -102,7 +139,7 @@ export const AlbumDetail = ({
       </div>
 
       {/* Action Bar */}
-      <div className="flex items-center gap-6 mb-6">
+      <div className="flex items-center gap-4 mb-6">
         <button
           onClick={handlePlayAll}
           className="w-14 h-14 rounded-full bg-[#1ed760] hover:bg-[#1fdf64] hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-xl transition"
@@ -112,6 +149,25 @@ export const AlbumDetail = ({
             <Pause size={24} className="fill-black" />
           ) : (
             <Play size={24} className="fill-black ml-1" />
+          )}
+        </button>
+
+        <button
+          onClick={handleAddToLibrary}
+          disabled={isAddingToLibrary}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#242424] hover:bg-[#2f2f2f] text-white text-xs font-bold transition border border-white/10 active:scale-95"
+          title="Add album to library as playlist"
+        >
+          {addedToLibrary ? (
+            <>
+              <Check size={16} className="text-[#1ed760]" />
+              <span className="text-[#1ed760]">Added to Library</span>
+            </>
+          ) : (
+            <>
+              <Plus size={16} />
+              <span>Add to Library</span>
+            </>
           )}
         </button>
       </div>
@@ -132,17 +188,13 @@ export const AlbumDetail = ({
           {album.tracks.map((track, idx) => {
             const isThisTrack = currentTrack?.id === track.id;
             const isThisPlaying = isThisTrack && isPlaying;
+            const isSelected = selectedTrackId === track.id;
             const isFav = isFavorite(track.id);
             return (
               <div
                 key={track.id}
-                onClick={() => {
-                  if (isThisTrack) {
-                    togglePlay();
-                  } else {
-                    playTrack(track, album.tracks);
-                  }
-                }}
+                onClick={() => setSelectedTrackId(track.id)}
+                onDoubleClick={() => playTrack(track, album.tracks)}
                 onContextMenu={(e) => {
                   if (onContextMenu) {
                     e.preventDefault();
@@ -154,8 +206,25 @@ export const AlbumDetail = ({
                     });
                   }
                 }}
-                className={`grid grid-cols-[40px_1fr_40px_40px_70px] px-4 py-3 rounded-md group transition items-center cursor-pointer ${
-                  isThisTrack ? 'bg-[#242424] text-[#1ed760]' : 'hover:bg-[#1f1f1f] text-white'
+                draggable="true"
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('application/json', JSON.stringify({
+                    id: track.id,
+                    title: track.title,
+                    artist_name: track.artist_name || album.artist_name,
+                    album_id: album.id,
+                    album_title: album.title,
+                    cover_url: album.cover_url
+                  }));
+                  e.dataTransfer.setData('text/plain', String(track.id));
+                  e.dataTransfer.effectAllowed = 'copy';
+                }}
+                className={`grid grid-cols-[40px_1fr_40px_40px_70px] px-4 py-3 rounded-md group transition items-center cursor-pointer select-none active:cursor-grabbing ${
+                  isThisTrack
+                    ? 'bg-[#242424] text-[#1ed760]'
+                    : isSelected
+                    ? 'bg-[#2a2a2a] ring-1 ring-white/20 text-white'
+                    : 'hover:bg-[#1f1f1f] text-white'
                 }`}
               >
                 <span className="text-sm font-medium text-[#b3b3b3] group-hover:hidden">
@@ -165,7 +234,18 @@ export const AlbumDetail = ({
                     idx + 1
                   )}
                 </span>
-                <span className="hidden group-hover:block text-[#1ed760]">
+                <span 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isThisTrack) {
+                      togglePlay();
+                    } else {
+                      playTrack(track, album.tracks);
+                    }
+                  }}
+                  className="hidden group-hover:block text-[#1ed760] cursor-pointer"
+                  title="Play"
+                >
                   {isThisPlaying ? (
                     <Pause size={16} className="fill-current" />
                   ) : (

@@ -5,6 +5,8 @@ export const AddToPlaylistModal = ({ track, isOpen, onClose, onPlaylistUpdated }
   const [playlists, setPlaylists] = useState([]);
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [addedIds, setAddedIds] = useState(new Set());
+  const [existingIds, setExistingIds] = useState(new Set());
+  const [warnMessage, setWarnMessage] = useState(null);
   const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
@@ -14,21 +16,39 @@ export const AddToPlaylistModal = ({ track, isOpen, onClose, onPlaylistUpdated }
         .then((data) => setPlaylists(data.items || []))
         .catch((err) => console.error('Failed to load playlists:', err));
       setAddedIds(new Set());
+      setExistingIds(new Set());
+      setWarnMessage(null);
       setNewPlaylistName('');
       setIsCreating(false);
+
+      const handleKeyDown = (e) => {
+        if (e.key === 'Escape') {
+          e.stopPropagation();
+          onClose();
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
     }
-  }, [isOpen]);
+  }, [isOpen, onClose]);
 
   if (!isOpen || !track) return null;
 
   const handleAddToPlaylist = async (playlistId) => {
     try {
-      await fetch(`/api/playlists/${playlistId}/tracks`, {
+      const res = await fetch(`/api/playlists/${playlistId}/tracks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ track_id: track.id }),
       });
-      setAddedIds((prev) => new Set(prev).add(playlistId));
+      const data = await res.json();
+      if (data?.already_exists) {
+        setExistingIds((prev) => new Set(prev).add(playlistId));
+        setWarnMessage(`"${track.title}" is already in this playlist`);
+        setTimeout(() => setWarnMessage(null), 3500);
+      } else {
+        setAddedIds((prev) => new Set(prev).add(playlistId));
+      }
       if (onPlaylistUpdated) onPlaylistUpdated();
     } catch (err) {
       console.error('Failed to add track:', err);
@@ -59,8 +79,14 @@ export const AddToPlaylistModal = ({ track, isOpen, onClose, onPlaylistUpdated }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-[#242424] border border-[#333] rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-in zoom-in-95 duration-150">
+    <div 
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 cursor-pointer"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-[#242424] border border-[#333] rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-in zoom-in-95 duration-150 cursor-default"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-white text-base">Add to playlist</h3>
           <button onClick={onClose} className="text-[#888] hover:text-white transition">
@@ -76,15 +102,22 @@ export const AddToPlaylistModal = ({ track, isOpen, onClose, onPlaylistUpdated }
           </div>
         </div>
 
+        {warnMessage && (
+          <div className="mb-3 px-3 py-2 bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs rounded-lg text-center font-medium animate-in fade-in">
+            {warnMessage}
+          </div>
+        )}
+
         {/* Existing Playlists */}
         <div className="max-h-52 overflow-y-auto space-y-1 mb-4 pr-1">
           {playlists.map((pl) => {
             const isAdded = addedIds.has(pl.id);
+            const isExisting = existingIds.has(pl.id);
             return (
               <button
                 key={pl.id}
                 onClick={() => handleAddToPlaylist(pl.id)}
-                disabled={isAdded}
+                disabled={isAdded || isExisting}
                 className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-[#333] transition text-left text-xs font-medium text-white disabled:opacity-60"
               >
                 <div className="flex items-center gap-2.5 truncate">
@@ -94,6 +127,10 @@ export const AddToPlaylistModal = ({ track, isOpen, onClose, onPlaylistUpdated }
                 {isAdded ? (
                   <span className="flex items-center gap-1 text-[#1DB954] text-[11px] font-bold">
                     <Check size={14} /> Added
+                  </span>
+                ) : isExisting ? (
+                  <span className="flex items-center gap-1 text-amber-400 text-[11px] font-bold">
+                    ⚠️ Already exists
                   </span>
                 ) : (
                   <Plus size={16} className="text-[#888]" />

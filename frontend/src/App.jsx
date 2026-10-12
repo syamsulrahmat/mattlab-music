@@ -13,10 +13,12 @@ import { PlaylistDetail } from './components/PlaylistDetail';
 import { LyricsView } from './components/LyricsView';
 import { ContextMenu } from './components/ContextMenu';
 import { PlayerBar } from './components/PlayerBar';
+import { FloatingMiniPlayer } from './components/FloatingMiniPlayer';
 import { MobileNav } from './components/MobileNav';
 import { AddToPlaylistModal } from './components/AddToPlaylistModal';
 import { CreatePlaylistModal } from './components/CreatePlaylistModal';
 import { RequestMusicModal } from './components/RequestMusicModal';
+import { CommandPaletteModal } from './components/CommandPaletteModal';
 import { PlayerProvider, usePlayer } from './context/PlayerContext';
 
 const MainAppContent = () => {
@@ -38,6 +40,14 @@ const MainAppContent = () => {
   const [modalTrack, setModalTrack] = useState(null);
   const [isCreatePlaylistOpen, setIsCreatePlaylistOpen] = useState(false);
   const [isRequestMusicOpen, setIsRequestMusicOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [requestMusicInitialQuery, setRequestMusicInitialQuery] = useState('');
+  const [searchRefreshTrigger, setSearchRefreshTrigger] = useState(0);
+
+  const handleOpenRequestMusic = (initialQuery = '') => {
+    setRequestMusicInitialQuery(initialQuery);
+    setIsRequestMusicOpen(true);
+  };
 
   // History stack for Back/Forward navigation
   const [history, setHistory] = useState([
@@ -64,6 +74,8 @@ const MainAppContent = () => {
     toggleMute,
     nextTrack,
     prevTrack,
+    isMiniPlayerOpen,
+    setIsMiniPlayerOpen,
   } = usePlayer();
 
   const fetchStats = async () => {
@@ -161,6 +173,13 @@ const MainAppContent = () => {
   // Global Keyboard & Mouse Button Event Listeners
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Global Command Palette / Quick Search Modal: Ctrl + K or Cmd + K
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen((prev) => !prev);
+        return;
+      }
+
       // History Navigation: Alt + Left / Right Arrow
       if (e.altKey && e.key === 'ArrowLeft') {
         e.preventDefault();
@@ -251,36 +270,61 @@ const MainAppContent = () => {
 
   // Nav Handlers
   const handleGoHome = () => {
-    navigateTo({ tab: 'home' });
+    setIsLyricsOpen(false);
+    navigateTo({ tab: 'home', isLyricsOpen: false });
   };
 
   const handleSearchChange = (val) => {
     setSearchQuery(val);
-    if (activeTab !== 'search') {
-      navigateTo({ tab: 'search', searchQuery: val });
+    // Only leave current session/view once characters are actually typed
+    if (val && val.trim().length > 0) {
+      setIsLyricsOpen(false);
+      if (activeTab !== 'search' || isLyricsOpen) {
+        navigateTo({ tab: 'search', searchQuery: val, isLyricsOpen: false });
+      }
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    // When aborting search, close search view and return back to previous session
+    if (activeTab === 'search') {
+      if (canGoBack) {
+        handleGoBack();
+      } else {
+        handleGoHome();
+      }
     }
   };
 
   const handleFocusSearch = () => {
-    if (activeTab !== 'search') {
-      navigateTo({ tab: 'search', searchQuery });
+    // Stay on current session/view when clicking search bar; only switch if query exists
+    if (searchQuery && searchQuery.trim().length > 0) {
+      if (isLyricsOpen) setIsLyricsOpen(false);
+      if (activeTab !== 'search') {
+        navigateTo({ tab: 'search', searchQuery, isLyricsOpen: false });
+      }
     }
   };
 
   const handleSelectAlbum = (albumId) => {
-    navigateTo({ tab: 'album-detail', albumId });
+    setIsLyricsOpen(false);
+    navigateTo({ tab: 'album-detail', albumId, isLyricsOpen: false });
   };
 
   const handleSelectArtist = (artistId) => {
-    navigateTo({ tab: 'artist-detail', artistId });
+    setIsLyricsOpen(false);
+    navigateTo({ tab: 'artist-detail', artistId, isLyricsOpen: false });
   };
 
   const handleSelectPlaylist = (playlistId) => {
-    navigateTo({ tab: 'playlist-detail', playlistId });
+    setIsLyricsOpen(false);
+    navigateTo({ tab: 'playlist-detail', playlistId, isLyricsOpen: false });
   };
 
   const handleSelectTab = (tab) => {
-    navigateTo({ tab });
+    setIsLyricsOpen(false);
+    navigateTo({ tab, isLyricsOpen: false });
   };
 
   const handleToggleLyrics = (open) => {
@@ -324,17 +368,51 @@ const MainAppContent = () => {
     handleGoHome();
   };
 
+  const handleLibraryUpdated = useCallback(() => {
+    fetchStats();
+    fetchAlbums();
+    fetchPlaylists();
+    setSearchRefreshTrigger((prev) => prev + 1);
+  }, []);
+
+  const handleAddTrackToPlaylist = async (playlistId, trackId) => {
+    try {
+      const res = await fetch(`/api/playlists/${playlistId}/tracks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ track_id: trackId }),
+      });
+      const data = await res.json();
+      
+      // Immediate optimistic update of playlist track counter
+      if (!data?.already_exists && data?.track_count !== undefined) {
+        setPlaylists((prev) =>
+          prev.map((p) =>
+            p.id === playlistId ? { ...p, track_count: data.track_count } : p
+          )
+        );
+      }
+      
+      await fetchPlaylists();
+      return data;
+    } catch (err) {
+      console.error('Failed to add track to playlist:', err);
+      return null;
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen w-screen bg-[#000000] overflow-hidden select-none text-white font-sans">
       {/* 1. Top Global Navigation Bar (64px, bg-[#000000]) */}
       <TopBar
         searchQuery={searchQuery}
         setSearchQuery={handleSearchChange}
+        onClearSearch={handleClearSearch}
         onFocusSearch={handleFocusSearch}
         onGoHome={handleGoHome}
         stats={stats}
         onRefreshScan={handleRefreshScan}
-        onRequestMusic={() => setIsRequestMusicOpen(true)}
+        onRequestMusic={() => handleOpenRequestMusic(searchQuery || '')}
         canGoBack={canGoBack}
         canGoForward={canGoForward}
         onGoBack={handleGoBack}
@@ -354,6 +432,8 @@ const MainAppContent = () => {
           playlists={playlists}
           onSelectPlaylist={handleSelectPlaylist}
           onCreatePlaylistPrompt={handleOpenCreatePlaylist}
+          onAddTrackToPlaylist={handleAddTrackToPlaylist}
+          onReorderPlaylists={(updated) => setPlaylists(updated)}
           stats={stats}
           isMobileOpen={isMobileLibraryOpen}
           onCloseMobile={() => setIsMobileLibraryOpen(false)}
@@ -425,7 +505,8 @@ const MainAppContent = () => {
                     onSelectArtist={handleSelectArtist}
                     onAddToPlaylist={(track) => setModalTrack(track)}
                     onContextMenu={handleOpenContextMenu}
-                    onRequestMusic={() => setIsRequestMusicOpen(true)}
+                    onRequestMusic={(q) => handleOpenRequestMusic(q || searchQuery || '')}
+                    refreshTrigger={searchRefreshTrigger}
                   />
                 </div>
               )}
@@ -436,6 +517,7 @@ const MainAppContent = () => {
                     albumId={selectedAlbumId}
                     onBack={handleGoBack}
                     onAddToPlaylist={(track) => setModalTrack(track)}
+                    onPlaylistCreated={fetchPlaylists}
                     onSelectArtist={handleSelectArtist}
                     onContextMenu={handleOpenContextMenu}
                   />
@@ -453,16 +535,25 @@ const MainAppContent = () => {
                 </div>
               )}
 
-              {activeTab === 'playlist-detail' && selectedPlaylistId && (
+              {activeTab === 'playlist-detail' && (
                 <div className="p-4 sm:p-6">
-                  <PlaylistDetail
-                    playlistId={selectedPlaylistId}
-                    onBack={handleGoBack}
-                    onPlaylistDeleted={handlePlaylistDeleted}
-                    onSelectAlbum={handleSelectAlbum}
-                    onSelectArtist={handleSelectArtist}
-                    onContextMenu={handleOpenContextMenu}
-                  />
+                  {selectedPlaylistId ? (
+                    <PlaylistDetail
+                      playlistId={selectedPlaylistId}
+                      onBack={handleGoBack}
+                      onPlaylistDeleted={handlePlaylistDeleted}
+                      onSelectAlbum={handleSelectAlbum}
+                      onSelectArtist={handleSelectArtist}
+                      onContextMenu={handleOpenContextMenu}
+                    />
+                  ) : (
+                    <div className="p-8 text-center text-[#b3b3b3]">
+                      <h3 className="text-lg font-bold text-white mb-2">No playlist selected</h3>
+                      <button onClick={handleGoHome} className="text-xs text-[#1ed760] hover:underline font-bold">
+                        ← Return Home
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </>
@@ -486,6 +577,8 @@ const MainAppContent = () => {
         setIsQueueOpen={setIsQueueOpen}
         isLyricsOpen={isLyricsOpen}
         setIsLyricsOpen={handleToggleLyrics}
+        isMiniPlayerOpen={isMiniPlayerOpen}
+        setIsMiniPlayerOpen={setIsMiniPlayerOpen}
         onSelectAlbum={handleSelectAlbum}
         onSelectArtist={handleSelectArtist}
         onContextMenu={handleOpenContextMenu}
@@ -534,8 +627,29 @@ const MainAppContent = () => {
       {/* Request Music Modal (Lidarr + Torrent + Spotify Resolver) */}
       <RequestMusicModal
         isOpen={isRequestMusicOpen}
-        onClose={() => setIsRequestMusicOpen(false)}
+        initialQuery={requestMusicInitialQuery}
+        onClose={() => {
+          setIsRequestMusicOpen(false);
+          setRequestMusicInitialQuery('');
+          handleLibraryUpdated();
+        }}
+        onLibraryUpdated={handleLibraryUpdated}
         onSelectAlbum={handleSelectAlbum}
+      />
+
+      {/* Persistent & Resizable Floating Mini Player / Picture-in-Picture */}
+      <FloatingMiniPlayer
+        isOpen={isMiniPlayerOpen}
+        onClose={() => setIsMiniPlayerOpen(false)}
+      />
+
+      {/* Global Quick Search Command Palette (Ctrl+K) */}
+      <CommandPaletteModal
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        onSelectAlbum={handleSelectAlbum}
+        onSelectArtist={handleSelectArtist}
+        onRequestMusic={(q) => handleOpenRequestMusic(q || '')}
       />
     </div>
   );

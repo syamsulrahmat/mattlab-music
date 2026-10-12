@@ -5,6 +5,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>MattLab Music</title>
     
+    <!-- Client Error Interceptor & Early Warning Banner -->
+    <script>
+      (function() {
+        function displayError(title, msg, stack) {
+          console.error(title, msg, stack);
+          var box = document.getElementById('fatal-error-overlay');
+          if (!box) {
+            box = document.createElement('div');
+            box.id = 'fatal-error-overlay';
+            box.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:#121212;color:#ff5555;padding:24px;z-index:9999999;font-family:monospace;white-space:pre-wrap;font-size:14px;overflow:auto;box-sizing:border-box;';
+            if (document.body) {
+              document.body.appendChild(box);
+            } else {
+              document.addEventListener('DOMContentLoaded', function() {
+                document.body.appendChild(box);
+              });
+            }
+          }
+          box.innerHTML = '<h2 style="color:#ff4444;margin-top:0;">⚠️ Fatal Frontend Error (' + title + ')</h2>' +
+            '<div style="background:#1e1e1e;padding:12px;border-radius:6px;border:1px solid #444;color:#fff;margin-bottom:12px;">' +
+            msg + '</div>' +
+            (stack ? '<pre style="background:#000;padding:12px;border-radius:6px;color:#888;font-size:12px;overflow:auto;">' + stack + '</pre>' : '') +
+            '<button onclick="location.reload()" style="background:#1ed760;color:#000;font-weight:bold;padding:8px 16px;border:none;border-radius:20px;cursor:pointer;margin-top:12px;">Reload Page</button>';
+
+          try {
+            fetch('/api/client-error', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ type: title, message: String(msg), stack: String(stack || '') })
+            }).catch(function() {});
+          } catch(e) {}
+        }
+
+        window.onerror = function(msg, url, line, col, err) {
+          displayError('WINDOW ERROR', msg + ' (at ' + url + ':' + line + ':' + col + ')', err ? err.stack : '');
+        };
+        window.addEventListener('unhandledrejection', function(e) {
+          displayError('UNHANDLED PROMISE REJECTION', e.reason ? (e.reason.message || e.reason) : e, e.reason ? e.reason.stack : '');
+        });
+      })();
+    </script>
+
     <!-- Primary Favicons -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=2" />
@@ -20,8 +62,8 @@
     <meta name="application-name" content="MattLab Music" />
     <meta name="theme-color" content="#121212" />
     <link rel="manifest" href="/manifest.json" />
-    <script type="module" crossorigin src="/assets/index-_e-4r766.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DkF54jvJ.css">
+    <script type="module" crossorigin src="/assets/index-BR8CpvIc.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-s1ej60BU.css">
   </head>
   <body class="bg-[#121212] text-white overflow-hidden select-none">
     <div id="root"></div>

@@ -403,13 +403,24 @@ async def list_tracks(
 
 @router.get("/search")
 async def search_library(q: str = Query(..., min_length=1)):
-    """Search across tracks, artists, and albums simultaneously."""
-    query_param = f"%{q.strip()}%"
+    """Search across tracks, artists, and albums simultaneously with smart typo resolution."""
+    from app.routes.request_music import resolve_smart_canonical_query
+
+    cleaned_q = q.strip()
+    tokens = [t.strip() for t in cleaned_q.split() if t.strip()]
+    if not tokens:
+        return {"query": q, "tracks": [], "albums": [], "artists": []}
+
     with get_db() as conn:
         cursor = conn.cursor()
 
-        # 1. Search tracks
-        cursor.execute("""
+        # 1. Search tracks matching all tokens across title, artist name, and album title
+        track_where_clauses = ["(t.title LIKE ? OR ar.name LIKE ? OR a.title LIKE ?)" for _ in tokens]
+        track_params = []
+        for tok in tokens:
+            track_params.extend([f"%{tok}%", f"%{tok}%", f"%{tok}%"])
+
+        cursor.execute(f"""
             SELECT 
                 t.id, t.title, t.track_number, t.duration_seconds,
                 a.id AS album_id, a.title AS album_title,
@@ -417,10 +428,10 @@ async def search_library(q: str = Query(..., min_length=1)):
             FROM tracks t
             JOIN albums a ON t.album_id = a.id
             JOIN artists ar ON t.artist_id = ar.id
-            WHERE t.title LIKE ?
+            WHERE {' AND '.join(track_where_clauses)}
             ORDER BY t.title COLLATE NOCASE ASC
             LIMIT 25
-        """, (query_param,))
+        """, tuple(track_params))
         tracks = [
             {
                 **dict(row),
@@ -430,8 +441,13 @@ async def search_library(q: str = Query(..., min_length=1)):
             for row in cursor.fetchall()
         ]
 
-        # 2. Search albums
-        cursor.execute("""
+        # 2. Search albums matching tokens
+        album_where_clauses = ["(a.title LIKE ? OR ar.name LIKE ?)" for _ in tokens]
+        album_params = []
+        for tok in tokens:
+            album_params.extend([f"%{tok}%", f"%{tok}%"])
+
+        cursor.execute(f"""
             SELECT 
                 a.id, a.title, a.year, a.artist_id,
                 ar.name AS artist_name,
@@ -439,11 +455,11 @@ async def search_library(q: str = Query(..., min_length=1)):
             FROM albums a
             JOIN artists ar ON a.artist_id = ar.id
             LEFT JOIN tracks t ON t.album_id = a.id
-            WHERE a.title LIKE ?
+            WHERE {' AND '.join(album_where_clauses)}
             GROUP BY a.id
             ORDER BY a.title COLLATE NOCASE ASC
             LIMIT 15
-        """, (query_param,))
+        """, tuple(album_params))
         albums = [
             {
                 **dict(row),
@@ -452,7 +468,7 @@ async def search_library(q: str = Query(..., min_length=1)):
             for row in cursor.fetchall()
         ]
 
-        # 3. Search artists
+        # 3. Search artists matching query
         cursor.execute("""
             SELECT 
                 ar.id, ar.name,
@@ -465,7 +481,7 @@ async def search_library(q: str = Query(..., min_length=1)):
             GROUP BY ar.id
             ORDER BY ar.name COLLATE NOCASE ASC
             LIMIT 10
-        """, (query_param,))
+        """, (f"%{cleaned_q}%",))
         artists = [
             {
                 **dict(row),
@@ -474,9 +490,52 @@ async def search_library(q: str = Query(..., min_length=1)):
             for row in cursor.fetchall()
         ]
 
-    return {
+        # 4. Smart canonical typo resolution fallback if 0 local results or few results
+        corrected_query = None
+        did_you_mean = None
+        if len(tracks) == 0 and len(albums) == 0 and len(artists) == 0:
+            try:
+                canonical = resolve_smart_canonical_query(cleaned_q)
+                if canonical:
+                    c_track = canonical.get("track")
+                    c_artist = canonical.get("artist")
+                    corrected_query = f"{c_artist} - {c_track}"
+                    did_you_mean = {"track": c_track, "artist": c_artist}
+
+                    # Check if local library has this track under canonical name
+                    cursor.execute("""
+                        SELECT 
+                            t.id, t.title, t.track_number, t.duration_seconds,
+                            a.id AS album_id, a.title AS album_title,
+                            ar.id AS artist_id, ar.name AS artist_name
+                        FROM tracks t
+                        JOIN albums a ON t.album_id = a.id
+                        JOIN artists ar ON t.artist_id = ar.id
+                        WHERE t.title LIKE ? AND ar.name LIKE ?
+                        ORDER BY t.title COLLATE NOCASE ASC
+                        LIMIT 10
+                    """, (f"%{c_track}%", f"%{c_artist}%"))
+                    extra_tracks = [
+                        {
+                            **dict(row),
+                            "cover_url": f"/api/covers/{row['album_id']}",
+                            "stream_url": f"/api/stream/{row['id']}",
+                        }
+                        for row in cursor.fetchall()
+                    ]
+                    if extra_tracks:
+                        tracks.extend(extra_tracks)
+            except Exception as e:
+                print(f"[Search] Canonical typo check error: {e}")
+
+    resp = {
         "query": q,
         "tracks": tracks,
         "albums": albums,
         "artists": artists,
     }
+    if corrected_query:
+        resp["corrected_query"] = corrected_query
+        resp["did_you_mean"] = did_you_mean
+
+    return resp
