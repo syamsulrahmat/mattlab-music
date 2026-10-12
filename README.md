@@ -1,6 +1,15 @@
-# 🎵 MattLab Music App
+# 🎵 MattLab Music
 
-A self-hosted, personal music streaming web application powered by your Unraid server. Minimal, blisteringly fast, and focused on essential Spotify-like features without the bloat.
+> **Self-hosted, personal music streaming web application with a modern Spotify-inspired Island UI, built for Unraid.**
+
+[![Live Domain](https://img.shields.io/badge/Live-music.mattdrive.com-1ed760?style=flat-square&logo=cloudflare)](https://music.mattdrive.com)
+[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/Frontend-React%20%2B%20Vite-61DAFB?style=flat-square&logo=react)](https://react.dev)
+[![TailwindCSS](https://img.shields.io/badge/Styling-Tailwind%20CSS-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com)
+[![Docker](https://img.shields.io/badge/Deployment-Docker-2496ED?style=flat-square&logo=docker)](https://www.docker.com)
+[![PWA](https://img.shields.io/badge/PWA-Ready-purple?style=flat-square)](https://music.mattdrive.com)
+
+Minimal, blisteringly fast, and focused on essential Spotify-like music discovery without the bloat. Runs natively on your personal server and streams your high-resolution music library anywhere in the world.
 
 ---
 
