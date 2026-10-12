@@ -1,36 +1,34 @@
 # 🎵 MattLab Music
 
-> **Self-hosted, personal music streaming web application with a modern Spotify-inspired Island UI, built for Unraid.**
+> **Self-hosted personal music streaming web application with a modern Spotify-inspired Island UI, built for Unraid & Docker.**
 
 [![Live Domain](https://img.shields.io/badge/Live-music.mattdrive.com-1ed760?style=flat-square&logo=cloudflare)](https://music.mattdrive.com)
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/Frontend-React%20%2B%20Vite-61DAFB?style=flat-square&logo=react)](https://react.dev)
 [![TailwindCSS](https://img.shields.io/badge/Styling-Tailwind%20CSS-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com)
 [![Docker](https://img.shields.io/badge/Deployment-Docker-2496ED?style=flat-square&logo=docker)](https://www.docker.com)
-[![PWA](https://img.shields.io/badge/PWA-Ready-purple?style=flat-square)](https://music.mattdrive.com)
+[![Mobile Friendly](https://img.shields.io/badge/Mobile-Friendly%20(PWA)-purple?style=flat-square)](https://music.mattdrive.com)
 
-Minimal, blisteringly fast, and focused on essential Spotify-like music discovery without the bloat. Runs natively on your personal server and streams your high-resolution music library anywhere in the world.
+Minimal, blisteringly fast, and focused on essential Spotify-like music discovery without the bloat. Runs natively on your personal server and streams your audio collection anywhere.
 
 ---
 
 ## 🌟 Features
 
-- **Continuous Audio Engine**: Persistent bottom player bar that never interrupts or resets audio during catalog navigation.
+- **Continuous Audio Engine**: Persistent bottom player bar that never interrupts or resets playback during catalog navigation.
 - **HTTP 206 Partial Content**: Native byte-range streaming allowing instant seeking and smooth audio scrubbing.
-- **Lightning Fast Library Scanner**:
+- **Lightning-Fast Scanner**:
   - Incremental tag parser using Mutagen (MP3, FLAC, M4A, AAC, OGG).
   - Automatically caches and serves embedded/folder album artwork.
-  - Re-scans 1,600+ tracks in **0.29 seconds**.
-- **Spotify-Inspired UI**:
+- **Spotify-Inspired Island UI**:
   - Dark matte aesthetic with album grids, artist discographies, and track tables.
-  - Quick-play hover buttons.
-  - Full active queue drawer with jump-to-track.
+  - Quick-play hover buttons, live search, and full active queue drawer.
+- **Mobile Friendly**:
+  - Fully responsive layout optimized for mobile screens.
+  - Installable as a progressive web app (PWA) with native lock-screen media controls (MediaSession API).
 - **Playlists & Liked Songs**:
-  - Heart icon on player and song rows to save to "Liked Songs".
-  - Custom playlists: create, add tracks from search/albums, reorder, and remove.
-- **Web MediaSession API**:
-  - Native lock-screen album art, song title, and scrubbing on iOS, Android, and macOS.
-  - Supports keyboard hardware media keys.
+  - Heart icon to save favorites.
+  - Custom playlists: create, add tracks, reorder, and manage.
 - **Global Keyboard Shortcuts**:
   - `Space`: Play / Pause
   - `Arrow Left` / `Arrow Right`: Seek -5s / +5s
@@ -40,48 +38,38 @@ Minimal, blisteringly fast, and focused on essential Spotify-like music discover
 
 ---
 
-## 🌐 Accessing the App
+## 🚀 Quick Start (Docker Compose)
 
-### On Local Network (LAN)
-Open in any browser:
+```yaml
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: music-app-backend
+    restart: unless-stopped
+    volumes:
+      - ./backend/app:/app/app
+      - ./frontend/dist:/app/frontend_dist:ro
+      - /path/to/your/music:/music:ro
+      - /path/to/appdata:/data
+    environment:
+      - MUSIC_DIR=/music
+      - DATA_DIR=/data
+      - DB_PATH=/data/music.db
+      - COVERS_DIR=/data/covers
+    ports:
+      - "8085:8085"
 ```
-http://192.168.100.200:8085
+
+Start the application:
+```bash
+docker compose up -d
 ```
-
-### On iPhone / iPad / Android (Install as PWA)
-1. Open `http://192.168.100.200:8085` in **Safari** (iOS) or **Chrome** (Android).
-2. Tap the **Share** button (iOS) or **Menu ⋮** (Android).
-3. Select **Add to Home Screen**.
-4. The app will launch in full screen without browser toolbars, behaving like a native app with lock-screen audio controls!
-
-### Away From Home (Remote Streaming via Tailscale)
-If you run Tailscale on your Unraid server and on your phone:
-1. Connect to Tailscale on your mobile device.
-2. Open your Unraid MagicDNS name or Tailscale IP (e.g. `http://mattlab:8085` or `http://100.x.x.x:8085`).
-3. Stream all your high-res FLAC and MP3 music anywhere in the world with zero port forwarding required!
-
----
-
-## 📁 System Paths & Volumes
-
-| Host Path | Container Path | Purpose |
-| :--- | :--- | :--- |
-| `/mnt/user/Media/Music` | `/music` (read-only `:ro`) | Your main music library share |
-| `/mnt/cache/appdata/music-app` | `/data` | SQLite database (`music.db`) & cached album artwork (`/data/covers`) |
-| `/mnt/user/Development/music-app` | `/app` | Source code repository |
-
-> **Note**: Mounting `/mnt/cache/appdata/...` bypasses Unraid's FUSE `shfs` driver, providing native POSIX filesystem locks and SQLite WAL mode reliability.
 
 ---
 
 ## 🛠️ Management Commands
-
-Inside `/mnt/user/Development/music-app`:
-
-### Rebuilding or Restarting Containers
-```bash
-docker compose up -d --force-recreate
-```
 
 ### Triggering Manual Library Scan via CLI
 ```bash
