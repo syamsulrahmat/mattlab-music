@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Home, Search, X, RefreshCw, Music2, Server, HardDrive } from 'lucide-react';
+import { Home, Search, X, RefreshCw, Music2, Server, HardDrive, DownloadCloud } from 'lucide-react';
 import { MattLabLogo } from './MattLabLogo';
 
 export const TopBar = ({ 
@@ -9,6 +9,7 @@ export const TopBar = ({
   onGoHome, 
   stats, 
   onRefreshScan,
+  onRequestMusic,
   canGoBack,
   canGoForward,
   onGoBack,
@@ -88,6 +89,15 @@ export const TopBar = ({
             <span>{stats.total_duration_hours} hrs</span>
           </div>
         )}
+
+        <button
+          onClick={onRequestMusic}
+          className="bg-[#1ed760] hover:bg-[#1fdf64] text-black text-xs font-bold px-3 py-2 rounded-full flex items-center gap-1.5 transition hover:scale-105 active:scale-95 shadow-md shrink-0"
+          title="Request Music via Torrent (Lidarr)"
+        >
+          <DownloadCloud size={14} className="stroke-[2.5]" />
+          <span className="hidden sm:inline">Request</span>
+        </button>
 
         <button
           onClick={handleScanClick}

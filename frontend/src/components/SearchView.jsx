@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, X, Play, Pause, Disc3, Mic2, Music, Heart, Plus } from 'lucide-react';
+import { Search, X, Play, Pause, Disc3, Mic2, Music, Heart, Plus, DownloadCloud } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 
 export const SearchView = ({ 
@@ -7,6 +7,7 @@ export const SearchView = ({
   onSelectArtist, 
   onAddToPlaylist, 
   onContextMenu,
+  onRequestMusic,
   query: propQuery, 
   setQuery: propSetQuery 
 }) => {
@@ -285,8 +286,19 @@ export const SearchView = ({
           )}
 
           {results.tracks?.length === 0 && results.albums?.length === 0 && results.artists?.length === 0 && (
-            <div className="text-center py-16 text-[#888]">
-              No results found for "{query}".
+            <div className="text-center py-16 space-y-4">
+              <p className="text-sm text-[#888]">No local tracks found for "{query}".</p>
+              {onRequestMusic && (
+                <div>
+                  <button
+                    onClick={() => onRequestMusic(query)}
+                    className="inline-flex items-center gap-2 bg-[#1ed760] hover:bg-[#1fdf64] text-black font-bold text-xs px-5 py-2.5 rounded-full transition shadow-lg active:scale-95"
+                  >
+                    <DownloadCloud size={15} />
+                    <span>Request "{query}" from Torrent / Spotify</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

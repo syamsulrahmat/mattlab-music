@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import init_db
-from app.routes import stream, library, scan, playlists, lyrics
+from app.routes import stream, library, scan, playlists, lyrics, request_music
 
 app = FastAPI(
     title="MattLab Music App API",
@@ -28,6 +28,7 @@ app.include_router(library.router, prefix="/api")
 app.include_router(scan.router, prefix="/api")
 app.include_router(playlists.router, prefix="/api")
 app.include_router(lyrics.router, prefix="/api")
+app.include_router(request_music.router, prefix="/api")
 
 from pathlib import Path
 from fastapi.staticfiles import StaticFiles

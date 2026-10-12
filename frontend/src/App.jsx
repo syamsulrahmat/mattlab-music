@@ -16,6 +16,7 @@ import { PlayerBar } from './components/PlayerBar';
 import { MobileNav } from './components/MobileNav';
 import { AddToPlaylistModal } from './components/AddToPlaylistModal';
 import { CreatePlaylistModal } from './components/CreatePlaylistModal';
+import { RequestMusicModal } from './components/RequestMusicModal';
 import { PlayerProvider, usePlayer } from './context/PlayerContext';
 
 const MainAppContent = () => {
@@ -36,6 +37,7 @@ const MainAppContent = () => {
   const [isMobileLibraryOpen, setIsMobileLibraryOpen] = useState(false);
   const [modalTrack, setModalTrack] = useState(null);
   const [isCreatePlaylistOpen, setIsCreatePlaylistOpen] = useState(false);
+  const [isRequestMusicOpen, setIsRequestMusicOpen] = useState(false);
 
   // History stack for Back/Forward navigation
   const [history, setHistory] = useState([
@@ -332,6 +334,7 @@ const MainAppContent = () => {
         onGoHome={handleGoHome}
         stats={stats}
         onRefreshScan={handleRefreshScan}
+        onRequestMusic={() => setIsRequestMusicOpen(true)}
         canGoBack={canGoBack}
         canGoForward={canGoForward}
         onGoBack={handleGoBack}
@@ -422,6 +425,7 @@ const MainAppContent = () => {
                     onSelectArtist={handleSelectArtist}
                     onAddToPlaylist={(track) => setModalTrack(track)}
                     onContextMenu={handleOpenContextMenu}
+                    onRequestMusic={() => setIsRequestMusicOpen(true)}
                   />
                 </div>
               )}
@@ -525,6 +529,13 @@ const MainAppContent = () => {
         isOpen={isCreatePlaylistOpen}
         onClose={() => setIsCreatePlaylistOpen(false)}
         onCreatePlaylist={handleCreatePlaylist}
+      />
+
+      {/* Request Music Modal (Lidarr + Torrent + Spotify Resolver) */}
+      <RequestMusicModal
+        isOpen={isRequestMusicOpen}
+        onClose={() => setIsRequestMusicOpen(false)}
+        onSelectAlbum={handleSelectAlbum}
       />
     </div>
   );
