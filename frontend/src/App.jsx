@@ -15,6 +15,7 @@ import { ContextMenu } from './components/ContextMenu';
 import { PlayerBar } from './components/PlayerBar';
 import { MobileNav } from './components/MobileNav';
 import { AddToPlaylistModal } from './components/AddToPlaylistModal';
+import { CreatePlaylistModal } from './components/CreatePlaylistModal';
 import { PlayerProvider, usePlayer } from './context/PlayerContext';
 
 const MainAppContent = () => {
@@ -34,6 +35,7 @@ const MainAppContent = () => {
   const [isQueueOpen, setIsQueueOpen] = useState(true);
   const [isMobileLibraryOpen, setIsMobileLibraryOpen] = useState(false);
   const [modalTrack, setModalTrack] = useState(null);
+  const [isCreatePlaylistOpen, setIsCreatePlaylistOpen] = useState(false);
 
   // History stack for Back/Forward navigation
   const [history, setHistory] = useState([
@@ -295,8 +297,11 @@ const MainAppContent = () => {
     }
   };
 
-  const handleCreatePlaylistPrompt = async () => {
-    const name = window.prompt('Enter new playlist name:');
+  const handleOpenCreatePlaylist = () => {
+    setIsCreatePlaylistOpen(true);
+  };
+
+  const handleCreatePlaylist = async (name) => {
     if (!name || !name.trim()) return;
     try {
       const res = await fetch('/api/playlists', {
@@ -345,7 +350,7 @@ const MainAppContent = () => {
           setActiveTab={handleSelectTab}
           playlists={playlists}
           onSelectPlaylist={handleSelectPlaylist}
-          onCreatePlaylistPrompt={handleCreatePlaylistPrompt}
+          onCreatePlaylistPrompt={handleOpenCreatePlaylist}
           stats={stats}
           isMobileOpen={isMobileLibraryOpen}
           onCloseMobile={() => setIsMobileLibraryOpen(false)}
@@ -513,6 +518,13 @@ const MainAppContent = () => {
         isOpen={Boolean(modalTrack)}
         onClose={() => setModalTrack(null)}
         onPlaylistUpdated={fetchPlaylists}
+      />
+
+      {/* Create Playlist Modal (Integrated In-App UI) */}
+      <CreatePlaylistModal
+        isOpen={isCreatePlaylistOpen}
+        onClose={() => setIsCreatePlaylistOpen(false)}
+        onCreatePlaylist={handleCreatePlaylist}
       />
     </div>
   );

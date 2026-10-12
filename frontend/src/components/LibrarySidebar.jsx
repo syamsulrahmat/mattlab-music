@@ -15,9 +15,9 @@ export const LibrarySidebar = ({
     <div className="flex flex-col h-full bg-[#121212] rounded-lg overflow-hidden select-none">
       {/* Island Header */}
       <div className="px-4 py-3.5 flex items-center justify-between border-b border-white/5">
-        <div className="flex items-center gap-2.5 text-[#b3b3b3] hover:text-white transition cursor-pointer">
+        <div className="flex items-center gap-2.5 text-[#b3b3b3]">
           <Library size={22} className="stroke-[2.2]" />
-          <span className="font-bold text-sm text-white tracking-tight">Your Library</span>
+          <span className="font-bold text-sm text-[#b3b3b3] tracking-tight">Your Library</span>
         </div>
 
         <div className="flex items-center gap-1">
