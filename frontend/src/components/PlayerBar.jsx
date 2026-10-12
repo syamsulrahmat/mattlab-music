@@ -31,6 +31,7 @@ export const PlayerBar = ({
     isShuffle,
     repeatMode,
     isFavorite,
+    isTrackPreloaded,
     toggleFavorite,
     togglePlay,
     seek,
@@ -83,12 +84,20 @@ export const PlayerBar = ({
                 className="w-11 h-11 rounded-md object-cover bg-[#1f1f1f] shrink-0 shadow cursor-pointer active:scale-95 transition"
               />
               <div className="truncate">
-                <h4 
-                  onClick={() => onSelectAlbum && onSelectAlbum(currentTrack.album_id)}
-                  className="text-xs font-bold text-white truncate cursor-pointer hover:underline"
-                >
-                  {currentTrack.title}
-                </h4>
+                <div className="flex items-center gap-1.5">
+                  <h4 
+                    onClick={() => onSelectAlbum && onSelectAlbum(currentTrack.album_id)}
+                    className="text-xs font-bold text-white truncate cursor-pointer hover:underline"
+                  >
+                    {currentTrack.title}
+                  </h4>
+                  {isTrackPreloaded && isTrackPreloaded(currentTrack.id) && (
+                    <span 
+                      className="w-1.5 h-1.5 rounded-full bg-[#1ed760] shrink-0" 
+                      title="Preloaded & offline ready"
+                    />
+                  )}
+                </div>
                 <p 
                   onClick={() => onSelectArtist && onSelectArtist(currentTrack.artist_id)}
                   className="text-[11px] text-[#b3b3b3] truncate mt-0.5 cursor-pointer hover:text-white hover:underline"
@@ -162,13 +171,21 @@ export const PlayerBar = ({
                 title={currentTrack.album_title || 'Go to album'}
               />
               <div className="truncate max-w-[140px] lg:max-w-[180px]">
-                <h4 
-                  onClick={() => onSelectAlbum && onSelectAlbum(currentTrack.album_id)}
-                  className="text-sm font-bold text-white truncate hover:underline cursor-pointer"
-                  title={currentTrack.title}
-                >
-                  {currentTrack.title}
-                </h4>
+                <div className="flex items-center gap-1.5">
+                  <h4 
+                    onClick={() => onSelectAlbum && onSelectAlbum(currentTrack.album_id)}
+                    className="text-sm font-bold text-white truncate hover:underline cursor-pointer"
+                    title={currentTrack.title}
+                  >
+                    {currentTrack.title}
+                  </h4>
+                  {isTrackPreloaded && isTrackPreloaded(currentTrack.id) && (
+                    <span 
+                      className="w-1.5 h-1.5 rounded-full bg-[#1ed760] shrink-0" 
+                      title="Preloaded & offline ready (safe if server disconnects)"
+                    />
+                  )}
+                </div>
                 <p 
                   onClick={() => onSelectArtist && onSelectArtist(currentTrack.artist_id)}
                   className="text-xs text-[#b3b3b3] truncate hover:text-white hover:underline cursor-pointer mt-0.5"

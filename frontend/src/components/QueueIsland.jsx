@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Play, Music, ListMusic, Compass } from 'lucide-react';
+import { X, Play, Music, ListMusic, Compass, CheckCircle2 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 
 export const QueueIsland = ({ 
@@ -10,7 +10,7 @@ export const QueueIsland = ({
   onSelectArtist,
   onContextMenu
 }) => {
-  const { queue, queueIndex, currentTrack, playTrack } = usePlayer();
+  const { queue, queueIndex, currentTrack, playTrack, isTrackPreloaded } = usePlayer();
 
   if (!isOpen) return null;
 
@@ -76,13 +76,24 @@ export const QueueIsland = ({
                     onClick={() => onSelectAlbum && onSelectAlbum(currentTrack.album_id)}
                     className="w-12 h-12 rounded object-cover bg-[#282828] shrink-0 cursor-pointer hover:opacity-90 transition"
                   />
-                  <div className="truncate flex-1">
-                    <p 
-                      onClick={() => onSelectAlbum && onSelectAlbum(currentTrack.album_id)}
-                      className="text-xs font-bold text-[#1ed760] truncate cursor-pointer hover:underline"
-                    >
-                      {currentTrack.title}
-                    </p>
+                  <div className="truncate flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 justify-between">
+                      <p 
+                        onClick={() => onSelectAlbum && onSelectAlbum(currentTrack.album_id)}
+                        className="text-xs font-bold text-[#1ed760] truncate cursor-pointer hover:underline"
+                      >
+                        {currentTrack.title}
+                      </p>
+                      {isTrackPreloaded(currentTrack.id) && (
+                        <span 
+                          title="Cached locally (offline ready)"
+                          className="shrink-0 inline-flex items-center gap-0.5 text-[9px] font-semibold text-[#1ed760] bg-[#1ed760]/10 px-1.5 py-0.5 rounded-full"
+                        >
+                          <CheckCircle2 size={10} />
+                          <span>Ready</span>
+                        </span>
+                      )}
+                    </div>
                     <p 
                       onClick={() => onSelectArtist && onSelectArtist(currentTrack.artist_id)}
                       className="text-[11px] text-[#b3b3b3] truncate mt-0.5 cursor-pointer hover:text-white hover:underline"
@@ -126,10 +137,21 @@ export const QueueIsland = ({
                         alt=""
                         className="w-9 h-9 rounded object-cover bg-[#242424] shrink-0"
                       />
-                      <div className="truncate flex-1">
-                        <p className="text-xs font-medium text-white group-hover:text-[#1ed760] truncate">
-                          {track.title}
-                        </p>
+                      <div className="truncate flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-1.5">
+                          <p className="text-xs font-medium text-white group-hover:text-[#1ed760] truncate">
+                            {track.title}
+                          </p>
+                          {isTrackPreloaded(track.id) && (
+                            <span 
+                              title="Preloaded & offline ready (will play even if connection drops)"
+                              className="shrink-0 inline-flex items-center gap-0.5 text-[9px] font-medium text-[#1ed760] bg-[#1ed760]/10 px-1.5 py-0.5 rounded-full"
+                            >
+                              <CheckCircle2 size={9} />
+                              <span>Preloaded</span>
+                            </span>
+                          )}
+                        </div>
                         <p 
                           onClick={(e) => {
                             e.stopPropagation();

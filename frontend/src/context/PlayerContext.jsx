@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { audioPreloader } from '../utils/audioPreloader';
 
 const PlayerContext = createContext(null);
 
@@ -18,6 +19,21 @@ export const PlayerProvider = ({ children }) => {
   const [isShuffle, setIsShuffle] = useState(false);
   const [repeatMode, setRepeatMode] = useState('off'); // 'off' | 'all' | 'one'
   const [favoriteIds, setFavoriteIds] = useState(new Set());
+  const [preloadedTrackIds, setPreloadedTrackIds] = useState(() => audioPreloader.getPreloadedTrackIds());
+
+  // Subscribe to audioPreloader events
+  useEffect(() => {
+    return audioPreloader.subscribe((ids) => {
+      setPreloadedTrackIds(new Set(ids));
+    });
+  }, []);
+
+  // Automatically update the sliding preload window when queue or queueIndex advances
+  useEffect(() => {
+    if (queue.length > 0 && queueIndex >= 0) {
+      audioPreloader.updateQueue(queue, queueIndex);
+    }
+  }, [queue, queueIndex]);
 
   // Load initial favorites
   useEffect(() => {
@@ -76,12 +92,13 @@ export const PlayerProvider = ({ children }) => {
   // Update Media Session API for iOS / OS lock screen controls
   useEffect(() => {
     if ('mediaSession' in navigator && currentTrack) {
+      const cover = audioPreloader.getPreloadedCover(currentTrack.id) || currentTrack.cover_url || '/api/covers/0';
       navigator.mediaSession.metadata = new MediaMetadata({
         title: currentTrack.title,
         artist: currentTrack.artist_name,
         album: currentTrack.album_title || '',
         artwork: [
-          { src: currentTrack.cover_url || '/api/covers/0', sizes: '300x300', type: 'image/jpeg' },
+          { src: cover, sizes: '300x300', type: 'image/jpeg' },
         ],
       });
 
@@ -104,7 +121,8 @@ export const PlayerProvider = ({ children }) => {
     }
 
     setCurrentTrack(track);
-    audio.src = track.stream_url || `/api/stream/${track.id}`;
+    const preloadedAudio = audioPreloader.getPreloadedAudio(track.id);
+    audio.src = preloadedAudio || track.stream_url || `/api/stream/${track.id}`;
     audio.play().catch((err) => console.warn('Autoplay prevented:', err));
   };
 
@@ -258,6 +276,8 @@ export const PlayerProvider = ({ children }) => {
         toggleRepeat,
         addToQueue,
         playNextInQueue,
+        preloadedTrackIds,
+        isTrackPreloaded: (id) => preloadedTrackIds.has(id),
       }}
     >
       {children}
