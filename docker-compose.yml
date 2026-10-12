@@ -1,0 +1,20 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: music-app-backend
+    restart: unless-stopped
+    volumes:
+      - ./backend/app:/app/app
+      - ./frontend/dist:/app/frontend_dist:ro
+      - /mnt/user/Media/Music:/music:ro
+      - /mnt/cache/appdata/music-app:/data
+    environment:
+      - MUSIC_DIR=/music
+      - DATA_DIR=/data
+      - DB_PATH=/data/music.db
+      - COVERS_DIR=/data/covers
+    ports:
+      - "8085:8085"
+      - "4533:8085"
