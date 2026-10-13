@@ -314,7 +314,7 @@ export const LyricsView = ({ onClose }) => {
             className="p-2 rounded-full hover:bg-white/10 text-[#b3b3b3] hover:text-white transition"
             title="Refresh Lyrics"
           >
-            <RefreshCw size={16} className={isLoading ? 'animate-spin text-[#1ed760]' : ''} />
+            <RefreshCw size={16} className={isLoading ? 'animate-spin text-brand-500' : ''} />
           </button>
           {onClose && (
             <button
@@ -337,7 +337,7 @@ export const LyricsView = ({ onClose }) => {
       >
         {isLoading && !lyricsData ? (
           <div className="flex flex-col items-center justify-center h-full py-24 text-[#b3b3b3] gap-3">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#1ed760] border-t-transparent" />
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand-500 border-t-transparent" />
             <p className="text-xs font-medium">Fetching synchronized lyrics...</p>
           </div>
         ) : parsedLines.length > 0 ? (
@@ -353,7 +353,7 @@ export const LyricsView = ({ onClose }) => {
                   onClick={() => seek(line.time)}
                   className={`transition-all duration-300 font-black cursor-pointer leading-relaxed ${
                     isActive
-                      ? 'text-white text-2xl sm:text-3xl md:text-4xl scale-105 origin-left drop-shadow-md text-[#1ed760]'
+                      ? 'text-white text-2xl sm:text-3xl md:text-4xl scale-105 origin-left drop-shadow-md text-brand-500'
                       : isPast
                       ? 'text-white/60 text-lg sm:text-xl md:text-2xl hover:text-white'
                       : 'text-white/30 text-lg sm:text-xl md:text-2xl hover:text-white/70'
@@ -394,7 +394,7 @@ export const LyricsView = ({ onClose }) => {
       {isUserScrolled && (parsedLines.length > 0 || lyricsData?.plainLyrics) && (
         <button
           onClick={handleResumeSync}
-          className="absolute bottom-6 right-6 bg-[#1ed760] hover:bg-[#1fdf64] text-black font-bold text-xs px-3.5 py-2 rounded-full shadow-2xl transition-all duration-200 active:scale-95 flex items-center gap-1.5 z-20 animate-bounce"
+          className="absolute bottom-6 right-6 bg-brand-500 hover:bg-brand-400 text-black font-bold text-xs px-3.5 py-2 rounded-full shadow-2xl transition-all duration-200 active:scale-95 flex items-center gap-1.5 z-20 animate-bounce"
         >
           <ArrowDownCircle size={15} />
           <span>Resume Auto-scroll</span>

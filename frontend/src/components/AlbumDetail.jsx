@@ -259,7 +259,7 @@ export const AlbumDetail = ({
   if (isLoading || !album) {
     return (
       <div className="flex items-center justify-center h-64 text-[#b3b3b3]">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-[#1ed760]" />
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-brand-500" />
       </div>
     );
   }
@@ -299,12 +299,12 @@ export const AlbumDetail = ({
         </div>
       </div>
 
-      {/* Sticky Action Bar */}
-      <div className="sticky top-0 z-20 bg-[#121212]/95 backdrop-blur-md px-6 sm:px-8 py-3.5 border-b border-white/5 flex flex-wrap items-center justify-between gap-4">
+      {/* Action Bar (scrolls naturally with page) */}
+      <div className="px-6 sm:px-8 py-5 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <button
             onClick={handlePlayAll}
-            className="w-14 h-14 rounded-full bg-[#1ed760] hover:bg-[#1fdf64] hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-2xl transition"
+            className="w-14 h-14 rounded-full bg-brand-500 hover:bg-brand-400 hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-2xl transition"
             title={isCurrentAlbumPlaying && isPlaying ? "Pause" : "Play Album"}
           >
             {isCurrentAlbumPlaying && isPlaying ? (
@@ -317,7 +317,7 @@ export const AlbumDetail = ({
           <button
             onClick={handleToggleShuffle}
             className={`p-3 rounded-full hover:bg-white/10 transition ${
-              isShuffle ? 'text-[#1ed760]' : 'text-[#b3b3b3] hover:text-white'
+              isShuffle ? 'text-brand-500' : 'text-[#b3b3b3] hover:text-white'
             }`}
             title={isShuffle ? "Disable shuffle" : "Enable shuffle"}
           >
@@ -332,8 +332,8 @@ export const AlbumDetail = ({
           >
             {addedToLibrary ? (
               <>
-                <Check size={16} className="text-[#1ed760]" />
-                <span className="text-[#1ed760]">Added to Library</span>
+                <Check size={16} className="text-brand-500" />
+                <span className="text-brand-500">Added to Library</span>
               </>
             ) : (
               <>
@@ -346,18 +346,22 @@ export const AlbumDetail = ({
       </div>
 
       {/* Tracklist Table */}
-      <div className="px-6 sm:px-8 mt-4">
-        <div className="grid grid-cols-[36px_1fr_36px_36px_60px] md:grid-cols-[40px_1fr_40px_40px_70px] px-3 sm:px-4 py-2 text-xs font-semibold uppercase text-[#b3b3b3] border-b border-white/5 tracking-wider">
-          <span className="text-center">#</span>
-          <span>Title</span>
-          <span />
-          <span />
-          <span className="text-right flex items-center justify-end">
-            <Clock size={14} />
-          </span>
-        </div>
+      <div className="px-6 sm:px-8 pb-12">
+        {tracks.length > 0 && (
+          <div className="sticky top-0 z-30 bg-[#121212]/95 backdrop-blur-md mb-2">
+            <div className="grid grid-cols-[36px_1fr_36px_36px_60px] md:grid-cols-[40px_1fr_40px_40px_70px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-[#b3b3b3] border-b border-white/10 items-center tracking-wider">
+              <span className="text-center">#</span>
+              <span className="truncate pr-4">Title</span>
+              <span />
+              <span />
+              <span className="text-right flex items-center justify-end">
+                <Clock size={14} />
+              </span>
+            </div>
+          </div>
+        )}
 
-        <div className="divide-y divide-transparent mt-1">
+        <div className="space-y-0.5">
           {tracks.map((track, idx) => {
             const isThisTrack = currentTrack?.id === track.id;
             const isThisPlaying = isThisTrack && isPlaying;
@@ -413,7 +417,7 @@ export const AlbumDetail = ({
                       className="flex items-center justify-center w-7 h-7 cursor-pointer"
                       title="Buffering audio... (click to cancel)"
                     >
-                      <div className="w-3.5 h-3.5 border-2 border-[#1ed760] border-t-transparent rounded-full animate-spin" />
+                      <div className="w-3.5 h-3.5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
                     </div>
                   ) : (
                     <>
@@ -422,14 +426,14 @@ export const AlbumDetail = ({
                         {isThisPlaying ? (
                           /* Animated Spotify Equalizer Bars */
                           <div className="flex items-end justify-center gap-[2.5px] w-3.5 h-3.5 pb-0.5" title="Playing">
-                            <span className="w-[3px] bg-[#1ed760] rounded-full animate-eq-1" />
-                            <span className="w-[3px] bg-[#1ed760] rounded-full animate-eq-2" />
-                            <span className="w-[3px] bg-[#1ed760] rounded-full animate-eq-3" />
-                            <span className="w-[3px] bg-[#1ed760] rounded-full animate-eq-4" />
+                            <span className="w-[3px] bg-brand-500 rounded-full animate-eq-1" />
+                            <span className="w-[3px] bg-brand-500 rounded-full animate-eq-2" />
+                            <span className="w-[3px] bg-brand-500 rounded-full animate-eq-3" />
+                            <span className="w-[3px] bg-brand-500 rounded-full animate-eq-4" />
                           </div>
                         ) : (
                           /* Normal track number (green if current track paused, gray otherwise) */
-                          <span className={`text-sm font-medium ${isThisTrack ? 'text-[#1ed760]' : 'text-[#b3b3b3]'}`}>
+                          <span className={`text-sm font-medium ${isThisTrack ? 'text-brand-500' : 'text-[#b3b3b3]'}`}>
                             {idx + 1}
                           </span>
                         )}
@@ -446,7 +450,7 @@ export const AlbumDetail = ({
                             handleTrackPlay(track);
                           }
                         }}
-                        className="hidden group-hover:flex items-center justify-center w-7 h-7 text-white hover:text-[#1ed760] transition"
+                        className="hidden group-hover:flex items-center justify-center w-7 h-7 text-white hover:text-brand-400 transition"
                         title={isThisPlaying ? "Pause" : "Play"}
                       >
                         {isThisPlaying ? (
@@ -461,7 +465,7 @@ export const AlbumDetail = ({
 
                 {/* Column 2: Title & Artist info */}
                 <div className="truncate pr-4">
-                  <p className={`text-sm font-medium truncate ${isThisTrack ? 'text-[#1ed760]' : 'text-white'}`}>
+                  <p className={`text-sm font-medium truncate ${isThisTrack ? 'text-brand-500' : 'text-white'}`}>
                     {track.title}
                   </p>
                   <p className="text-xs text-[#b3b3b3] truncate mt-0.5">
@@ -502,11 +506,11 @@ export const AlbumDetail = ({
                       toggleFavorite(track.id);
                     }}
                     className={`p-1 transition ${
-                      isFav ? 'text-[#1ed760]' : 'opacity-0 group-hover:opacity-100 text-[#888] hover:text-white'
+                      isFav ? 'text-brand-500' : 'opacity-0 group-hover:opacity-100 text-[#888] hover:text-white'
                     }`}
                     title={isFav ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
                   >
-                    <Heart size={16} className={isFav ? 'fill-[#1ed760]' : ''} />
+                    <Heart size={16} className={isFav ? 'fill-brand-500' : ''} />
                   </button>
                 </div>
 

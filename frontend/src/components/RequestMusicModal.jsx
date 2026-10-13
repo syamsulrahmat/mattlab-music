@@ -73,7 +73,7 @@ export const RequestMusicModal = ({
       const data = await res.json();
 
       if (!data.preview_url) {
-        alert(`No audio preview found for "${titleToSearch}".`);
+        setError(`No audio preview found for "${titleToSearch}".`);
         setPreviewLoadingKey(null);
         return;
       }
@@ -105,7 +105,7 @@ export const RequestMusicModal = ({
         pausedByPreviewRef.current = false;
         if (fadeResume) fadeResume(300);
       }
-      alert('Could not stream preview for this release.');
+      setError('Could not stream preview for this release.');
     }
   };
 
@@ -274,7 +274,7 @@ export const RequestMusicModal = ({
       setActiveTab('activity');
       fetchActivity();
     } catch (err) {
-      alert(`Error triggering torrent download: ${err.message}`);
+      setError(`Error triggering torrent download: ${err.message}`);
     } finally {
       setDownloadingIds((prev) => {
         const next = new Set(prev);
@@ -308,13 +308,13 @@ export const RequestMusicModal = ({
         {/* Modal Header */}
         <div className="p-4 sm:p-5 border-b border-white/5 flex items-center justify-between bg-[#121212]">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-[#1ed760]/10 flex items-center justify-center text-[#1ed760]">
+            <div className="w-9 h-9 rounded-full bg-brand-500/10 flex items-center justify-center text-brand-500">
               <DownloadCloud size={20} />
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
                 <span>Request & Download Music</span>
-                <span className="text-[10px] font-semibold text-[#1ed760] bg-[#1ed760]/10 px-2 py-0.5 rounded-full border border-[#1ed760]/20">
+                <span className="text-[10px] font-semibold text-brand-500 bg-brand-500/10 px-2 py-0.5 rounded-full border border-brand-500/20">
                   Torrent + Direct HQ
                 </span>
               </h2>
@@ -337,7 +337,7 @@ export const RequestMusicModal = ({
             onClick={() => setActiveTab('search')}
             className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 ${
               activeTab === 'search'
-                ? 'border-[#1ed760] text-white'
+                ? 'border-brand-500 text-white'
                 : 'border-transparent text-[#b3b3b3] hover:text-white'
             }`}
           >
@@ -349,14 +349,14 @@ export const RequestMusicModal = ({
             onClick={() => setActiveTab('activity')}
             className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 ${
               activeTab === 'activity'
-                ? 'border-[#1ed760] text-white'
+                ? 'border-brand-500 text-white'
                 : 'border-transparent text-[#b3b3b3] hover:text-white'
             }`}
           >
-            <Activity size={14} className={activities.length > 0 ? 'text-[#1ed760] animate-pulse' : ''} />
+            <Activity size={14} className={activities.length > 0 ? 'text-brand-500 animate-pulse' : ''} />
             <span>Live Activity</span>
             {activities.length > 0 && (
-              <span className="text-[10px] bg-[#1ed760] text-black font-extrabold px-1.5 py-0.2 rounded-full">
+              <span className="text-[10px] bg-brand-500 text-black font-extrabold px-1.5 py-0.2 rounded-full">
                 {activities.length}
               </span>
             )}
@@ -378,7 +378,7 @@ export const RequestMusicModal = ({
                 >
                   <div className="absolute left-3.5 text-[#b3b3b3] pointer-events-none">
                     {query.includes('spotify.com') ? (
-                      <Link2 size={18} className="text-[#1ed760]" />
+                      <Link2 size={18} className="text-brand-500" />
                     ) : (
                       <Search size={18} />
                     )}
@@ -388,7 +388,7 @@ export const RequestMusicModal = ({
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="Search artist/album or paste Spotify link..."
-                    className="w-full bg-[#242424] hover:bg-[#282828] focus:bg-[#282828] text-white pl-10 pr-24 py-3 rounded-xl text-xs sm:text-sm font-medium outline-none border border-white/10 focus:border-[#1ed760] transition placeholder-[#777]"
+                    className="w-full bg-[#242424] hover:bg-[#282828] focus:bg-[#282828] text-white pl-10 pr-24 py-3 rounded-xl text-xs sm:text-sm font-medium outline-none border border-white/10 focus:border-brand-500 transition placeholder-[#777]"
                   />
                   <div className="absolute right-2 flex items-center gap-1">
                     {query ? (
@@ -412,7 +412,7 @@ export const RequestMusicModal = ({
                     <button
                       type="submit"
                       disabled={!query.trim() || isResolving}
-                      className="bg-[#1ed760] hover:bg-[#1fdf64] disabled:opacity-50 text-black font-bold text-xs px-3.5 py-1.5 rounded-lg transition active:scale-95 flex items-center gap-1"
+                      className="bg-brand-500 hover:bg-brand-400 disabled:opacity-50 text-black font-bold text-xs px-3.5 py-1.5 rounded-lg transition active:scale-95 flex items-center gap-1"
                     >
                       {isResolving ? <Loader2 size={13} className="animate-spin" /> : <span>Find</span>}
                     </button>
@@ -428,7 +428,7 @@ export const RequestMusicModal = ({
                       onClick={() => setQualityProfileId(1)}
                       className={`px-2 py-0.5 rounded-md font-medium transition ${
                         qualityProfileId === 1
-                          ? 'bg-[#1ed760]/20 text-[#1ed760] font-bold border border-[#1ed760]/30'
+                          ? 'bg-brand-500/20 text-brand-500 font-bold border border-brand-500/30'
                           : 'bg-white/5 text-[#888] hover:text-white'
                       }`}
                     >
@@ -439,7 +439,7 @@ export const RequestMusicModal = ({
                       onClick={() => setQualityProfileId(2)}
                       className={`px-2 py-0.5 rounded-md font-medium transition ${
                         qualityProfileId === 2
-                          ? 'bg-[#1ed760]/20 text-[#1ed760] font-bold border border-[#1ed760]/30'
+                          ? 'bg-brand-500/20 text-brand-500 font-bold border border-brand-500/30'
                           : 'bg-white/5 text-[#888] hover:text-white'
                       }`}
                     >
@@ -451,15 +451,22 @@ export const RequestMusicModal = ({
 
               {/* Error Message */}
               {error && (
-                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs">
-                  {error}
+                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs flex items-center justify-between gap-2">
+                  <span>{error}</span>
+                  <button 
+                    onClick={() => setError(null)}
+                    className="p-1 hover:bg-white/10 rounded-full text-red-400 transition"
+                    title="Dismiss"
+                  >
+                    <X size={14} />
+                  </button>
                 </div>
               )}
 
               {/* Loading Indicator */}
               {isResolving && (
                 <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
-                  <Loader2 size={32} className="text-[#1ed760] animate-spin" />
+                  <Loader2 size={32} className="text-brand-500 animate-spin" />
                   <p className="text-xs text-[#b3b3b3]">
                     {query.includes('spotify.com')
                       ? 'Resolving Spotify metadata & querying MusicBrainz...'
@@ -472,10 +479,10 @@ export const RequestMusicModal = ({
               {result && !isResolving && (
                 <div className="space-y-3">
                   {result.corrected_query && (
-                    <div className="flex items-center gap-2 px-3.5 py-2 bg-[#1ed760]/10 border border-[#1ed760]/20 rounded-xl text-xs text-white">
-                      <Sparkles size={15} className="text-[#1ed760] shrink-0" />
+                    <div className="flex items-center gap-2 px-3.5 py-2 bg-brand-500/10 border border-brand-500/20 rounded-xl text-xs text-white">
+                      <Sparkles size={15} className="text-brand-500 shrink-0" />
                       <span>
-                        Showing results for <strong className="text-[#1ed760] font-bold">{result.corrected_query}</strong>
+                        Showing results for <strong className="text-brand-500 font-bold">{result.corrected_query}</strong>
                         {result.query && result.query.toLowerCase() !== result.corrected_query.toLowerCase() && (
                           <span className="text-[#888] ml-1.5">(auto-corrected from "{result.query}")</span>
                         )}
@@ -485,7 +492,7 @@ export const RequestMusicModal = ({
 
                   {/* Dedicated Song Result Card */}
                   {result.song_result && (
-                    <div className="p-4 bg-gradient-to-r from-[#1ed760]/20 via-[#242424] to-[#1c1c1c] border border-[#1ed760]/40 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
+                    <div className="p-4 bg-gradient-to-r from-brand-500/20 via-[#242424] to-[#1c1c1c] border border-brand-500/40 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
                       <div className="flex items-center gap-3.5 min-w-0 flex-1">
                         <img
                           src={result.song_result.cover_url || result.items?.[0]?.cover_url || '/api/covers/0'}
@@ -494,11 +501,11 @@ export const RequestMusicModal = ({
                         />
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#1ed760] text-black">
+                            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-brand-500 text-black">
                               Track
                             </span>
                             {result.corrected_query && (
-                              <span className="text-[10px] text-[#1ed760] font-medium flex items-center gap-1">
+                              <span className="text-[10px] text-brand-500 font-medium flex items-center gap-1">
                                 <Sparkles size={11} /> Match
                               </span>
                             )}
@@ -520,14 +527,14 @@ export const RequestMusicModal = ({
                           disabled={previewLoadingKey === 'featured_song'}
                           className={`h-9 px-3.5 rounded-full border text-xs font-semibold transition active:scale-95 flex items-center gap-1.5 ${
                             previewTrackKey === 'featured_song'
-                              ? 'bg-[#1ed760] text-black border-[#1ed760] font-bold shadow-md shadow-[#1ed760]/30 animate-pulse'
+                              ? 'bg-brand-500 text-black border-brand-500 font-bold shadow-md shadow-brand-500/30 animate-pulse'
                               : 'bg-white/5 hover:bg-white/10 text-white border-white/10 hover:border-white/20'
                           }`}
                           title={previewTrackKey === 'featured_song' ? 'Stop Preview' : 'Preview 30s Audio'}
                         >
                           {previewLoadingKey === 'featured_song' ? (
                             <>
-                              <Loader2 size={13} className="animate-spin text-[#1ed760]" />
+                              <Loader2 size={13} className="animate-spin text-brand-500" />
                               <span>Loading...</span>
                             </>
                           ) : previewTrackKey === 'featured_song' ? (
@@ -554,7 +561,7 @@ export const RequestMusicModal = ({
                             force_direct: true
                           })}
                           disabled={downloadingIds.has(result.song_result.title)}
-                          className="bg-[#1ed760] hover:bg-[#1fdf64] disabled:opacity-50 text-black font-bold text-xs h-9 px-4 rounded-full transition active:scale-95 flex items-center gap-1.5 shadow-lg shadow-[#1ed760]/20"
+                          className="bg-brand-500 hover:bg-brand-400 disabled:opacity-50 text-black font-bold text-xs h-9 px-4 rounded-full transition active:scale-95 flex items-center gap-1.5 shadow-lg shadow-brand-500/20"
                         >
                           {downloadingIds.has(result.song_result.title) ? (
                             <>
@@ -616,7 +623,7 @@ export const RequestMusicModal = ({
                                 {album.artist_name} {album.year ? `• ${album.year}` : ''}
                               </p>
                               {album.source_track && (
-                                <p className="text-[10px] text-[#1ed760] truncate mt-0.5">
+                                <p className="text-[10px] text-brand-500 truncate mt-0.5">
                                   Includes: {album.source_track}
                                 </p>
                               )}
@@ -630,14 +637,14 @@ export const RequestMusicModal = ({
                                 disabled={previewLoadingKey === albumKey}
                                 className={`h-8 px-2.5 rounded-full border text-xs font-medium transition active:scale-95 flex items-center gap-1.5 ${
                                   previewTrackKey === albumKey
-                                    ? 'bg-[#1ed760] text-black border-[#1ed760] font-bold shadow-md shadow-[#1ed760]/30 animate-pulse'
+                                    ? 'bg-brand-500 text-black border-brand-500 font-bold shadow-md shadow-brand-500/30 animate-pulse'
                                     : 'bg-white/5 hover:bg-white/10 text-white/90 border-white/10 hover:border-white/20'
                                 }`}
                                 title={previewTrackKey === albumKey ? 'Stop Preview' : 'Preview 30s Audio'}
                               >
                                 {previewLoadingKey === albumKey ? (
                                   <>
-                                    <Loader2 size={12} className="animate-spin text-[#1ed760]" />
+                                    <Loader2 size={12} className="animate-spin text-brand-500" />
                                     <span className="text-[11px] hidden sm:inline">Loading...</span>
                                   </>
                                 ) : previewTrackKey === albumKey ? (
@@ -655,12 +662,12 @@ export const RequestMusicModal = ({
 
                               {album.in_library ? (
                                 <div className="flex items-center gap-1.5">
-                                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#1ed760] bg-[#1ed760]/10 px-2.5 py-1.5 rounded-full border border-[#1ed760]/20">
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-500 bg-brand-500/10 px-2.5 py-1.5 rounded-full border border-brand-500/20">
                                     <CheckCircle2 size={12} />
                                     <span>In Library</span>
                                   </span>
                                   {isQueued ? (
-                                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#1ed760] bg-[#1ed760]/10 px-2.5 py-1.5 rounded-full border border-[#1ed760]/20">
+                                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-500 bg-brand-500/10 px-2.5 py-1.5 rounded-full border border-brand-500/20">
                                       <Check size={12} />
                                       <span>Queued</span>
                                     </span>
@@ -687,7 +694,7 @@ export const RequestMusicModal = ({
                                   )}
                                 </div>
                               ) : isQueued ? (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#1ed760] bg-[#1ed760]/10 px-2.5 py-1.5 rounded-full border border-[#1ed760]/20">
+                                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-500 bg-brand-500/10 px-2.5 py-1.5 rounded-full border border-brand-500/20">
                                   <Check size={12} />
                                   <span>Queued</span>
                                 </span>
@@ -696,7 +703,7 @@ export const RequestMusicModal = ({
                                   type="button"
                                   onClick={() => handleDownload(album)}
                                   disabled={isDownloading}
-                                  className="bg-[#1ed760] hover:bg-[#1fdf64] disabled:opacity-50 text-black font-bold text-xs px-3 py-1.5 rounded-full transition active:scale-95 flex items-center gap-1.5 shadow"
+                                  className="bg-brand-500 hover:bg-brand-400 disabled:opacity-50 text-black font-bold text-xs px-3 py-1.5 rounded-full transition active:scale-95 flex items-center gap-1.5 shadow"
                                 >
                                   {isDownloading ? (
                                     <>
@@ -729,7 +736,7 @@ export const RequestMusicModal = ({
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs text-[#b3b3b3]">
                 <span>Active Download Activity (Torrents & Direct HQ)</span>
-                <span className="text-[10px] text-[#1ed760]">Auto-refreshing live</span>
+                <span className="text-[10px] text-brand-500">Auto-refreshing live</span>
               </div>
 
               {activities.length > 0 ? (
@@ -748,7 +755,7 @@ export const RequestMusicModal = ({
                           <span className="font-bold text-white truncate max-w-[340px]" title={item.name}>
                             {item.name}
                           </span>
-                          <span className="text-[10px] font-mono font-semibold text-[#1ed760]">
+                          <span className="text-[10px] font-mono font-semibold text-brand-500">
                             {item.progress}%
                           </span>
                         </div>
@@ -756,7 +763,7 @@ export const RequestMusicModal = ({
                         {/* Progress Bar */}
                         <div className="h-1.5 w-full bg-[#141414] rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-[#1ed760] transition-all duration-300"
+                            className="h-full bg-brand-500 transition-all duration-300"
                             style={{ width: `${Math.min(100, Math.max(0, item.progress))}%` }}
                           />
                         </div>
@@ -766,7 +773,7 @@ export const RequestMusicModal = ({
                           <div className="flex items-center gap-2">
                             <span>
                               {item.state === 'completed' || item.progress >= 100 ? (
-                                <span className="text-[#1ed760] font-bold flex items-center gap-1">
+                                <span className="text-brand-500 font-bold flex items-center gap-1">
                                   <CheckCircle2 size={12} /> Completed (Ready in Library)
                                 </span>
                               ) : item.state === 'downloading' ? (
@@ -780,7 +787,7 @@ export const RequestMusicModal = ({
                               )}
                             </span>
                             {item.source && (
-                              <span className="text-[#1ed760] bg-[#1ed760]/10 px-1.5 py-0.5 rounded border border-[#1ed760]/20 text-[9px]">
+                              <span className="text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded border border-brand-500/20 text-[9px]">
                                 {item.source}
                               </span>
                             )}

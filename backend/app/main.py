@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from app.database import init_db
 from app.auth import get_user_from_request, get_user_count
-from app.routes import stream, library, scan, playlists, lyrics, request_music, auth_routes
+from app.routes import stream, library, scan, playlists, lyrics, request_music, auth_routes, spotify_sync
 
 app = FastAPI(
     title="MattLab Music App API",
@@ -28,6 +28,7 @@ app.add_middleware(
 def on_startup():
     init_db()
     request_music.start_auto_import_watcher()
+    spotify_sync.start_scheduled_spotify_watcher()
 
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
@@ -89,6 +90,7 @@ app.include_router(scan.router, prefix="/api")
 app.include_router(playlists.router, prefix="/api")
 app.include_router(lyrics.router, prefix="/api")
 app.include_router(request_music.router, prefix="/api")
+app.include_router(spotify_sync.router, prefix="/api")
 
 class ClientError(BaseModel):
     type: str = ""

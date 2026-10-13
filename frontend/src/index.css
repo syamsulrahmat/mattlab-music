@@ -3,15 +3,31 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --brand-primary: theme('colors.brand.DEFAULT');
+    --brand-hover: theme('colors.brand.hover');
+    --brand-dark: theme('colors.brand.dark');
+  }
+
   body {
     @apply bg-[#000000] text-white font-sans antialiased;
   }
 }
 
-/* Custom sleek scrollbar */
+/* Custom auto-hiding scrollbar (invisible when unfocused / idle, visible on hover & focus) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+*:hover,
+*:focus-within {
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -19,12 +35,21 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
+  background-color: transparent;
+  border-radius: 9999px;
+}
+
+*:hover::-webkit-scrollbar-thumb,
+*:focus-within::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.22);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.4);
+  background-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /* Spotify-style animated music equalizer */

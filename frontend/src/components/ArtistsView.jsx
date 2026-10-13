@@ -57,7 +57,7 @@ export const ArtistsView = ({ onSelectArtist, onContextMenu }) => {
             />
           </div>
           <div className="w-full">
-            <h3 className="font-bold text-sm text-white truncate group-hover:text-[#1ed760] transition">
+            <h3 className="font-bold text-sm text-white truncate group-hover:text-brand-400 transition">
               {artist.name}
             </h3>
             <p className="text-xs text-[#b3b3b3] mt-1">

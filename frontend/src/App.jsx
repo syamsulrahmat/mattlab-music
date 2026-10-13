@@ -17,11 +17,15 @@ import { FloatingMiniPlayer } from './components/FloatingMiniPlayer';
 import { MobileNav } from './components/MobileNav';
 import { AddToPlaylistModal } from './components/AddToPlaylistModal';
 import { CreatePlaylistModal } from './components/CreatePlaylistModal';
+import { ImportSpotifyModal } from './components/ImportSpotifyModal';
 import { RequestMusicModal } from './components/RequestMusicModal';
 import { CommandPaletteModal } from './components/CommandPaletteModal';
 import { SetupAdminModal } from './components/SetupAdminModal';
 import { LoginModal } from './components/LoginModal';
 import { UserManagementModal } from './components/UserManagementModal';
+import { SettingsModal } from './components/SettingsModal';
+import { ConfirmModal } from './components/ConfirmModal';
+import { PromptModal } from './components/PromptModal';
 import { MattLabLogo } from './components/MattLabLogo';
 import { PlayerProvider, usePlayer } from './context/PlayerContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -44,11 +48,19 @@ const MainAppContent = () => {
   const [isMobileLibraryOpen, setIsMobileLibraryOpen] = useState(false);
   const [modalTrack, setModalTrack] = useState(null);
   const [isCreatePlaylistOpen, setIsCreatePlaylistOpen] = useState(false);
+  const [isImportSpotifyOpen, setIsImportSpotifyOpen] = useState(false);
   const [isRequestMusicOpen, setIsRequestMusicOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [requestMusicInitialQuery, setRequestMusicInitialQuery] = useState('');
   const [searchRefreshTrigger, setSearchRefreshTrigger] = useState(0);
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // In-app Modal Confirm & Prompt States
+  const [playlistToDelete, setPlaylistToDelete] = useState(null);
+  const [isDeletingPlaylist, setIsDeletingPlaylist] = useState(false);
+  const [playlistToRename, setPlaylistToRename] = useState(null);
+  const [isRenamingPlaylist, setIsRenamingPlaylist] = useState(false);
 
   // Authentication Context
   const { user, isAdmin, isAuthenticated, setupRequired, isLoading: isAuthLoading } = useAuth();
@@ -191,6 +203,22 @@ const MainAppContent = () => {
         return;
       }
 
+      // Do NOT intercept typing when the user is focused on any form input or editable field
+      if (
+        ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) ||
+        e.target.isContentEditable ||
+        e.target.closest('input, textarea, select, [contenteditable="true"]')
+      ) {
+        return;
+      }
+
+      // Settings & Keyboard Shortcuts: Ctrl + , or ?
+      if (((e.ctrlKey || e.metaKey) && e.key === ',') || (!e.ctrlKey && !e.metaKey && !e.altKey && e.key === '?')) {
+        e.preventDefault();
+        setIsSettingsOpen((prev) => !prev);
+        return;
+      }
+
       // History Navigation: Alt + Left / Right Arrow
       if (e.altKey && e.key === 'ArrowLeft') {
         e.preventDefault();
@@ -218,6 +246,12 @@ const MainAppContent = () => {
       } else if (e.code === 'Space') {
         e.preventDefault();
         togglePlay();
+      } else if (e.shiftKey && (e.code === 'ArrowLeft' || e.key === 'ArrowLeft')) {
+        e.preventDefault();
+        seek(Math.max(0, currentTime - 10));
+      } else if (e.shiftKey && (e.code === 'ArrowRight' || e.key === 'ArrowRight')) {
+        e.preventDefault();
+        seek(Math.min(duration || 100, currentTime + 10));
       } else if (e.code === 'ArrowLeft' || e.key === 'ArrowLeft') {
         e.preventDefault();
         seek(Math.max(0, currentTime - 5));
@@ -362,6 +396,36 @@ const MainAppContent = () => {
     setIsCreatePlaylistOpen(true);
   };
 
+  const handleCloseCreatePlaylist = useCallback(() => {
+    setIsCreatePlaylistOpen(false);
+  }, []);
+
+  const handleOpenImportSpotify = () => {
+    setIsImportSpotifyOpen(true);
+  };
+
+  const handleCloseImportSpotify = useCallback(() => {
+    setIsImportSpotifyOpen(false);
+  }, []);
+
+  const handleImportSpotify = async ({ url, auto_download, auto_sync }) => {
+    const res = await fetch('/api/spotify/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, auto_download, auto_sync }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to import Spotify playlist');
+    }
+    const data = await res.json();
+    await fetchPlaylists();
+    if (data.playlist_id) {
+      handleSelectPlaylist(data.playlist_id);
+    }
+    return data;
+  };
+
   const handleCreatePlaylist = async (name) => {
     if (!name || !name.trim()) return;
     try {
@@ -378,9 +442,47 @@ const MainAppContent = () => {
     }
   };
 
-  const handlePlaylistDeleted = () => {
+  const handlePlaylistDeleted = (deletedId) => {
     fetchPlaylists();
-    handleGoHome();
+    if (!deletedId || selectedPlaylistId === deletedId) {
+      handleGoHome();
+    }
+  };
+
+  const handleConfirmDeletePlaylist = async () => {
+    if (!playlistToDelete) return;
+    try {
+      setIsDeletingPlaylist(true);
+      const res = await fetch(`/api/playlists/${playlistToDelete.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        handlePlaylistDeleted(playlistToDelete.id);
+      }
+    } catch (err) {
+      console.error('Failed to delete playlist:', err);
+    } finally {
+      setIsDeletingPlaylist(false);
+      setPlaylistToDelete(null);
+    }
+  };
+
+  const handleConfirmRenamePlaylist = async (newName) => {
+    if (!playlistToRename || !newName.trim()) return;
+    try {
+      setIsRenamingPlaylist(true);
+      const res = await fetch(`/api/playlists/${playlistToRename.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName.trim() }),
+      });
+      if (res.ok) {
+        await fetchPlaylists();
+      }
+    } catch (err) {
+      console.error('Failed to rename playlist:', err);
+    } finally {
+      setIsRenamingPlaylist(false);
+      setPlaylistToRename(null);
+    }
   };
 
   const handleLibraryUpdated = useCallback(() => {
@@ -422,7 +524,7 @@ const MainAppContent = () => {
       <div className="flex flex-col items-center justify-center h-screen w-screen bg-[#000000] text-white select-none">
         <MattLabLogo
           variant="badge"
-          bgColor="#1ed760"
+          bgColor="var(--brand-primary)"
           color="#000000"
           className="w-16 h-16 rounded-full shadow-2xl mb-4 animate-pulse"
         />
@@ -454,6 +556,7 @@ const MainAppContent = () => {
         onRefreshScan={handleRefreshScan}
         onRequestMusic={() => handleOpenRequestMusic(searchQuery || '')}
         onOpenUserManagement={() => setIsUserManagementOpen(true)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
         canGoBack={canGoBack}
         canGoForward={canGoForward}
         onGoBack={handleGoBack}
@@ -473,11 +576,13 @@ const MainAppContent = () => {
           playlists={playlists}
           onSelectPlaylist={handleSelectPlaylist}
           onCreatePlaylistPrompt={handleOpenCreatePlaylist}
+          onImportSpotifyPrompt={handleOpenImportSpotify}
           onAddTrackToPlaylist={handleAddTrackToPlaylist}
           onReorderPlaylists={(updated) => setPlaylists(updated)}
           stats={stats}
           isMobileOpen={isMobileLibraryOpen}
           onCloseMobile={() => setIsMobileLibraryOpen(false)}
+          onContextMenu={handleOpenContextMenu}
         />
 
         {/* Island 2: Center Panel (Main Stage / Content Area) */}
@@ -591,7 +696,7 @@ const MainAppContent = () => {
                   ) : (
                     <div className="p-8 text-center text-[#b3b3b3]">
                       <h3 className="text-lg font-bold text-white mb-2">No playlist selected</h3>
-                      <button onClick={handleGoHome} className="text-xs text-[#1ed760] hover:underline font-bold">
+                      <button onClick={handleGoHome} className="text-xs text-brand-500 hover:underline font-bold">
                         ← Return Home
                       </button>
                     </div>
@@ -648,7 +753,15 @@ const MainAppContent = () => {
         onClose={handleCloseContextMenu}
         onSelectAlbum={handleSelectAlbum}
         onSelectArtist={handleSelectArtist}
+        onSelectPlaylist={handleSelectPlaylist}
+        onSelectTab={handleSelectTab}
         onAddToPlaylist={(track) => setModalTrack(track)}
+        onPlaylistUpdated={fetchPlaylists}
+        onPlaylistDeleted={handlePlaylistDeleted}
+        onPromptDeletePlaylist={(pl) => setPlaylistToDelete(pl)}
+        onPromptRenamePlaylist={(pl) => setPlaylistToRename(pl)}
+        onCreatePlaylistPrompt={handleOpenCreatePlaylist}
+        onImportSpotifyPrompt={handleOpenImportSpotify}
       />
 
       {/* Add to Playlist Modal */}
@@ -662,8 +775,15 @@ const MainAppContent = () => {
       {/* Create Playlist Modal (Integrated In-App UI) */}
       <CreatePlaylistModal
         isOpen={isCreatePlaylistOpen}
-        onClose={() => setIsCreatePlaylistOpen(false)}
+        onClose={handleCloseCreatePlaylist}
         onCreatePlaylist={handleCreatePlaylist}
+      />
+
+      {/* Import Spotify Playlist Modal */}
+      <ImportSpotifyModal
+        isOpen={isImportSpotifyOpen}
+        onClose={handleCloseImportSpotify}
+        onImportSpotify={handleImportSpotify}
       />
 
       {/* Request Music Modal (Lidarr + Torrent + Spotify Resolver) */}
@@ -698,6 +818,41 @@ const MainAppContent = () => {
       <UserManagementModal
         isOpen={isUserManagementOpen}
         onClose={() => setIsUserManagementOpen(false)}
+      />
+
+      {/* Settings & Keyboard Shortcuts Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        stats={stats}
+        onOpenUserManagement={() => {
+          setIsSettingsOpen(false);
+          setIsUserManagementOpen(true);
+        }}
+      />
+
+      {/* In-App Delete Playlist Confirmation Modal */}
+      <ConfirmModal
+        isOpen={Boolean(playlistToDelete)}
+        title={`Delete "${playlistToDelete?.name}"?`}
+        message="This will delete the playlist. Your actual audio files will remain safe in your library."
+        confirmText="Delete"
+        onConfirm={handleConfirmDeletePlaylist}
+        onClose={() => setPlaylistToDelete(null)}
+        isLoading={isDeletingPlaylist}
+      />
+
+      {/* In-App Rename Playlist Prompt Modal */}
+      <PromptModal
+        isOpen={Boolean(playlistToRename)}
+        title="Rename Playlist"
+        message={`Enter a new name for "${playlistToRename?.name}":`}
+        initialValue={playlistToRename?.name || ''}
+        placeholder="Playlist name"
+        confirmText="Save"
+        onConfirm={handleConfirmRenamePlaylist}
+        onClose={() => setPlaylistToRename(null)}
+        isLoading={isRenamingPlaylist}
       />
     </div>
   );

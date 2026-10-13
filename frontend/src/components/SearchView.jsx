@@ -108,7 +108,7 @@ export const SearchView = ({
 
       {isLoading && (
         <div className="flex items-center gap-3 text-sm text-[#b3b3b3] py-4">
-          <div className="animate-spin rounded-full h-4 w-4 border-2 border-[#1ed760] border-t-transparent" />
+          <div className="animate-spin rounded-full h-4 w-4 border-2 border-brand-500 border-t-transparent" />
           Searching your library...
         </div>
       )}
@@ -126,10 +126,10 @@ export const SearchView = ({
       {results && (
         <div className="space-y-10">
           {results.corrected_query && (
-            <div className="flex items-center gap-2 px-4 py-2.5 bg-[#1ed760]/10 border border-[#1ed760]/20 rounded-xl text-xs text-white">
-              <Sparkles size={16} className="text-[#1ed760] shrink-0" />
+            <div className="flex items-center gap-2 px-4 py-2.5 bg-brand-500/10 border border-brand-500/20 rounded-xl text-xs text-white">
+              <Sparkles size={16} className="text-brand-500 shrink-0" />
               <span>
-                Showing results for <strong className="text-[#1ed760] font-bold">{results.corrected_query}</strong>
+                Showing results for <strong className="text-brand-500 font-bold">{results.corrected_query}</strong>
                 {results.query && results.query.toLowerCase() !== results.corrected_query.toLowerCase() && (
                   <span className="text-[#888] ml-1.5">(auto-corrected from "{results.query}")</span>
                 )}
@@ -172,7 +172,7 @@ export const SearchView = ({
                       }}
                       className={`flex items-center justify-between p-3 rounded-lg group cursor-pointer active:cursor-grabbing transition select-none ${
                         isCurrentTrack
-                          ? 'bg-[#242424] text-[#1ed760]'
+                          ? 'bg-[#242424] text-brand-500'
                           : selectedTrackId === track.id
                           ? 'bg-[#2a2a2a] ring-1 ring-white/20 text-white'
                           : 'hover:bg-[#1f1f1f] text-white'
@@ -185,7 +185,7 @@ export const SearchView = ({
                           className="w-11 h-11 rounded object-cover bg-[#222] shrink-0"
                         />
                         <div className="truncate">
-                          <p className={`text-sm font-medium truncate ${isCurrentTrack ? 'text-[#1ed760]' : 'text-white'}`}>
+                          <p className={`text-sm font-medium truncate ${isCurrentTrack ? 'text-brand-500' : 'text-white'}`}>
                             {track.title}
                           </p>
                           <p className="text-xs text-[#b3b3b3] truncate mt-0.5">
@@ -231,11 +231,11 @@ export const SearchView = ({
                             toggleFavorite(track.id);
                           }}
                           className={`p-1.5 transition ${
-                            isFav ? 'text-[#1ed760]' : 'opacity-0 group-hover:opacity-100 text-[#b3b3b3] hover:text-white'
+                            isFav ? 'text-brand-500' : 'opacity-0 group-hover:opacity-100 text-[#b3b3b3] hover:text-white'
                           }`}
                           title={isFav ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
                         >
-                          <Heart size={16} className={isFav ? 'fill-[#1ed760]' : ''} />
+                          <Heart size={16} className={isFav ? 'fill-brand-500' : ''} />
                         </button>
                         <button 
                           onClick={(e) => {
@@ -246,15 +246,15 @@ export const SearchView = ({
                               playTrack(track, results.tracks);
                             }
                           }}
-                          className={`p-1.5 text-[#1ed760] transition ${
+                          className={`p-1.5 text-brand-500 transition ${
                             isCurrentTrack ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                           }`}
                           title={isPlayingThis ? 'Pause' : 'Play'}
                         >
                           {isPlayingThis ? (
-                            <Pause size={18} className="fill-[#1ed760]" />
+                            <Pause size={18} className="fill-brand-500" />
                           ) : (
-                            <Play size={18} className="fill-[#1ed760]" />
+                            <Play size={18} className="fill-brand-500" />
                           )}
                         </button>
                       </div>
@@ -288,7 +288,7 @@ export const SearchView = ({
                         alt={album.title}
                         className="w-full aspect-square object-cover rounded-md mb-3 bg-[#222]"
                       />
-                      <h4 className="font-semibold text-sm text-white truncate group-hover:text-[#1ed760] transition">
+                      <h4 className="font-semibold text-sm text-white truncate group-hover:text-brand-400 transition">
                         {album.title}
                       </h4>
                     </div>
@@ -337,7 +337,7 @@ export const SearchView = ({
                       className="w-20 h-20 sm:w-24 sm:h-24 mx-auto rounded-full object-cover mb-3 shadow-lg bg-[#242424] group-hover:scale-105 transition duration-300 border border-white/5"
                     />
                     <div className="w-full">
-                      <h4 className="font-bold text-sm text-white truncate group-hover:text-[#1ed760] transition">
+                      <h4 className="font-bold text-sm text-white truncate group-hover:text-brand-400 transition">
                         {artist.name}
                       </h4>
                       <p className="text-xs text-[#b3b3b3] mt-1">{artist.track_count} tracks</p>
@@ -359,7 +359,7 @@ export const SearchView = ({
                 <div>
                   <button
                     onClick={() => onRequestMusic(results.corrected_query || query)}
-                    className="inline-flex items-center gap-2 bg-[#1ed760] hover:bg-[#1fdf64] text-black font-bold text-xs px-5 py-2.5 rounded-full transition shadow-lg active:scale-95"
+                    className="inline-flex items-center gap-2 bg-brand-500 hover:bg-brand-400 text-black font-bold text-xs px-5 py-2.5 rounded-full transition shadow-lg active:scale-95"
                   >
                     <DownloadCloud size={15} />
                     <span>Request "{results.corrected_query || query}" from Torrent / Spotify</span>

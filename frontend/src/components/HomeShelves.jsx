@@ -116,7 +116,7 @@ export const HomeShelves = ({
                   {/* Floating Green Play Button */}
                   <button
                     onClick={(e) => handleQuickPlayAlbum(e, album)}
-                    className={`absolute bottom-2 right-2 w-10 h-10 rounded-full bg-[#1ed760] hover:bg-[#1fdf64] hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-xl transition duration-200 z-10 ${
+                    className={`absolute bottom-2 right-2 w-10 h-10 rounded-full bg-brand-500 hover:bg-brand-400 hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-xl transition duration-200 z-10 ${
                       isThisAlbum
                         ? 'opacity-100 translate-y-0'
                         : 'opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0'
@@ -133,7 +133,7 @@ export const HomeShelves = ({
 
                 <div>
                   <h3 className={`font-semibold text-xs sm:text-sm truncate transition ${
-                    isThisAlbum ? 'text-[#1ed760]' : 'text-white'
+                    isThisAlbum ? 'text-brand-500' : 'text-white'
                   }`}>
                     {album.title}
                   </h3>
@@ -197,7 +197,7 @@ export const HomeShelves = ({
                 />
               </div>
               <div className="w-full">
-                <h3 className="font-semibold text-xs sm:text-sm text-white truncate group-hover:text-[#1ed760] transition">
+                <h3 className="font-semibold text-xs sm:text-sm text-white truncate group-hover:text-brand-400 transition">
                   {artist.name}
                 </h3>
                 <p className="text-[11px] text-[#b3b3b3] mt-0.5">
@@ -251,7 +251,7 @@ export const HomeShelves = ({
                   />
                   <button
                     onClick={(e) => handleQuickPlayAlbum(e, album)}
-                    className={`absolute bottom-2 right-2 w-10 h-10 rounded-full bg-[#1ed760] hover:bg-[#1fdf64] hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-xl transition duration-200 z-10 ${
+                    className={`absolute bottom-2 right-2 w-10 h-10 rounded-full bg-brand-500 hover:bg-brand-400 hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-xl transition duration-200 z-10 ${
                       isThisAlbum
                         ? 'opacity-100 translate-y-0'
                         : 'opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0'
@@ -268,7 +268,7 @@ export const HomeShelves = ({
 
                 <div>
                   <h3 className={`font-semibold text-xs sm:text-sm truncate transition ${
-                    isThisAlbum ? 'text-[#1ed760]' : 'text-white'
+                    isThisAlbum ? 'text-brand-500' : 'text-white'
                   }`}>
                     {album.title}
                   </h3>

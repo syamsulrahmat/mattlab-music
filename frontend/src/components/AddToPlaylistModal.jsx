@@ -165,7 +165,7 @@ export const AddToPlaylistModal = ({ track, isOpen, onClose, onPlaylistUpdated }
               </button>
               <button
                 type="submit"
-                className="px-3 py-1.5 text-xs bg-[#1DB954] text-black font-bold rounded-lg hover:bg-[#1ed760]"
+                className="px-3 py-1.5 text-xs bg-[#1DB954] text-black font-bold rounded-lg hover:bg-brand-400"
               >
                 Create & Add
               </button>

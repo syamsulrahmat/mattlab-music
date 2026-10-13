@@ -98,7 +98,7 @@ export const CommandPaletteModal = ({
       >
         {/* Search Input Bar */}
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-white/10 bg-[#1f1f1f]">
-          <Search size={20} className="text-[#1ed760] shrink-0" />
+          <Search size={20} className="text-brand-500 shrink-0" />
           <input
             ref={inputRef}
             type="text"
@@ -127,7 +127,7 @@ export const CommandPaletteModal = ({
         <div className="flex-1 overflow-y-auto p-3 space-y-4">
           {isLoading && (
             <div className="flex items-center justify-center py-8 text-[#888] gap-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-[#1ed760] border-t-transparent" />
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-brand-500 border-t-transparent" />
               <span className="text-xs">Searching library...</span>
             </div>
           )}
@@ -140,7 +140,7 @@ export const CommandPaletteModal = ({
                   onClose();
                   if (onRequestMusic) onRequestMusic(query);
                 }}
-                className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#1ed760] text-black font-bold text-xs hover:bg-[#1fdf64] transition shadow-lg active:scale-95"
+                className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-500 text-black font-bold text-xs hover:bg-brand-400 transition shadow-lg active:scale-95"
               >
                 <DownloadCloud size={14} />
                 <span>Request & Download "{query}" from Torrent/Spotify</span>
@@ -181,7 +181,7 @@ export const CommandPaletteModal = ({
                           className="w-10 h-10 rounded object-cover bg-[#222] shrink-0"
                         />
                         <div className="truncate flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-white group-hover:text-[#1ed760] truncate transition">
+                          <p className="text-sm font-semibold text-white group-hover:text-brand-400 truncate transition">
                             {track.title}
                           </p>
                           <p className="text-xs text-[#b3b3b3] truncate mt-0.5">
@@ -199,7 +199,7 @@ export const CommandPaletteModal = ({
                           }
                           onClose();
                         }}
-                        className="w-8 h-8 rounded-full bg-[#1ed760] text-black flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow hover:scale-105 active:scale-95 ml-2"
+                        className="w-8 h-8 rounded-full bg-brand-500 text-black flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow hover:scale-105 active:scale-95 ml-2"
                         title={isThisPlaying ? 'Pause' : 'Play'}
                       >
                         {isThisPlaying ? (
@@ -237,7 +237,7 @@ export const CommandPaletteModal = ({
                       className="w-10 h-10 rounded object-cover bg-[#222] shrink-0"
                     />
                     <div className="truncate flex-1 min-w-0">
-                      <p className="text-xs font-bold text-white group-hover:text-[#1ed760] truncate">
+                      <p className="text-xs font-bold text-white group-hover:text-brand-400 truncate">
                         {album.title}
                       </p>
                       <p className="text-[11px] text-[#b3b3b3] truncate">
@@ -266,11 +266,11 @@ export const CommandPaletteModal = ({
                     }}
                     className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 cursor-pointer group transition"
                   >
-                    <div className="w-10 h-10 rounded-full bg-[#242424] flex items-center justify-center text-[#1ed760] shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-[#242424] flex items-center justify-center text-brand-500 shrink-0">
                       <Mic2 size={18} />
                     </div>
                     <div className="truncate flex-1 min-w-0">
-                      <p className="text-xs font-bold text-white group-hover:text-[#1ed760] truncate">
+                      <p className="text-xs font-bold text-white group-hover:text-brand-400 truncate">
                         {artist.name}
                       </p>
                       <p className="text-[11px] text-[#b3b3b3]">Artist</p>
@@ -292,12 +292,12 @@ export const CommandPaletteModal = ({
                 className="w-full flex items-center justify-between p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white transition text-left group"
               >
                 <div className="flex items-center gap-2.5">
-                  <DownloadCloud size={18} className="text-[#1ed760]" />
+                  <DownloadCloud size={18} className="text-brand-500" />
                   <div>
-                    <p className="text-xs font-bold text-white group-hover:text-[#1ed760] transition">
+                    <p className="text-xs font-bold text-white group-hover:text-brand-400 transition">
                       Request "{results.correctedQuery || query}" via Torrent / Spotify
                       {results.correctedQuery && (
-                        <span className="text-[#1ed760] text-[10px] ml-1.5 font-normal">(corrected)</span>
+                        <span className="text-brand-500 text-[10px] ml-1.5 font-normal">(corrected)</span>
                       )}
                     </p>
                     <p className="text-[10px] text-[#888]">

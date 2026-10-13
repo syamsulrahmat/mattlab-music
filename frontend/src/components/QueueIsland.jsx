@@ -24,7 +24,7 @@ export const QueueIsland = ({
       {/* Header */}
       <div className="px-4 py-3.5 flex items-center justify-between border-b border-white/5">
         <div className="flex items-center gap-2">
-          <ListMusic size={18} className="text-[#1ed760]" />
+          <ListMusic size={18} className="text-brand-500" />
           <h3 className="font-bold text-sm text-white tracking-tight">Play Queue</h3>
         </div>
         <button
@@ -41,7 +41,7 @@ export const QueueIsland = ({
         {isQueueEmpty ? (
           /* Centered Empty State with Green Button */
           <div className="h-full flex flex-col items-center justify-center text-center px-4 py-12">
-            <div className="w-16 h-16 rounded-full bg-[#1f1f1f] flex items-center justify-center text-[#1ed760] mb-4 shadow-lg">
+            <div className="w-16 h-16 rounded-full bg-[#1f1f1f] flex items-center justify-center text-brand-500 mb-4 shadow-lg">
               <Compass size={28} />
             </div>
             <h4 className="font-bold text-white text-base mb-1">Your queue is empty</h4>
@@ -50,7 +50,7 @@ export const QueueIsland = ({
             </p>
             <button
               onClick={onDiscoverMusic}
-              className="bg-[#1ed760] hover:bg-[#1fdf64] hover:scale-105 active:scale-95 text-black font-bold text-xs px-5 py-2.5 rounded-full shadow-lg transition flex items-center gap-2"
+              className="bg-brand-500 hover:bg-brand-400 hover:scale-105 active:scale-95 text-black font-bold text-xs px-5 py-2.5 rounded-full shadow-lg transition flex items-center gap-2"
             >
               Discover Music
             </button>
@@ -95,14 +95,14 @@ export const QueueIsland = ({
                     <div className="flex items-center gap-1.5 justify-between">
                       <p 
                         onClick={() => onSelectAlbum && onSelectAlbum(currentTrack.album_id)}
-                        className="text-xs font-bold text-[#1ed760] truncate cursor-pointer hover:underline"
+                        className="text-xs font-bold text-brand-500 truncate cursor-pointer hover:underline"
                       >
                         {currentTrack.title}
                       </p>
                       {isTrackPreloaded(currentTrack.id) && (
                         <span 
                           title="Cached locally (offline ready)"
-                          className="shrink-0 inline-flex items-center gap-0.5 text-[9px] font-semibold text-[#1ed760] bg-[#1ed760]/10 px-1.5 py-0.5 rounded-full"
+                          className="shrink-0 inline-flex items-center gap-0.5 text-[9px] font-semibold text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded-full"
                         >
                           <CheckCircle2 size={10} />
                           <span>Ready</span>
@@ -140,7 +140,7 @@ export const QueueIsland = ({
                     return (
                       <React.Fragment key={`${track.id}-${i}`}>
                         {isTargetAbove && (
-                          <div className="h-0.5 w-full bg-[#1ed760] rounded-full my-1 shadow-sm shadow-[#1ed760]/50" />
+                          <div className="h-0.5 w-full bg-brand-500 rounded-full my-1 shadow-sm shadow-brand-500/50" />
                         )}
                         <div
                           draggable="true"
@@ -216,13 +216,13 @@ export const QueueIsland = ({
                           />
                           <div className="truncate flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-1.5">
-                              <p className="text-xs font-medium text-white group-hover:text-[#1ed760] truncate">
+                              <p className="text-xs font-medium text-white group-hover:text-brand-400 truncate">
                                 {track.title}
                               </p>
                               {isTrackPreloaded(track.id) && (
                                 <span 
                                   title="Preloaded & offline ready (will play even if connection drops)"
-                                  className="shrink-0 inline-flex items-center gap-0.5 text-[9px] font-medium text-[#1ed760] bg-[#1ed760]/10 px-1.5 py-0.5 rounded-full"
+                                  className="shrink-0 inline-flex items-center gap-0.5 text-[9px] font-medium text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded-full"
                                 >
                                   <CheckCircle2 size={9} />
                                   <span>Preloaded</span>
@@ -247,7 +247,7 @@ export const QueueIsland = ({
                           </div>
                         </div>
                         {isTargetBelow && (
-                          <div className="h-0.5 w-full bg-[#1ed760] rounded-full my-1 shadow-sm shadow-[#1ed760]/50" />
+                          <div className="h-0.5 w-full bg-brand-500 rounded-full my-1 shadow-sm shadow-brand-500/50" />
                         )}
                       </React.Fragment>
                     );

@@ -22,6 +22,17 @@ export const PlayerProvider = ({ children }) => {
   const [repeatMode, setRepeatMode] = useState('off'); // 'off' | 'all' | 'one'
   const [favoriteIds, setFavoriteIds] = useState(new Set());
   const [preloadedTrackIds, setPreloadedTrackIds] = useState(() => audioPreloader.getPreloadedTrackIds());
+  const [preloadCount, setPreloadCountState] = useState(() => audioPreloader.getMaxPreloadCount());
+
+  const setPreloadCount = useCallback((count) => {
+    const updated = audioPreloader.setMaxPreloadCount(count);
+    setPreloadCountState(updated);
+  }, []);
+
+  const clearPreloadCache = useCallback(async () => {
+    await audioPreloader.clearAll();
+    setPreloadedTrackIds(new Set());
+  }, []);
 
   // Subscribe to audioPreloader events
   useEffect(() => {
@@ -418,16 +429,19 @@ export const PlayerProvider = ({ children }) => {
         ctx.fillRect(40, 60, 240, 240);
       }
     } else {
+      const brandColor = (typeof window !== 'undefined' && getComputedStyle(document.documentElement).getPropertyValue('--brand-primary').trim()) || '#f59e0b';
       ctx.fillStyle = '#242424';
       ctx.beginPath();
       safeRoundRect(ctx, 40, 60, 240, 240, 16);
       ctx.fill();
-      ctx.fillStyle = '#1ed760';
+      ctx.fillStyle = brandColor;
       ctx.font = '64px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('🎵', 160, 200);
       ctx.textAlign = 'left';
     }
+
+    const brandColor = (typeof window !== 'undefined' && getComputedStyle(document.documentElement).getPropertyValue('--brand-primary').trim()) || '#f59e0b';
 
     // Title text
     ctx.fillStyle = '#ffffff';
@@ -448,7 +462,7 @@ export const PlayerProvider = ({ children }) => {
     ctx.beginPath();
     safeRoundRect(ctx, 310, 220, 120, 32, 16);
     ctx.fill();
-    ctx.fillStyle = '#1ed760';
+    ctx.fillStyle = brandColor;
     ctx.font = 'bold 12px sans-serif';
     ctx.fillText('● MATTLAB', 328, 241);
 
@@ -464,7 +478,7 @@ export const PlayerProvider = ({ children }) => {
 
     const progressPct = totalDuration > 0 ? Math.min(1, Math.max(0, time / totalDuration)) : 0;
     if (progressPct > 0) {
-      ctx.fillStyle = '#1ed760';
+      ctx.fillStyle = brandColor;
       ctx.beginPath();
       safeRoundRect(ctx, barX, barY, barWidth * progressPct, barHeight, 4);
       ctx.fill();
@@ -747,6 +761,9 @@ export const PlayerProvider = ({ children }) => {
         reorderQueue,
         preloadedTrackIds,
         isTrackPreloaded: (id) => Boolean(preloadedTrackIds?.has?.(id)),
+        preloadCount,
+        setPreloadCount,
+        clearPreloadCache,
         pipWindow,
         setPipWindow,
         isMiniPlayerOpen,

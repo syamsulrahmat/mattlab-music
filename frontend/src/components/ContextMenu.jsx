@@ -1,8 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 import { 
-  Play, Pause, Plus, Heart, ListPlus, Disc3, Mic2, CornerDownRight, Trash2 
+  Play, Pause, Plus, Heart, ListPlus, Disc3, Mic2, CornerDownRight, Trash2,
+  ListMusic, RefreshCw, ExternalLink, Edit2, Copy
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
+import { SpotifyIcon } from './SpotifyIcon';
 
 export const ContextMenu = ({
   isOpen,
@@ -13,7 +15,15 @@ export const ContextMenu = ({
   onClose,
   onSelectAlbum,
   onSelectArtist,
+  onSelectPlaylist,
+  onSelectTab,
   onAddToPlaylist,
+  onPlaylistUpdated,
+  onPlaylistDeleted,
+  onPromptDeletePlaylist,
+  onPromptRenamePlaylist,
+  onCreatePlaylistPrompt,
+  onImportSpotifyPrompt,
 }) => {
   const menuRef = useRef(null);
   const { 
@@ -59,9 +69,9 @@ export const ContextMenu = ({
 
   // Screen boundary positioning adjustment
   const menuWidth = 220;
-  const menuHeight = 240;
-  const adjustedX = Math.min(x, window.innerWidth - menuWidth - 10);
-  const adjustedY = Math.min(y, window.innerHeight - menuHeight - 10);
+  const menuHeight = 280;
+  const adjustedX = Math.max(10, Math.min(x, window.innerWidth - menuWidth - 10));
+  const adjustedY = Math.max(10, Math.min(y, window.innerHeight - menuHeight - 10));
 
   const isCurrentPlayingThis = data && currentTrack && currentTrack.id === data.id;
   const isFav = data && data.id ? isFavorite(data.id) : false;
@@ -88,12 +98,12 @@ export const ContextMenu = ({
           >
             {isCurrentPlayingThis && isPlaying ? (
               <>
-                <Pause size={15} className="text-[#1ed760]" />
+                <Pause size={15} className="text-brand-500" />
                 <span>Pause</span>
               </>
             ) : (
               <>
-                <Play size={15} className="text-[#1ed760]" />
+                <Play size={15} className="text-brand-500" />
                 <span>Play</span>
               </>
             )}
@@ -130,7 +140,7 @@ export const ContextMenu = ({
             }}
             className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
           >
-            <Heart size={15} className={isFav ? 'fill-[#1ed760] text-[#1ed760]' : 'text-[#b3b3b3]'} />
+            <Heart size={15} className={isFav ? 'fill-brand-500 text-brand-500' : 'text-[#b3b3b3]'} />
             <span>{isFav ? 'Remove from Liked Songs' : 'Save to your Liked Songs'}</span>
           </button>
 
@@ -213,7 +223,7 @@ export const ContextMenu = ({
             }}
             className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
           >
-            <Play size={15} className="text-[#1ed760]" />
+            <Play size={15} className="text-brand-500" />
             <span>Play album</span>
           </button>
 
@@ -253,9 +263,221 @@ export const ContextMenu = ({
           }}
           className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
         >
-          <Mic2 size={15} className="text-[#1ed760]" />
+          <Mic2 size={15} className="text-brand-500" />
           <span>Go to artist</span>
         </button>
+      )}
+
+      {type === 'playlist' && (
+        <>
+          {/* Play Playlist */}
+          <button
+            onClick={async () => {
+              onClose();
+              try {
+                const res = await fetch(`/api/playlists/${data.id}`);
+                if (res.ok) {
+                  const pData = await res.json();
+                  if (Array.isArray(pData.tracks) && pData.tracks.length > 0) {
+                    playTrack(pData.tracks[0], pData.tracks);
+                  }
+                }
+              } catch (err) {
+                console.error('Failed to play playlist:', err);
+              }
+            }}
+            className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+          >
+            <Play size={15} className="text-brand-500" />
+            <span>Play playlist</span>
+          </button>
+
+          {/* Add to Queue */}
+          <button
+            onClick={async () => {
+              onClose();
+              try {
+                const res = await fetch(`/api/playlists/${data.id}`);
+                if (res.ok) {
+                  const pData = await res.json();
+                  if (Array.isArray(pData.tracks)) {
+                    pData.tracks.forEach((track) => addToQueue(track));
+                  }
+                }
+              } catch (err) {
+                console.error('Failed to add playlist to queue:', err);
+              }
+            }}
+            className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+          >
+            <ListPlus size={15} className="text-[#b3b3b3]" />
+            <span>Add to queue</span>
+          </button>
+
+          {/* Open Playlist */}
+          {onSelectPlaylist && (
+            <button
+              onClick={() => {
+                onClose();
+                onSelectPlaylist(data.id);
+              }}
+              className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+            >
+              <ListMusic size={15} className="text-[#b3b3b3]" />
+              <span>Open playlist</span>
+            </button>
+          )}
+
+          <div className="h-[1px] bg-white/10 my-1 mx-2" />
+
+          {/* Spotify Synced Actions */}
+          {data.spotify_id ? (
+            <>
+              <button
+                onClick={async () => {
+                  onClose();
+                  try {
+                    await fetch(`/api/spotify/sync-now/${data.id}`, { method: 'POST' });
+                    onPlaylistUpdated?.();
+                  } catch (err) {
+                    console.error('Failed to trigger sync:', err);
+                  }
+                }}
+                className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition text-[#1DB954]"
+              >
+                <RefreshCw size={15} />
+                <span>Sync with Spotify</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  onClose();
+                  window.open(`https://open.spotify.com/playlist/${data.spotify_id}`, '_blank', 'noopener,noreferrer');
+                }}
+                className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+              >
+                <ExternalLink size={15} className="text-[#1DB954]" />
+                <span>Open on Spotify</span>
+              </button>
+            </>
+          ) : (
+            <>
+              {/* Rename Playlist */}
+              <button
+                onClick={() => {
+                  onClose();
+                  onPromptRenamePlaylist?.(data);
+                }}
+                className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+              >
+                <Edit2 size={15} className="text-[#b3b3b3]" />
+                <span>Rename playlist</span>
+              </button>
+            </>
+          )}
+
+          {/* Delete Playlist */}
+          <div className="h-[1px] bg-white/10 my-1 mx-2" />
+          <button
+            onClick={() => {
+              onClose();
+              onPromptDeletePlaylist?.(data);
+            }}
+            className="w-full text-left px-3.5 py-2 hover:bg-red-500/20 hover:text-red-400 flex items-center gap-2.5 transition text-red-400 font-semibold"
+          >
+            <Trash2 size={15} />
+            <span>Delete playlist</span>
+          </button>
+        </>
+      )}
+
+      {type === 'favorites' && (
+        <>
+          <button
+            onClick={async () => {
+              onClose();
+              try {
+                const res = await fetch('/api/favorites');
+                if (res.ok) {
+                  const fData = await res.json();
+                  const tracks = Array.isArray(fData.items) ? fData.items : (Array.isArray(fData) ? fData : []);
+                  if (tracks.length > 0) {
+                    playTrack(tracks[0], tracks);
+                  }
+                }
+              } catch (err) {
+                console.error('Failed to play favorites:', err);
+              }
+            }}
+            className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+          >
+            <Play size={15} className="text-brand-500" />
+            <span>Play Liked Songs</span>
+          </button>
+
+          <button
+            onClick={async () => {
+              onClose();
+              try {
+                const res = await fetch('/api/favorites');
+                if (res.ok) {
+                  const fData = await res.json();
+                  const tracks = Array.isArray(fData.items) ? fData.items : (Array.isArray(fData) ? fData : []);
+                  tracks.forEach((track) => addToQueue(track));
+                }
+              } catch (err) {
+                console.error('Failed to add favorites to queue:', err);
+              }
+            }}
+            className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+          >
+            <ListPlus size={15} className="text-[#b3b3b3]" />
+            <span>Add to queue</span>
+          </button>
+
+          {onSelectTab && (
+            <button
+              onClick={() => {
+                onClose();
+                onSelectTab('favorites');
+              }}
+              className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+            >
+              <Heart size={15} className="fill-brand-500 text-brand-500" />
+              <span>Go to Liked Songs</span>
+            </button>
+          )}
+        </>
+      )}
+
+      {type === 'library-blank' && (
+        <>
+          {onCreatePlaylistPrompt && (
+            <button
+              onClick={() => {
+                onClose();
+                onCreatePlaylistPrompt();
+              }}
+              className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+            >
+              <Plus size={15} className="text-brand-500" />
+              <span>Create playlist</span>
+            </button>
+          )}
+
+          {onImportSpotifyPrompt && (
+            <button
+              onClick={() => {
+                onClose();
+                onImportSpotifyPrompt();
+              }}
+              className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition text-[#1DB954]"
+            >
+              <SpotifyIcon size={15} />
+              <span>Import Spotify playlist</span>
+            </button>
+          )}
+        </>
       )}
     </div>
   );

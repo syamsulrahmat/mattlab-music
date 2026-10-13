@@ -12,7 +12,7 @@ import React from 'react';
 export const MattLabLogo = ({
   variant = 'badge',
   color = 'currentColor',
-  bgColor = '#1ed760',
+  bgColor = 'var(--brand-primary, #1ed760)',
   className = 'w-8 h-8',
   ...props
 }) => {

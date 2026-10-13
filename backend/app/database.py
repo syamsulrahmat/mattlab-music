@@ -103,20 +103,71 @@ def init_db() -> None:
             last_login TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS spotify_sync_tracks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            playlist_id INTEGER NOT NULL REFERENCES playlists(id) ON DELETE CASCADE,
+            spotify_track_id TEXT,
+            title TEXT NOT NULL,
+            artist TEXT NOT NULL,
+            album TEXT,
+            duration_ms INTEGER DEFAULT 0,
+            cover_url TEXT,
+            position INTEGER DEFAULT 0,
+            track_id INTEGER REFERENCES tracks(id) ON DELETE SET NULL,
+            status TEXT DEFAULT 'pending',
+            download_id TEXT,
+            error_message TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(playlist_id, spotify_track_id)
+        );
+
         CREATE INDEX IF NOT EXISTS idx_tracks_album ON tracks(album_id);
         CREATE INDEX IF NOT EXISTS idx_tracks_artist ON tracks(artist_id);
         CREATE INDEX IF NOT EXISTS idx_albums_artist ON albums(artist_id);
         CREATE INDEX IF NOT EXISTS idx_tracks_title ON tracks(title);
         CREATE INDEX IF NOT EXISTS idx_playlist_tracks ON playlist_tracks(playlist_id, position);
         CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+        CREATE INDEX IF NOT EXISTS idx_spotify_sync_playlist ON spotify_sync_tracks(playlist_id, position);
         """)
 
-        # Migration: ensure position column exists on playlists
+        # Migrations for playlists
         cursor = conn.cursor()
         cursor.execute("PRAGMA table_info(playlists)")
         cols = [c["name"] for c in cursor.fetchall()]
+
         if "position" not in cols:
             try:
                 conn.execute("ALTER TABLE playlists ADD COLUMN position INTEGER DEFAULT 0")
+            except Exception:
+                pass
+
+        if "spotify_id" not in cols:
+            try:
+                conn.execute("ALTER TABLE playlists ADD COLUMN spotify_id TEXT")
+            except Exception:
+                pass
+
+        if "spotify_url" not in cols:
+            try:
+                conn.execute("ALTER TABLE playlists ADD COLUMN spotify_url TEXT")
+            except Exception:
+                pass
+
+        if "auto_sync" not in cols:
+            try:
+                conn.execute("ALTER TABLE playlists ADD COLUMN auto_sync INTEGER DEFAULT 1")
+            except Exception:
+                pass
+
+        if "last_synced_at" not in cols:
+            try:
+                conn.execute("ALTER TABLE playlists ADD COLUMN last_synced_at TIMESTAMP")
+            except Exception:
+                pass
+
+        if "sync_status" not in cols:
+            try:
+                conn.execute("ALTER TABLE playlists ADD COLUMN sync_status TEXT DEFAULT 'idle'")
             except Exception:
                 pass

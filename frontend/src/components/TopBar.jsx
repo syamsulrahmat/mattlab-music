@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Home, Search, X, RefreshCw, HardDrive, DownloadCloud, Users, LogOut } from 'lucide-react';
+import { Home, Search, X, RefreshCw, HardDrive, DownloadCloud, Users, LogOut, Settings } from 'lucide-react';
 import { MattLabLogo } from './MattLabLogo';
 import { useAuth } from '../context/AuthContext';
 
@@ -13,6 +13,7 @@ export const TopBar = ({
   onRefreshScan,
   onRequestMusic,
   onOpenUserManagement,
+  onOpenSettings,
 }) => {
   const { user, isAdmin, logout } = useAuth();
   const [isScanning, setIsScanning] = useState(false);
@@ -34,11 +35,11 @@ export const TopBar = ({
         >
           <MattLabLogo
             variant="badge"
-            bgColor="#1ed760"
+            bgColor="var(--brand-primary)"
             color="#000000"
             className="w-9 h-9 rounded-full shadow-md group-hover:scale-105 transition"
           />
-          <span className="font-extrabold text-lg tracking-tight text-white group-hover:text-[#1ed760] transition hidden sm:inline">
+          <span className="font-extrabold text-lg tracking-tight text-white group-hover:text-brand-400 transition hidden sm:inline">
             MattLab Music
           </span>
         </div>
@@ -90,7 +91,7 @@ export const TopBar = ({
       <div className="flex items-center gap-3 shrink-0">
         {stats && (
           <div className="hidden lg:flex items-center gap-1.5 text-xs text-[#b3b3b3] font-medium px-2 py-1 bg-[#121212] rounded-full border border-white/5">
-            <HardDrive size={13} className="text-[#1ed760]" />
+            <HardDrive size={13} className="text-brand-500" />
             <span>{stats.tracks.toLocaleString()} tracks</span>
             <span className="text-[#666]">•</span>
             <span>{stats.total_duration_hours} hrs</span>
@@ -101,7 +102,7 @@ export const TopBar = ({
         {isAdmin && (
           <button
             onClick={onRequestMusic}
-            className="bg-[#1ed760] hover:bg-[#1fdf64] text-black text-xs font-bold px-3 py-2 rounded-full flex items-center gap-1.5 transition hover:scale-105 active:scale-95 shadow-md shrink-0"
+            className="bg-brand-500 hover:bg-brand-400 text-black text-xs font-bold px-3 py-2 rounded-full flex items-center gap-1.5 transition hover:scale-105 active:scale-95 shadow-md shrink-0"
             title="Request Music via Torrent (Lidarr)"
           >
             <DownloadCloud size={14} className="stroke-[2.5]" />
@@ -117,7 +118,7 @@ export const TopBar = ({
             className="bg-[#1f1f1f] hover:bg-[#282828] text-white text-xs font-semibold px-3 py-2 rounded-full flex items-center gap-1.5 transition hover:scale-105 active:scale-95 disabled:opacity-50"
             title="Rescan Unraid Music Library"
           >
-            <RefreshCw size={13} className={isScanning ? 'animate-spin text-[#1ed760]' : 'text-[#b3b3b3]'} />
+            <RefreshCw size={13} className={isScanning ? 'animate-spin text-brand-500' : 'text-[#b3b3b3]'} />
             <span className="hidden sm:inline">{isScanning ? 'Syncing...' : 'Rescan'}</span>
           </button>
         )}
@@ -126,7 +127,7 @@ export const TopBar = ({
         <div className="relative">
           <button
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-            className="w-9 h-9 rounded-full bg-[#1f1f1f] hover:bg-[#282828] text-[#1ed760] font-bold text-xs flex items-center justify-center ring-1 ring-white/10 shadow transition cursor-pointer"
+            className="w-9 h-9 rounded-full bg-[#1f1f1f] hover:bg-[#282828] text-brand-500 font-bold text-xs flex items-center justify-center ring-1 ring-white/10 shadow transition cursor-pointer"
             title={user ? `${user.display_name || user.username} (${user.role})` : 'Account'}
           >
             {user ? (user.username || 'U').slice(0, 2).toUpperCase() : 'U'}
@@ -147,12 +148,23 @@ export const TopBar = ({
                   <div className="text-[#a7a7a7] text-[11px] flex items-center justify-between mt-0.5">
                     <span>@{user?.username}</span>
                     <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                      isAdmin ? 'bg-[#1ed760]/20 text-[#1ed760]' : 'bg-white/10 text-[#a7a7a7]'
+                      isAdmin ? 'bg-brand-500/20 text-brand-500' : 'bg-white/10 text-[#a7a7a7]'
                     }`}>
                       {isAdmin ? 'Admin' : 'User'}
                     </span>
                   </div>
                 </div>
+
+                <button
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    onOpenSettings?.();
+                  }}
+                  className="w-full text-left px-3 py-2.5 text-white hover:bg-white/10 flex items-center gap-2.5 transition"
+                >
+                  <Settings size={15} className="text-brand-500" />
+                  <span>Settings</span>
+                </button>
 
                 {isAdmin && (
                   <button
@@ -162,7 +174,7 @@ export const TopBar = ({
                     }}
                     className="w-full text-left px-3 py-2.5 text-white hover:bg-white/10 flex items-center gap-2.5 transition"
                   >
-                    <Users size={15} className="text-[#1ed760]" />
+                    <Users size={15} className="text-brand-500" />
                     <span>User Management</span>
                   </button>
                 )}

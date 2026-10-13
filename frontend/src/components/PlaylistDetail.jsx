@@ -2,10 +2,12 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { 
   Play, Pause, Trash2, Clock, Music, Shuffle, 
   Search, X, Pencil, ArrowUpDown, GripVertical, Calendar, 
-  CheckSquare, Square, Check, AlertTriangle 
+  CheckSquare, Square, Check, AlertTriangle, RefreshCw, ExternalLink
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { PlaylistCover } from './PlaylistCover';
+import { SpotifyIcon } from './SpotifyIcon';
+import { ConfirmModal } from './ConfirmModal';
 import { shuffleArray, shuffledQueueStartingWith } from '../utils/shuffle';
 
 const formatDuration = (seconds) => {
@@ -43,6 +45,10 @@ export const PlaylistDetail = ({
   const [playlist, setPlaylist] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   
+  // Spotify Live Sync State
+  const [spotifyStatus, setSpotifyStatus] = useState(null);
+  const [isSyncingNow, setIsSyncingNow] = useState(false);
+  
   // Selection
   const [selectedTrackIds, setSelectedTrackIds] = useState(new Set());
   const [lastSelectedTrackIdx, setLastSelectedTrackIdx] = useState(null);
@@ -77,6 +83,23 @@ export const PlaylistDetail = ({
     setQueueIndex 
   } = usePlayer();
 
+  const fetchPlaylistSilently = async () => {
+    if (!playlistId) return;
+    try {
+      const res = await fetch(`/api/playlists/${playlistId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setPlaylist((prev) => ({
+        ...prev,
+        ...data,
+        tracks: Array.isArray(data.tracks) ? data.tracks : [],
+        covers: Array.isArray(data.covers) ? data.covers : [],
+      }));
+    } catch (e) {
+      // silent
+    }
+  };
+
   const fetchPlaylist = async () => {
     if (!playlistId) return;
     setIsLoading(true);
@@ -105,10 +128,104 @@ export const PlaylistDetail = ({
     setSearchQuery('');
     setSortBy('custom');
     setSortOrder('asc');
+    setSpotifyStatus(null);
     fetchPlaylist();
   }, [playlistId]);
 
-  const rawTracks = Array.isArray(playlist?.tracks) ? playlist.tracks : [];
+  // Live polling for Spotify playlists
+  useEffect(() => {
+    if (!playlistId || !playlist?.spotify_id) {
+      setSpotifyStatus(null);
+      return;
+    }
+
+    let isMounted = true;
+    let timer = null;
+
+    const pollStatus = async () => {
+      try {
+        const res = await fetch(`/api/spotify/status/${playlistId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!isMounted) return;
+
+        setSpotifyStatus((prev) => {
+          if (prev && data.matched > prev.matched) {
+            fetchPlaylistSilently();
+            if (onPlaylistUpdated) onPlaylistUpdated();
+          }
+          return data;
+        });
+
+        // Continue fast polling if downloads are pending or active
+        const hasWork = (data.downloading > 0) || (data.pending > 0);
+        timer = setTimeout(pollStatus, hasWork ? 2500 : 25000);
+      } catch (err) {
+        if (isMounted) {
+          timer = setTimeout(pollStatus, 10000);
+        }
+      }
+    };
+
+    pollStatus();
+
+    return () => {
+      isMounted = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, [playlistId, playlist?.spotify_id]);
+
+  const handleSyncNow = async () => {
+    if (isSyncingNow || !playlistId) return;
+    setIsSyncingNow(true);
+    try {
+      await fetch(`/api/spotify/sync-now/${playlistId}`, { method: 'POST' });
+      const res = await fetch(`/api/spotify/status/${playlistId}`);
+      if (res.ok) {
+        setSpotifyStatus(await res.json());
+      }
+      fetchPlaylistSilently();
+      if (onPlaylistUpdated) onPlaylistUpdated();
+    } catch (err) {
+      console.error('Failed to sync now:', err);
+    } finally {
+      setIsSyncingNow(false);
+    }
+  };
+
+  const rawTracks = useMemo(() => {
+    const localTracks = Array.isArray(playlist?.tracks) ? playlist.tracks : [];
+    if (!playlist?.spotify_id || !spotifyStatus?.tracks?.length) {
+      return localTracks;
+    }
+
+    const localMap = new Map();
+    localTracks.forEach((t) => localMap.set(t.id, t));
+
+    return spotifyStatus.tracks.map((st, idx) => {
+      if (st.status === 'matched' && st.track_id && localMap.has(st.track_id)) {
+        return {
+          ...localMap.get(st.track_id),
+          spotify_sync_id: st.id,
+        };
+      }
+
+      return {
+        id: `sync-${st.id}`,
+        sync_id: st.id,
+        title: st.title,
+        artist_name: st.artist,
+        album_title: playlist.name || 'Spotify Playlist',
+        duration_seconds: Math.round((st.duration_ms || 0) / 1000),
+        position: st.position !== undefined ? st.position : idx,
+        isSyncPending: true,
+        syncStatus: st.status, // 'pending' | 'downloading' | 'failed'
+        liveProgress: st.live_progress || 0,
+        errorMessage: st.error_message,
+        cover_url: null,
+      };
+    });
+  }, [playlist?.tracks, playlist?.spotify_id, playlist?.name, spotifyStatus]);
 
   // Filter & sort
   const tracks = useMemo(() => {
@@ -145,7 +262,7 @@ export const PlaylistDetail = ({
     return sorted;
   }, [rawTracks, searchQuery, sortBy, sortOrder]);
 
-  const isDragEnabled = sortBy === 'custom' && !searchQuery.trim();
+  const isDragEnabled = !playlist?.spotify_id && sortBy === 'custom' && !searchQuery.trim();
   const isCurrentPlayingInPlaylist =
     currentTrack && rawTracks.some((t) => t.id === currentTrack.id);
 
@@ -188,22 +305,28 @@ export const PlaylistDetail = ({
 
   // Playback handlers using unbiased Fisher-Yates shuffle
   const handleTrackPlay = (track) => {
-    if (isShuffle && tracks.length > 1) {
-      playTrack(track, shuffledQueueStartingWith(track, tracks));
+    if (track.isSyncPending) return;
+    const playableTracks = tracks.filter((t) => !t.isSyncPending);
+    if (playableTracks.length === 0) return;
+
+    if (isShuffle && playableTracks.length > 1) {
+      playTrack(track, shuffledQueueStartingWith(track, playableTracks));
     } else {
-      playTrack(track, tracks);
+      playTrack(track, playableTracks);
     }
   };
 
   const handlePlayAll = () => {
     if (isCurrentPlayingInPlaylist) {
       togglePlay();
-    } else if (tracks.length > 0) {
+    } else {
+      const playableTracks = tracks.filter((t) => !t.isSyncPending);
+      if (playableTracks.length === 0) return;
       if (isShuffle) {
-        const shuffled = shuffleArray(tracks);
+        const shuffled = shuffleArray(playableTracks);
         playTrack(shuffled[0], shuffled);
       } else {
-        playTrack(tracks[0], tracks);
+        playTrack(playableTracks[0], playableTracks);
       }
     }
   };
@@ -212,18 +335,19 @@ export const PlaylistDetail = ({
     const nextShuffle = !isShuffle;
     toggleShuffle();
 
+    const playableTracks = tracks.filter((t) => !t.isSyncPending);
     if (nextShuffle) {
       if (isCurrentPlayingInPlaylist && currentTrack) {
-        setQueue(shuffledQueueStartingWith(currentTrack, tracks));
+        setQueue(shuffledQueueStartingWith(currentTrack, playableTracks));
         setQueueIndex(0);
-      } else if (!isPlaying && tracks.length > 0) {
-        const shuffled = shuffleArray(tracks);
+      } else if (!isPlaying && playableTracks.length > 0) {
+        const shuffled = shuffleArray(playableTracks);
         playTrack(shuffled[0], shuffled);
       }
     } else {
       if (isCurrentPlayingInPlaylist && currentTrack) {
-        const currIdx = tracks.findIndex((t) => t.id === currentTrack.id);
-        setQueue(tracks);
+        const currIdx = playableTracks.findIndex((t) => t.id === currentTrack.id);
+        setQueue(playableTracks);
         setQueueIndex(currIdx !== -1 ? currIdx : 0);
       }
     }
@@ -547,7 +671,7 @@ export const PlaylistDetail = ({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64 text-[#b3b3b3]">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-[#1ed760]" />
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-brand-500" />
       </div>
     );
   }
@@ -584,7 +708,7 @@ export const PlaylistDetail = ({
           </div>
 
           <div className="flex-1 min-w-0">
-            <span className="text-xs uppercase font-extrabold tracking-widest text-[#1ed760]">
+            <span className="text-xs uppercase font-extrabold tracking-widest text-brand-500">
               Playlist
             </span>
             
@@ -636,14 +760,101 @@ export const PlaylistDetail = ({
         </div>
       </div>
 
-      {/* 3. Sticky Action & Filter Bar (stays pinned when scrolling down) */}
-      <div className="sticky top-0 z-30 bg-[#121212]/95 backdrop-blur-md px-6 sm:px-8 py-3.5 border-b border-white/5 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Spotify Synchronized Playlist Banner */}
+      {playlist.spotify_id && (
+        <div className="bg-gradient-to-r from-emerald-950/40 via-[#13281c]/30 to-[#121212] border-b border-white/5 px-6 sm:px-8 py-3.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#1DB954]/10 border border-[#1DB954]/20 flex items-center justify-center text-[#1DB954] shrink-0 shadow-inner">
+                <SpotifyIcon size={22} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
+                    Spotify Auto-Sync
+                  </h4>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#1DB954]/15 text-[#1DB954] border border-[#1DB954]/20">
+                    {playlist.auto_sync ? 'Auto-sync active (every 6h)' : 'Manual sync'}
+                  </span>
+                  {spotifyStatus && (spotifyStatus.downloading > 0 || spotifyStatus.pending > 0) && (
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-brand-500/15 text-brand-400 border border-brand-500/20 flex items-center gap-1 animate-pulse">
+                      <RefreshCw size={10} className="animate-spin" />
+                      Downloading {spotifyStatus.downloading} song(s)...
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-[#b3b3b3] mt-0.5">
+                  {spotifyStatus ? (
+                    <>
+                      <strong className="text-white">{spotifyStatus.matched}</strong> of{' '}
+                      <strong className="text-white">{spotifyStatus.total}</strong> songs downloaded
+                      {spotifyStatus.downloading > 0 && ` • ${spotifyStatus.downloading} downloading`}
+                      {spotifyStatus.pending > 0 && ` • ${spotifyStatus.pending} queued`}
+                      {spotifyStatus.failed > 0 && ` • ${spotifyStatus.failed} failed`}
+                      {spotifyStatus.last_synced_at && ` • Last synced: ${formatAddedAt(spotifyStatus.last_synced_at)}`}
+                    </>
+                  ) : (
+                    'Checking Spotify sync status...'
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              {playlist.spotify_url && (
+                <a
+                  href={playlist.spotify_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-xs font-semibold text-[#b3b3b3] hover:text-white transition flex items-center gap-1.5"
+                  title="Open original playlist on Spotify"
+                >
+                  <ExternalLink size={13} />
+                  <span className="hidden md:inline">Open in Spotify</span>
+                </a>
+              )}
+              <button
+                onClick={handleSyncNow}
+                disabled={isSyncingNow}
+                className="px-3.5 py-1.5 rounded-full bg-[#1DB954] hover:bg-[#1ed760] text-black text-xs font-bold transition flex items-center gap-1.5 shadow disabled:opacity-50 active:scale-95"
+                title="Force an immediate check for newly added tracks"
+              >
+                <RefreshCw size={13} className={isSyncingNow ? 'animate-spin' : ''} />
+                <span>{isSyncingNow ? 'Syncing...' : 'Sync Now'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Progress bar if not 100% matched */}
+          {spotifyStatus && spotifyStatus.total > 0 && spotifyStatus.matched < spotifyStatus.total && (
+            <div className="mt-3">
+              <div className="flex items-center justify-between text-[11px] text-[#888] mb-1">
+                <span>
+                  {spotifyStatus.downloading > 0 ? 'Downloading missing songs via yt-dlp & tagging...' : 'Queued downloads'}
+                </span>
+                <span className="font-semibold text-white">
+                  {Math.round((spotifyStatus.matched / spotifyStatus.total) * 100)}%
+                </span>
+              </div>
+              <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-[#1DB954] rounded-full transition-all duration-500"
+                  style={{ width: `${Math.round((spotifyStatus.matched / spotifyStatus.total) * 100)}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 3. Action & Filter Bar (scrolls naturally with the page) */}
+      <div className="px-6 sm:px-8 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         {/* Left: Play/Pause in green circle, shuffle, edit */}
         <div className="flex items-center gap-3">
           <button
             onClick={handlePlayAll}
             disabled={tracks.length === 0}
-            className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-[#1ed760] hover:bg-[#1fdf64] hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-xl transition disabled:opacity-40"
+            className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-brand-500 hover:bg-brand-400 hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-xl transition disabled:opacity-40"
             title="Play Playlist"
           >
             {isCurrentPlayingInPlaylist && isPlaying ? (
@@ -657,13 +868,13 @@ export const PlaylistDetail = ({
             onClick={handleToggleShuffle}
             disabled={tracks.length === 0}
             className={`relative p-3 rounded-full hover:scale-105 active:scale-95 transition flex items-center justify-center disabled:opacity-40 ${
-              isShuffle ? 'text-[#1ed760] hover:text-[#1fdf64]' : 'text-[#b3b3b3] hover:text-white'
+              isShuffle ? 'text-brand-500 hover:text-brand-400' : 'text-[#b3b3b3] hover:text-white'
             }`}
             title={isShuffle ? 'Disable Shuffle' : 'Shuffle playlist queue'}
           >
             <Shuffle size={22} />
             {isShuffle && (
-              <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-[#1ed760]" />
+              <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-brand-500" />
             )}
           </button>
 
@@ -720,7 +931,7 @@ export const PlaylistDetail = ({
             {sortBy !== 'custom' && (
               <button
                 onClick={() => setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
-                className="text-[11px] font-bold text-[#1ed760] hover:underline px-1"
+                className="text-[11px] font-bold text-brand-500 hover:underline px-1"
                 title={`Sort ${sortOrder === 'asc' ? 'Ascending' : 'Descending'}`}
               >
                 {sortOrder === 'asc' ? '↑' : '↓'}
@@ -739,47 +950,53 @@ export const PlaylistDetail = ({
         </div>
       </div>
 
-      <div className="px-6 sm:px-8 pt-4">
-        {/* Reorder notice if sorted differently */}
-        {!isDragEnabled && rawTracks.length > 1 && (
-          <div className="text-[11px] text-[#777] mb-3 px-2 flex items-center gap-1.5">
+      {/* Reorder notice if sorted differently */}
+      {!isDragEnabled && rawTracks.length > 1 && (
+        <div className="px-6 sm:px-8 pb-3">
+          <div className="text-[11px] text-[#777] flex items-center gap-1.5">
             <span>💡 Track reordering is active when sorted by <strong>Custom order</strong> with search cleared.</span>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Tracklist Table */}
-        {rawTracks.length === 0 ? (
-          <div className="text-center py-20 text-[#666] border border-white/5 rounded-xl bg-[#181818]/40">
-            <Music size={40} className="mx-auto text-[#444] mb-3" />
-            <p className="text-sm font-semibold text-[#888]">This playlist is currently empty.</p>
-            <p className="text-xs text-[#555] mt-1">Add songs from albums, artists, or search to build this playlist.</p>
-          </div>
-        ) : tracks.length === 0 ? (
-          <div className="text-center py-16 text-[#666] border border-white/5 rounded-xl bg-[#181818]/40">
-            <p className="text-xs text-[#888]">No songs match "{searchQuery}"</p>
-            <button
-              onClick={() => setSearchQuery('')}
-              className="text-xs text-[#1ed760] font-bold hover:underline mt-2"
-            >
-              Clear filter
-            </button>
-          </div>
-        ) : (
-          <div className="bg-[#181818]/70 rounded-xl p-1.5 sm:p-2 border border-white/5">
-            {/* Header Row */}
-            <div className="grid grid-cols-[36px_1fr_36px_50px] md:grid-cols-[40px_3fr_2fr_36px_60px] lg:grid-cols-[40px_4fr_3fr_2fr_36px_60px] px-3 sm:px-4 py-2 text-xs font-semibold uppercase text-[#b3b3b3] border-b border-white/5 items-center">
+      {/* Tracklist Table */}
+      {rawTracks.length === 0 ? (
+        <div className="mx-6 sm:px-8 text-center py-20 text-[#666] border border-white/5 rounded-xl bg-[#181818]/40">
+          <Music size={40} className="mx-auto text-[#444] mb-3" />
+          <p className="text-sm font-semibold text-[#888]">This playlist is currently empty.</p>
+          <p className="text-xs text-[#555] mt-1">Add songs from albums, artists, or search to build this playlist.</p>
+        </div>
+      ) : tracks.length === 0 ? (
+        <div className="mx-6 sm:px-8 text-center py-16 text-[#666] border border-white/5 rounded-xl bg-[#181818]/40">
+          <p className="text-xs text-[#888]">No songs match "{searchQuery}"</p>
+          <button
+            onClick={() => setSearchQuery('')}
+            className="text-xs text-brand-500 font-bold hover:underline mt-2"
+          >
+            Clear filter
+          </button>
+        </div>
+      ) : (
+        <div className="px-6 sm:px-8">
+          {/* Sticky Tracklist Column Header Row */}
+          <div className="sticky top-0 z-30 bg-[#121212]/95 backdrop-blur-md mb-2">
+            <div className="grid grid-cols-[36px_1fr_36px_50px] md:grid-cols-[40px_3fr_2fr_36px_60px] lg:grid-cols-[40px_4fr_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-[#b3b3b3] border-b border-white/10 items-center">
               <span className="text-center">#</span>
-              <span>Title</span>
-              <span className="hidden md:block">Album</span>
-              <span className="hidden lg:block">Date added</span>
+              <div className="flex items-center gap-3 truncate pr-3">
+                <span className="w-10 shrink-0" />
+                <span>Title</span>
+              </div>
+              <span className="hidden md:block truncate pr-3">Album</span>
+              <span className="hidden lg:block truncate pr-3">Date added</span>
               <span />
               <span className="text-right flex items-center justify-end">
                 <Clock size={14} />
               </span>
             </div>
+          </div>
 
-            {/* Track Rows */}
-            <div className="divide-y divide-transparent mt-1">
+          {/* Track Rows (Seamless Canvas) */}
+          <div className="space-y-0.5">
               {tracks.map((track, idx) => {
                 const isThisTrack = currentTrack?.id === track.id;
                 const isThisPlaying = isThisTrack && isPlaying;
@@ -792,9 +1009,9 @@ export const PlaylistDetail = ({
                     key={`${track.id}-${idx}`}
                     data-track-id={track.id}
                     onClick={(e) => handleRowClick(e, track, idx)}
-                    onDoubleClick={() => handleTrackPlay(track)}
+                    onDoubleClick={() => !track.isSyncPending && handleTrackPlay(track)}
                     onContextMenu={(e) => {
-                      if (onContextMenu) {
+                      if (onContextMenu && !track.isSyncPending) {
                         e.preventDefault();
                         onContextMenu(e, 'track', {
                           ...track,
@@ -805,9 +1022,9 @@ export const PlaylistDetail = ({
                         });
                       }
                     }}
-                    draggable={isDragEnabled ? "true" : "false"}
+                    draggable={isDragEnabled && !track.isSyncPending ? "true" : "false"}
                     onDragStart={(e) => {
-                      if (!isDragEnabled) return;
+                      if (!isDragEnabled || track.isSyncPending) return;
                       e.dataTransfer.setData('text/track-index', String(idx));
                       e.dataTransfer.setData('application/json', JSON.stringify({
                         id: track.id,
@@ -822,7 +1039,7 @@ export const PlaylistDetail = ({
                       setDraggedTrackIdx(idx);
                     }}
                     onDragOver={(e) => {
-                      if (!isDragEnabled) return;
+                      if (!isDragEnabled || track.isSyncPending) return;
                       e.preventDefault();
                       e.dataTransfer.dropEffect = 'move';
                       if (dragOverTrackIdx !== idx) setDragOverTrackIdx(idx);
@@ -832,17 +1049,32 @@ export const PlaylistDetail = ({
                     }}
                     onDrop={(e) => handleDrop(e, idx)}
                     className={`grid grid-cols-[36px_1fr_36px_50px] md:grid-cols-[40px_3fr_2fr_36px_60px] lg:grid-cols-[40px_4fr_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center cursor-default select-none active:cursor-grabbing ${
-                      isDragOver ? 'border-t-2 border-[#1ed760] bg-[#1ed760]/10' : ''
+                      isDragOver ? 'border-t-2 border-brand-500 bg-brand-500/10' : ''
                     } ${
                       isSelected
                         ? 'bg-[#2a2a2a] ring-1 ring-white/20 text-white'
+                        : track.isSyncPending
+                        ? 'hover:bg-[#1a1a1a] opacity-85 text-white'
                         : 'hover:bg-[#1f1f1f] text-white'
                     }`}
                   >
-                    {/* 2. Column 1: Index / Play-Pause / Animated Equalizer / Loading Spinner */}
+                    {/* Column 1: Index / Play-Pause / Live Download Spinner */}
                     <div className="flex items-center justify-center w-8 h-8">
-                      {isThisBuffering ? (
-                        /* Spinner stays visible even on hover until song actually plays */
+                      {track.isSyncPending ? (
+                        track.syncStatus === 'downloading' ? (
+                          <div className="flex items-center justify-center w-7 h-7" title={`Downloading: ${Math.round(track.liveProgress || 0)}%`}>
+                            <div className="w-3.5 h-3.5 border-2 border-[#1DB954] border-t-transparent rounded-full animate-spin" />
+                          </div>
+                        ) : track.syncStatus === 'failed' ? (
+                          <div className="flex items-center justify-center w-7 h-7 text-red-400" title={track.errorMessage || 'Download failed'}>
+                            <AlertTriangle size={15} />
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center w-7 h-7 text-[#666]" title="Queued for download">
+                            <Clock size={15} />
+                          </div>
+                        )
+                      ) : isThisBuffering ? (
                         <div
                           onClick={(e) => {
                             e.stopPropagation();
@@ -851,29 +1083,25 @@ export const PlaylistDetail = ({
                           className="flex items-center justify-center w-7 h-7 cursor-pointer"
                           title="Buffering audio... (click to cancel)"
                         >
-                          <div className="w-3.5 h-3.5 border-2 border-[#1ed760] border-t-transparent rounded-full animate-spin" />
+                          <div className="w-3.5 h-3.5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
                         </div>
                       ) : (
                         <>
-                          {/* Unfocused state (group-hover:hidden) */}
                           <div className="flex items-center justify-center group-hover:hidden">
                             {isThisPlaying ? (
-                              /* Animated Spotify Equalizer Bars */
                               <div className="flex items-end justify-center gap-[2.5px] w-3.5 h-3.5 pb-0.5" title="Playing">
-                                <span className="w-[3px] bg-[#1ed760] rounded-full animate-eq-1" />
-                                <span className="w-[3px] bg-[#1ed760] rounded-full animate-eq-2" />
-                                <span className="w-[3px] bg-[#1ed760] rounded-full animate-eq-3" />
-                                <span className="w-[3px] bg-[#1ed760] rounded-full animate-eq-4" />
+                                <span className="w-[3px] bg-brand-500 rounded-full animate-eq-1" />
+                                <span className="w-[3px] bg-brand-500 rounded-full animate-eq-2" />
+                                <span className="w-[3px] bg-brand-500 rounded-full animate-eq-3" />
+                                <span className="w-[3px] bg-brand-500 rounded-full animate-eq-4" />
                               </div>
                             ) : (
-                              /* Normal track number (green if current track paused, gray otherwise) */
-                              <span className={`text-sm font-medium ${isThisTrack ? 'text-[#1ed760]' : 'text-[#b3b3b3]'}`}>
+                              <span className={`text-sm font-medium ${isThisTrack ? 'text-brand-500' : 'text-[#b3b3b3]'}`}>
                                 {idx + 1}
                               </span>
                             )}
                           </div>
 
-                          {/* Hover state (hidden group-hover:flex) */}
                           <button
                             type="button"
                             onClick={(e) => {
@@ -884,7 +1112,7 @@ export const PlaylistDetail = ({
                                 handleTrackPlay(track);
                               }
                             }}
-                            className="hidden group-hover:flex items-center justify-center w-7 h-7 text-white hover:text-[#1ed760] transition"
+                            className="hidden group-hover:flex items-center justify-center w-7 h-7 text-white hover:text-brand-400 transition"
                             title={isThisPlaying ? "Pause" : "Play"}
                           >
                             {isThisPlaying ? (
@@ -899,22 +1127,57 @@ export const PlaylistDetail = ({
 
                     {/* Column 2: Cover & Title/Artist */}
                     <div className="flex items-center gap-3 truncate pr-3">
-                      <img
-                        src={track.cover_url || '/api/covers/0'}
-                        alt={track.title}
-                        className="w-10 h-10 rounded object-cover bg-[#1f1f1f] shrink-0 shadow-sm"
-                      />
-                      <div className="truncate">
-                        <p className={`text-sm font-medium truncate ${isThisTrack ? 'text-[#1ed760] font-bold' : 'text-white'}`}>
-                          {track.title}
-                        </p>
+                      {track.cover_url ? (
+                        <img
+                          src={track.cover_url}
+                          alt={track.title}
+                          className="w-10 h-10 rounded object-cover bg-[#1f1f1f] shrink-0 shadow-sm"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded bg-[#1c1c1c] border border-white/5 flex items-center justify-center text-[#666] shrink-0 shadow-sm">
+                          <Music size={18} />
+                        </div>
+                      )}
+                      <div className="truncate min-w-0">
+                        <div className="flex items-center gap-2 truncate">
+                          <p className={`text-sm font-medium truncate ${track.isSyncPending ? 'text-[#e0e0e0]' : isThisTrack ? 'text-brand-500 font-bold' : 'text-white'}`}>
+                            {track.title}
+                          </p>
+                          {track.syncStatus === 'downloading' && (
+                            <span className="shrink-0 text-[10px] font-bold text-[#1DB954] bg-[#1DB954]/15 border border-[#1DB954]/25 px-1.5 py-0.5 rounded flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#1DB954] animate-ping" />
+                              Downloading {Math.round(track.liveProgress || 0)}%
+                            </span>
+                          )}
+                          {track.syncStatus === 'pending' && (
+                            <span className="shrink-0 text-[10px] font-medium text-[#888] bg-white/5 border border-white/10 px-1.5 py-0.5 rounded">
+                              Queued
+                            </span>
+                          )}
+                          {track.syncStatus === 'failed' && (
+                            <span className="shrink-0 text-[10px] font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded" title={track.errorMessage}>
+                              Failed
+                            </span>
+                          )}
+                        </div>
+
+                        {track.syncStatus === 'downloading' && (
+                          <div className="h-1 w-28 bg-white/10 rounded-full overflow-hidden mt-1">
+                            <div 
+                              className="h-full bg-[#1DB954] rounded-full transition-all duration-300"
+                              style={{ width: `${Math.max(6, track.liveProgress || 0)}%` }}
+                            />
+                          </div>
+                        )}
+
                         <p className="text-xs text-[#b3b3b3] truncate mt-0.5">
                           <span
                             onClick={(e) => {
+                              if (track.isSyncPending) return;
                               e.stopPropagation();
                               if (onSelectArtist) onSelectArtist(track.artist_id);
                             }}
-                            className="hover:underline hover:text-white cursor-pointer"
+                            className={track.isSyncPending ? '' : 'hover:underline hover:text-white cursor-pointer'}
                           >
                             {track.artist_name}
                           </span>
@@ -927,10 +1190,11 @@ export const PlaylistDetail = ({
                     <div className="hidden md:block truncate pr-3">
                       <span 
                         onClick={(e) => {
+                          if (track.isSyncPending) return;
                           e.stopPropagation();
                           if (onSelectAlbum) onSelectAlbum(track.album_id);
                         }}
-                        className="text-xs text-[#b3b3b3] hover:text-white hover:underline truncate cursor-pointer inline"
+                        className={`text-xs truncate inline ${track.isSyncPending ? 'text-[#777]' : 'text-[#b3b3b3] hover:text-white hover:underline cursor-pointer'}`}
                       >
                         {track.album_title}
                       </span>
@@ -938,18 +1202,20 @@ export const PlaylistDetail = ({
 
                     {/* Column 4: Date added (hidden < lg) */}
                     <span className="hidden lg:block text-xs text-[#888] truncate pr-3">
-                      {formatAddedAt(track.added_at)}
+                      {track.isSyncPending ? (track.syncStatus === 'downloading' ? 'Downloading...' : 'Queued') : formatAddedAt(track.added_at)}
                     </span>
 
                     {/* Column 5: Trash icon */}
                     <div className="flex items-center justify-center">
-                      <button
-                        onClick={(e) => handleRemoveTrack(e, track.id)}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-[#888] hover:text-red-400 transition"
-                        title="Remove from playlist"
-                      >
-                        <Trash2 size={15} />
-                      </button>
+                      {!track.isSyncPending && (
+                        <button
+                          onClick={(e) => handleRemoveTrack(e, track.id)}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-[#888] hover:text-red-400 transition"
+                          title="Remove from playlist"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      )}
                     </div>
 
                     {/* Column 6: Duration */}
@@ -962,12 +1228,11 @@ export const PlaylistDetail = ({
             </div>
           </div>
         )}
-      </div>
 
-      {/* Floating Multi-Select Action Banner */}
+        {/* Floating Multi-Select Action Banner */}
       {selectedTrackIds.size > 1 && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 bg-[#242424] border border-white/20 shadow-2xl rounded-2xl px-5 py-3 flex items-center gap-4 text-xs font-medium text-white backdrop-blur-md animate-in fade-in slide-in-from-bottom-3 duration-200">
-          <div className="flex items-center gap-2 text-[#1ed760] font-bold">
+          <div className="flex items-center gap-2 text-brand-500 font-bold">
             <CheckSquare size={16} />
             <span>{selectedTrackIds.size} songs selected</span>
           </div>
@@ -1026,7 +1291,7 @@ export const PlaylistDetail = ({
                   placeholder="Playlist name"
                   required
                   maxLength={100}
-                  className="w-full bg-[#181818] border border-white/10 focus:border-[#1ed760] rounded-xl px-3.5 py-2.5 text-sm text-white outline-none transition"
+                  className="w-full bg-[#181818] border border-white/10 focus:border-brand-500 rounded-xl px-3.5 py-2.5 text-sm text-white outline-none transition"
                 />
               </div>
 
@@ -1040,7 +1305,7 @@ export const PlaylistDetail = ({
                   placeholder="Add an optional description..."
                   rows={3}
                   maxLength={300}
-                  className="w-full bg-[#181818] border border-white/10 focus:border-[#1ed760] rounded-xl p-3 text-sm text-white outline-none transition resize-none"
+                  className="w-full bg-[#181818] border border-white/10 focus:border-brand-500 rounded-xl p-3 text-sm text-white outline-none transition resize-none"
                 />
               </div>
 
@@ -1055,7 +1320,7 @@ export const PlaylistDetail = ({
                 <button
                   type="submit"
                   disabled={isSavingDetails || !editName.trim()}
-                  className="px-5 py-2 rounded-full text-xs font-bold bg-[#1ed760] hover:bg-[#1fdf64] text-black transition active:scale-95 disabled:opacity-50"
+                  className="px-5 py-2 rounded-full text-xs font-bold bg-brand-500 hover:bg-brand-400 text-black transition active:scale-95 disabled:opacity-50"
                 >
                   {isSavingDetails ? 'Saving...' : 'Save Details'}
                 </button>
@@ -1066,39 +1331,14 @@ export const PlaylistDetail = ({
       )}
 
       {/* Delete Playlist Confirmation Modal */}
-      {isConfirmDeleteOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-[#242424] border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4 text-center">
-            <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center mx-auto">
-              <AlertTriangle size={24} />
-            </div>
-
-            <div>
-              <h3 className="text-base font-bold text-white">Delete "{playlist.name}"?</h3>
-              <p className="text-xs text-[#888] mt-1.5">
-                This will delete the playlist. Your actual audio files will remain safe in your library.
-              </p>
-            </div>
-
-            <div className="flex items-center justify-center gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsConfirmDeleteOpen(false)}
-                className="px-4 py-2 rounded-full text-xs font-semibold text-[#b3b3b3] hover:text-white hover:bg-white/5 transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDeletePlaylist}
-                className="px-5 py-2 rounded-full text-xs font-bold bg-red-500 hover:bg-red-600 text-white transition active:scale-95 shadow-lg shadow-red-500/20"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={isConfirmDeleteOpen}
+        title={`Delete "${playlist.name}"?`}
+        message="This will delete the playlist. Your actual audio files will remain safe in your library."
+        confirmText="Delete"
+        onConfirm={handleDeletePlaylist}
+        onClose={() => setIsConfirmDeleteOpen(false)}
+      />
     </div>
   );
 };

@@ -20,7 +20,7 @@ export const MobileNav = ({ activeTab, setActiveTab }) => {
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-lg transition ${
-              isActive ? 'text-[#1ed760]' : 'text-[#b3b3b3] hover:text-white'
+              isActive ? 'text-brand-500' : 'text-[#b3b3b3] hover:text-white'
             }`}
           >
             <Icon size={20} className={isActive ? 'stroke-[2.5]' : ''} />

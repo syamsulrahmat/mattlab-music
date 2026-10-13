@@ -87,8 +87,15 @@ async def list_playlists():
         cursor.execute("""
             SELECT 
                 p.id, p.name, p.description, p.created_at, p.updated_at, p.position,
-                COUNT(pt.id) AS track_count,
-                COALESCE(SUM(t.duration_seconds), 0) AS total_duration
+                p.spotify_id, p.spotify_url, p.auto_sync, p.last_synced_at, p.sync_status,
+                CASE 
+                    WHEN p.spotify_id IS NOT NULL THEN (SELECT COUNT(*) FROM spotify_sync_tracks WHERE playlist_id = p.id)
+                    ELSE COUNT(pt.id)
+                END AS track_count,
+                CASE
+                    WHEN p.spotify_id IS NOT NULL THEN (SELECT ROUND(COALESCE(SUM(duration_ms), 0) / 1000.0) FROM spotify_sync_tracks WHERE playlist_id = p.id)
+                    ELSE COALESCE(SUM(t.duration_seconds), 0)
+                END AS total_duration
             FROM playlists p
             LEFT JOIN playlist_tracks pt ON pt.playlist_id = p.id
             LEFT JOIN tracks t ON pt.track_id = t.id

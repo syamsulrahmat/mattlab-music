@@ -11,7 +11,7 @@
  */
 
 const CACHE_NAME = 'mattlab-audio-preload-v2';
-const MAX_PRELOAD_COUNT = 3;
+const DEFAULT_PRELOAD_COUNT = 3;
 
 class AudioPreloader {
   constructor() {
@@ -19,6 +19,21 @@ class AudioPreloader {
     this.activeController = null;
     this.listeners = new Set();
     this.isPreloading = false;
+    this.lastQueue = null;
+    this.lastCurrentIndex = -1;
+
+    // Load user preload preference from localStorage (0 = disabled, 1..10 = songs)
+    let savedCount = DEFAULT_PRELOAD_COUNT;
+    if (typeof localStorage !== 'undefined') {
+      const stored = localStorage.getItem('mattlab_preload_count');
+      if (stored !== null) {
+        const parsed = parseInt(stored, 10);
+        if (!isNaN(parsed) && parsed >= 0 && parsed <= 10) {
+          savedCount = parsed;
+        }
+      }
+    }
+    this.maxPreloadCount = savedCount;
   }
 
   subscribe(listener) {
@@ -55,17 +70,70 @@ class AudioPreloader {
     return new Set(this.preloadedMap.keys());
   }
 
+  getMaxPreloadCount() {
+    return this.maxPreloadCount;
+  }
+
+  setMaxPreloadCount(count) {
+    const parsed = parseInt(count, 10);
+    const validCount = isNaN(parsed) ? DEFAULT_PRELOAD_COUNT : Math.max(0, Math.min(10, parsed));
+    this.maxPreloadCount = validCount;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('mattlab_preload_count', String(validCount));
+    }
+
+    if (validCount === 0) {
+      if (this.activeController) {
+        this.activeController.abort();
+        this.activeController = null;
+      }
+      const currentTrackId = (this.lastQueue && this.lastCurrentIndex >= 0 && this.lastQueue[this.lastCurrentIndex])
+        ? this.lastQueue[this.lastCurrentIndex].id
+        : null;
+      const targetIds = new Set(currentTrackId ? [currentTrackId] : []);
+      this.pruneOldTracks(targetIds);
+    } else if (this.lastQueue && this.lastCurrentIndex >= 0) {
+      this.updateQueue(this.lastQueue, this.lastCurrentIndex);
+    }
+
+    return this.maxPreloadCount;
+  }
+
+  getTotalPreloadedBytes() {
+    let total = 0;
+    for (const entry of this.preloadedMap.values()) {
+      if (typeof entry.blobSize === 'number') {
+        total += entry.blobSize;
+      }
+    }
+    return total;
+  }
+
   /**
    * Update the preload window based on current queue and index.
-   * Target tracks: next 1..MAX_PRELOAD_COUNT tracks in queue.
+   * Target tracks: next 1..maxPreloadCount tracks in queue.
    */
   async updateQueue(queue, currentIndex) {
+    this.lastQueue = queue;
+    this.lastCurrentIndex = currentIndex;
+
     if (!Array.isArray(queue) || currentIndex < 0 || currentIndex >= queue.length) {
       return;
     }
 
-    // Identify target track IDs (next up to 3 songs)
-    const upcomingTracks = queue.slice(currentIndex + 1, currentIndex + 1 + MAX_PRELOAD_COUNT);
+    if (this.maxPreloadCount <= 0) {
+      if (this.activeController) {
+        this.activeController.abort();
+        this.activeController = null;
+      }
+      const currentTrack = queue[currentIndex];
+      const targetTrackIds = new Set(currentTrack ? [currentTrack.id] : []);
+      this.pruneOldTracks(targetTrackIds);
+      return;
+    }
+
+    // Identify target track IDs (next up to maxPreloadCount songs)
+    const upcomingTracks = queue.slice(currentIndex + 1, currentIndex + 1 + this.maxPreloadCount);
     const targetTrackIds = new Set(upcomingTracks.map((t) => t.id));
 
     // Also keep current track if already cached

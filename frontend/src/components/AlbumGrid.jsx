@@ -73,7 +73,7 @@ export const AlbumGrid = ({
               {/* Green Play/Pause Button on Hover / Active */}
               <button
                 onClick={(e) => handleQuickPlay(e, album)}
-                className={`absolute bottom-2.5 right-2.5 w-11 h-11 rounded-full bg-[#1ed760] hover:bg-[#1fdf64] hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-xl transition duration-200 z-10 ${
+                className={`absolute bottom-2.5 right-2.5 w-11 h-11 rounded-full bg-brand-500 hover:bg-brand-400 hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-xl transition duration-200 z-10 ${
                   isThisAlbum
                     ? 'opacity-100 translate-y-0 ring-2 ring-white/20'
                     : 'opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0'
@@ -91,7 +91,7 @@ export const AlbumGrid = ({
             {/* Details */}
             <div>
               <h3 className={`font-bold text-xs sm:text-sm truncate transition ${
-                isThisAlbum ? 'text-[#1ed760]' : 'text-white'
+                isThisAlbum ? 'text-brand-500' : 'text-white'
               }`}>
                 {album.title}
               </h3>

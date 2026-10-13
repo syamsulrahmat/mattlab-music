@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, UserPlus, Users, Trash2, Shield, User, Key, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { ConfirmModal } from './ConfirmModal';
 
 export const UserManagementModal = ({ isOpen, onClose }) => {
   const { user: currentUser, fetchUsers, createUser, deleteUser, changePassword } = useAuth();
@@ -20,6 +21,10 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
   // Password reset state
   const [resettingUserId, setResettingUserId] = useState(null);
   const [resetPasswordVal, setResetPasswordVal] = useState('');
+
+  // Delete user confirmation state
+  const [userToDeleteState, setUserToDeleteState] = useState(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
 
   const loadUsers = async () => {
     try {
@@ -96,24 +101,28 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
     }
   };
 
-  const handleDeleteUser = async (userToDelete) => {
+  const handleDeleteUser = (userToDelete) => {
     if (userToDelete.id === currentUser?.id) {
       setError('You cannot delete your own admin account.');
       return;
     }
+    setUserToDeleteState(userToDelete);
+  };
 
-    if (!window.confirm(`Are you sure you want to delete user "${userToDelete.username}"?`)) {
-      return;
-    }
-
+  const handleConfirmDeleteUser = async () => {
+    if (!userToDeleteState) return;
     try {
+      setIsDeletingUser(true);
       setError('');
       setSuccess('');
-      await deleteUser(userToDelete.id);
-      setSuccess(`User "${userToDelete.username}" deleted.`);
+      await deleteUser(userToDeleteState.id);
+      setSuccess(`User "${userToDeleteState.username}" deleted.`);
       await loadUsers();
     } catch (err) {
       setError(err.message || 'Failed to delete user');
+    } finally {
+      setIsDeletingUser(false);
+      setUserToDeleteState(null);
     }
   };
 
@@ -147,7 +156,7 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#1ed760]/10 text-[#1ed760] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-brand-500/10 text-brand-500 flex items-center justify-center">
               <Users size={20} />
             </div>
             <div>
@@ -175,7 +184,7 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
             </div>
           )}
           {success && (
-            <div className="p-3 bg-[#1ed760]/15 border border-[#1ed760]/30 rounded-xl flex items-center gap-2.5 text-[#1ed760] text-xs">
+            <div className="p-3 bg-brand-500/15 border border-brand-500/30 rounded-xl flex items-center gap-2.5 text-brand-500 text-xs">
               <Check size={16} className="shrink-0" />
               <span>{success}</span>
             </div>
@@ -188,7 +197,7 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
             </span>
             <button
               onClick={() => setShowAddForm(!showAddForm)}
-              className="bg-[#1ed760] hover:bg-[#1fdf64] text-black text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 transition hover:scale-105 active:scale-95 shadow"
+              className="bg-brand-500 hover:bg-brand-400 text-black text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 transition hover:scale-105 active:scale-95 shadow"
             >
               <UserPlus size={14} />
               <span>{showAddForm ? 'Cancel' : 'Add New User'}</span>
@@ -202,7 +211,7 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
               className="p-4 bg-[#181818] border border-white/10 rounded-xl space-y-3.5 animate-in fade-in duration-150"
             >
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <UserPlus size={16} className="text-[#1ed760]" />
+                <UserPlus size={16} className="text-brand-500" />
                 <span>Create New User</span>
               </h3>
 
@@ -217,7 +226,7 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
                     onChange={(e) => setNewUsername(e.target.value)}
                     placeholder="e.g. sarah"
                     required
-                    className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-[#666] outline-none focus:border-[#1ed760]"
+                    className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-[#666] outline-none focus:border-brand-500"
                   />
                 </div>
 
@@ -231,7 +240,7 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="••••••••"
                     required
-                    className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-[#666] outline-none focus:border-[#1ed760]"
+                    className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-[#666] outline-none focus:border-brand-500"
                   />
                 </div>
 
@@ -244,7 +253,7 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
                     value={newDisplayName}
                     onChange={(e) => setNewDisplayName(e.target.value)}
                     placeholder="e.g. Sarah Connor"
-                    className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-[#666] outline-none focus:border-[#1ed760]"
+                    className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-[#666] outline-none focus:border-brand-500"
                   />
                 </div>
 
@@ -255,7 +264,7 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
                   <select
                     value={newRole}
                     onChange={(e) => setNewRole(e.target.value)}
-                    className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-[#1ed760]"
+                    className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-brand-500"
                   >
                     <option value="user">User (Stream & Playlists)</option>
                     <option value="admin">Admin (Full Control)</option>
@@ -274,7 +283,7 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-1.5 rounded-lg bg-[#1ed760] hover:bg-[#1fdf64] text-black text-xs font-bold transition flex items-center gap-1.5 disabled:opacity-50"
+                  className="px-4 py-1.5 rounded-lg bg-brand-500 hover:bg-brand-400 text-black text-xs font-bold transition flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {isSubmitting ? (
                     <>
@@ -292,7 +301,7 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
           {/* User List Table */}
           {loading ? (
             <div className="py-12 flex flex-col items-center justify-center text-[#727272]">
-              <Loader2 size={24} className="animate-spin mb-2 text-[#1ed760]" />
+              <Loader2 size={24} className="animate-spin mb-2 text-brand-500" />
               <span className="text-xs">Loading user list...</span>
             </div>
           ) : users.length === 0 ? (
@@ -309,7 +318,7 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
                   <div key={u.id} className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[#1c1c1c] transition">
                     <div className="flex items-center gap-3">
                       <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs uppercase ${
-                        isAdmin ? 'bg-[#1ed760]/20 text-[#1ed760] ring-1 ring-[#1ed760]/40' : 'bg-[#2a2a2a] text-white'
+                        isAdmin ? 'bg-brand-500/20 text-brand-500 ring-1 ring-brand-500/40' : 'bg-[#2a2a2a] text-white'
                       }`}>
                         {u.username.slice(0, 2)}
                       </div>
@@ -339,7 +348,7 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
                       {/* Role Badge */}
                       <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1 ${
                         isAdmin 
-                          ? 'bg-[#1ed760]/15 text-[#1ed760] border border-[#1ed760]/30' 
+                          ? 'bg-brand-500/15 text-brand-500 border border-brand-500/30' 
                           : 'bg-white/5 text-[#a7a7a7] border border-white/10'
                       }`}>
                         {isAdmin ? <Shield size={11} /> : <User size={11} />}
@@ -358,7 +367,7 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
                           />
                           <button
                             onClick={() => handleResetPassword(u.id)}
-                            className="bg-[#1ed760] text-black px-2 py-0.5 rounded text-xs font-bold"
+                            className="bg-brand-500 text-black px-2 py-0.5 rounded text-xs font-bold"
                           >
                             Save
                           </button>
@@ -397,6 +406,17 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
           )}
         </div>
       </div>
+
+      {/* Delete User Confirmation Modal */}
+      <ConfirmModal
+        isOpen={Boolean(userToDeleteState)}
+        title={`Delete user "${userToDeleteState?.username}"?`}
+        message="This will permanently delete this user account. This action cannot be undone."
+        confirmText="Delete User"
+        onConfirm={handleConfirmDeleteUser}
+        onClose={() => setUserToDeleteState(null)}
+        isLoading={isDeletingUser}
+      />
     </div>
   );
 };

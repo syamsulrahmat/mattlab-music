@@ -63,7 +63,7 @@ export const PlayerBar = ({
       {/* Mobile Thin Progress Line */}
       <div className="md:hidden absolute top-0 left-0 right-0 h-1 bg-[#1f1f1f] overflow-hidden">
         <div 
-          className="h-full bg-[#1ed760] transition-all duration-150"
+          className="h-full bg-brand-500 transition-all duration-150"
           style={{ width: `${progressPercent}%` }}
         />
       </div>
@@ -97,7 +97,7 @@ export const PlayerBar = ({
                   </h4>
                   {isTrackPreloaded && isTrackPreloaded(currentTrack.id) && (
                     <span 
-                      className="w-1.5 h-1.5 rounded-full bg-[#1ed760] shrink-0" 
+                      className="w-1.5 h-1.5 rounded-full bg-brand-500 shrink-0" 
                       title="Preloaded & offline ready"
                     />
                   )}
@@ -114,7 +114,7 @@ export const PlayerBar = ({
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={() => setIsLyricsOpen && setIsLyricsOpen(!isLyricsOpen)}
-                className={`p-1.5 transition ${isLyricsOpen ? 'text-[#1ed760]' : 'text-[#b3b3b3]'}`}
+                className={`p-1.5 transition ${isLyricsOpen ? 'text-brand-500' : 'text-[#b3b3b3]'}`}
                 title="Lyrics"
               >
                 <Mic2 size={17} />
@@ -122,9 +122,9 @@ export const PlayerBar = ({
 
               <button
                 onClick={() => toggleFavorite(currentTrack.id)}
-                className={`p-1.5 transition ${isFav ? 'text-[#1ed760]' : 'text-[#b3b3b3]'}`}
+                className={`p-1.5 transition ${isFav ? 'text-brand-500' : 'text-[#b3b3b3]'}`}
               >
-                <Heart size={18} className={isFav ? 'fill-[#1ed760]' : ''} />
+                <Heart size={18} className={isFav ? 'fill-brand-500' : ''} />
               </button>
 
               <button
@@ -185,7 +185,7 @@ export const PlayerBar = ({
                   </h4>
                   {isTrackPreloaded && isTrackPreloaded(currentTrack.id) && (
                     <span 
-                      className="w-1.5 h-1.5 rounded-full bg-[#1ed760] shrink-0" 
+                      className="w-1.5 h-1.5 rounded-full bg-brand-500 shrink-0" 
                       title="Preloaded & offline ready (safe if server disconnects)"
                     />
                   )}
@@ -201,11 +201,11 @@ export const PlayerBar = ({
               <button
                 onClick={() => toggleFavorite(currentTrack.id)}
                 className={`p-1.5 transition ml-1 shrink-0 ${
-                  isFav ? 'text-[#1ed760]' : 'text-[#b3b3b3] hover:text-white'
+                  isFav ? 'text-brand-500' : 'text-[#b3b3b3] hover:text-white'
                 }`}
                 title={isFav ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
               >
-                <Heart size={18} className={isFav ? 'fill-[#1ed760]' : ''} />
+                <Heart size={18} className={isFav ? 'fill-brand-500' : ''} />
               </button>
             </>
           ) : (
@@ -223,7 +223,7 @@ export const PlayerBar = ({
           <div className="flex items-center gap-5">
             <button
               onClick={toggleShuffle}
-              className={`transition ${isShuffle ? 'text-[#1ed760]' : 'text-[#b3b3b3] hover:text-white'}`}
+              className={`transition ${isShuffle ? 'text-brand-500' : 'text-[#b3b3b3] hover:text-white'}`}
               title="Shuffle"
             >
               <Shuffle size={16} />
@@ -260,7 +260,7 @@ export const PlayerBar = ({
 
             <button
               onClick={toggleRepeat}
-              className={`transition ${repeatMode !== 'off' ? 'text-[#1ed760]' : 'text-[#b3b3b3] hover:text-white'}`}
+              className={`transition ${repeatMode !== 'off' ? 'text-brand-500' : 'text-[#b3b3b3] hover:text-white'}`}
               title={`Repeat: ${repeatMode}`}
             >
               {repeatMode === 'one' ? <Repeat1 size={16} /> : <Repeat size={16} />}
@@ -279,7 +279,7 @@ export const PlayerBar = ({
                 value={currentTime}
                 onChange={handleSeekChange}
                 disabled={!currentTrack}
-                className="w-full h-1 bg-[#4d4d4d] group-hover:bg-[#5e5e5e] rounded-lg appearance-none cursor-pointer accent-[#1ed760] transition disabled:opacity-30"
+                className="w-full h-1 bg-[#4d4d4d] group-hover:bg-[#5e5e5e] rounded-lg appearance-none cursor-pointer accent-brand-500 transition disabled:opacity-30"
               />
             </div>
             <span className="w-10 text-[11px]">{formatTime(duration)}</span>
@@ -292,7 +292,7 @@ export const PlayerBar = ({
           <button
             onClick={togglePiP}
             className={`p-2 rounded-lg transition ${
-              isPiPActive ? 'text-[#1ed760] bg-[#1f1f1f]' : 'text-[#b3b3b3] hover:text-white'
+              isPiPActive ? 'text-brand-500 bg-[#1f1f1f]' : 'text-[#b3b3b3] hover:text-white'
             }`}
             title={isPiPActive ? 'Close Picture-in-Picture' : 'Picture-in-Picture (Float across tabs & desktop apps)'}
           >
@@ -303,7 +303,7 @@ export const PlayerBar = ({
           <button
             onClick={() => setIsLyricsOpen && setIsLyricsOpen(!isLyricsOpen)}
             className={`p-2 rounded-lg transition ${
-              isLyricsOpen ? 'text-[#1ed760] bg-[#1f1f1f]' : 'text-[#b3b3b3] hover:text-white'
+              isLyricsOpen ? 'text-brand-500 bg-[#1f1f1f]' : 'text-[#b3b3b3] hover:text-white'
             }`}
             title="Lyrics"
           >
@@ -313,7 +313,7 @@ export const PlayerBar = ({
           <button
             onClick={() => setIsQueueOpen(!isQueueOpen)}
             className={`p-2 rounded-lg transition ${
-              isQueueOpen ? 'text-[#1ed760] bg-[#1f1f1f]' : 'text-[#b3b3b3] hover:text-white'
+              isQueueOpen ? 'text-brand-500 bg-[#1f1f1f]' : 'text-[#b3b3b3] hover:text-white'
             }`}
             title="Play Queue"
           >
@@ -335,7 +335,7 @@ export const PlayerBar = ({
             step={0.01}
             value={isMuted ? 0 : volume}
             onChange={handleVolumeChange}
-            className="w-24 h-1 bg-[#4d4d4d] hover:bg-[#5e5e5e] rounded-lg appearance-none cursor-pointer accent-[#1ed760]"
+            className="w-24 h-1 bg-[#4d4d4d] hover:bg-[#5e5e5e] rounded-lg appearance-none cursor-pointer accent-brand-500"
           />
         </div>
       </div>

@@ -141,7 +141,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
             </button>
             <button
               onClick={togglePlay}
-              className="w-7 h-7 rounded-full bg-[#1ed760] text-black flex items-center justify-center hover:scale-105 active:scale-95 transition shadow"
+              className="w-7 h-7 rounded-full bg-brand-500 text-black flex items-center justify-center hover:scale-105 active:scale-95 transition shadow"
               title={isPlaying ? 'Pause' : 'Play'}
             >
               {isPlaying ? <Pause size={13} className="fill-black" /> : <Play size={13} className="fill-black ml-0.5" />}
@@ -212,7 +212,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
           {/* Scrubber progress */}
           <div className="w-full bg-white/10 rounded-full h-1 overflow-hidden">
             <div
-              className="bg-[#1ed760] h-full transition-all duration-150"
+              className="bg-brand-500 h-full transition-all duration-150"
               style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
             />
           </div>
@@ -339,7 +339,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
               <button
                 type="button"
                 onClick={togglePlay}
-                className="w-7 h-7 rounded-full bg-[#1ed760] text-black flex items-center justify-center hover:scale-105 active:scale-95 transition shadow"
+                className="w-7 h-7 rounded-full bg-brand-500 text-black flex items-center justify-center hover:scale-105 active:scale-95 transition shadow"
                 title={isPlaying ? 'Pause' : 'Play'}
               >
                 {isPlaying ? <Pause size={13} className="fill-black" /> : <Play size={13} className="fill-black ml-0.5" />}
@@ -367,7 +367,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                 <button
                   type="button"
                   onClick={togglePiP}
-                  className="p-1 text-[#888] hover:text-[#1ed760] rounded-md hover:bg-white/10 transition"
+                  className="p-1 text-[#888] hover:text-brand-400 rounded-md hover:bg-white/10 transition"
                   title="Pop out Picture-in-Picture (Cross-tab window)"
                 >
                   <PictureInPicture2 size={12} />
@@ -441,7 +441,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                   <button
                     type="button"
                     onClick={togglePiP}
-                    className="p-1 text-[#888] hover:text-[#1ed760] rounded transition"
+                    className="p-1 text-[#888] hover:text-brand-400 rounded transition"
                     title="Pop out Picture-in-Picture (Cross-tab window)"
                   >
                     <ExternalLink size={12} />
@@ -492,7 +492,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                     <button
                       type="button"
                       onClick={togglePiP}
-                      className="p-1 text-[#888] hover:text-[#1ed760] rounded transition"
+                      className="p-1 text-[#888] hover:text-brand-400 rounded transition"
                       title="Pop out Picture-in-Picture"
                     >
                       <ExternalLink size={13} />
@@ -512,7 +512,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
               {/* Progress bar */}
               <div className="w-full bg-white/10 rounded-full h-1 overflow-hidden">
                 <div
-                  className="bg-[#1ed760] h-full transition-all duration-150"
+                  className="bg-brand-500 h-full transition-all duration-150"
                   style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
                 />
               </div>

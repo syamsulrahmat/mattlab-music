@@ -73,7 +73,7 @@ export const FavoritesView = ({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64 text-[#b3b3b3]">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-[#1ed760]" />
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-brand-500" />
       </div>
     );
   }
@@ -104,7 +104,7 @@ export const FavoritesView = ({
         <div className="flex items-center gap-6 mb-6">
           <button
             onClick={handlePlayAll}
-            className="w-14 h-14 rounded-full bg-[#1ed760] hover:bg-[#1fdf64] hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-xl transition"
+            className="w-14 h-14 rounded-full bg-brand-500 hover:bg-brand-400 hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-xl transition"
             title="Play Liked Songs"
           >
             {isCurrentPlayingInFav && isPlaying ? (
@@ -125,7 +125,7 @@ export const FavoritesView = ({
         </div>
       ) : (
         <div className="bg-[#181818]/70 rounded-lg p-2 border border-white/5">
-          <div className="grid grid-cols-[40px_1fr_1fr_40px_70px] px-4 py-2 text-xs font-semibold uppercase text-[#b3b3b3] border-b border-white/5">
+          <div className="sticky top-0 z-20 bg-[#181818] backdrop-blur-md rounded-lg grid grid-cols-[40px_1fr_1fr_40px_70px] px-4 py-2.5 text-xs font-semibold uppercase text-[#b3b3b3] border-b border-white/10 items-center shadow-md">
             <span>#</span>
             <span>Title</span>
             <span className="hidden md:block">Album</span>
@@ -184,7 +184,7 @@ export const FavoritesView = ({
                         className="flex items-center justify-center w-7 h-7 cursor-pointer"
                         title="Buffering audio... (click to cancel)"
                       >
-                        <div className="w-3.5 h-3.5 border-2 border-[#1ed760] border-t-transparent rounded-full animate-spin" />
+                        <div className="w-3.5 h-3.5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
                       </div>
                     ) : (
                       <>
@@ -193,14 +193,14 @@ export const FavoritesView = ({
                           {isThisPlaying ? (
                             /* Animated Spotify Equalizer Bars */
                             <div className="flex items-end justify-center gap-[2.5px] w-3.5 h-3.5 pb-0.5" title="Playing">
-                              <span className="w-[3px] bg-[#1ed760] rounded-full animate-eq-1" />
-                              <span className="w-[3px] bg-[#1ed760] rounded-full animate-eq-2" />
-                              <span className="w-[3px] bg-[#1ed760] rounded-full animate-eq-3" />
-                              <span className="w-[3px] bg-[#1ed760] rounded-full animate-eq-4" />
+                              <span className="w-[3px] bg-brand-500 rounded-full animate-eq-1" />
+                              <span className="w-[3px] bg-brand-500 rounded-full animate-eq-2" />
+                              <span className="w-[3px] bg-brand-500 rounded-full animate-eq-3" />
+                              <span className="w-[3px] bg-brand-500 rounded-full animate-eq-4" />
                             </div>
                           ) : (
                             /* Normal track number (green if current track paused, gray otherwise) */
-                            <span className={`text-sm font-medium ${isThisTrack ? 'text-[#1ed760]' : 'text-[#b3b3b3]'}`}>
+                            <span className={`text-sm font-medium ${isThisTrack ? 'text-brand-500' : 'text-[#b3b3b3]'}`}>
                               {idx + 1}
                             </span>
                           )}
@@ -217,7 +217,7 @@ export const FavoritesView = ({
                               playTrack(track, tracks);
                             }
                           }}
-                          className="hidden group-hover:flex items-center justify-center w-7 h-7 text-white hover:text-[#1ed760] transition"
+                          className="hidden group-hover:flex items-center justify-center w-7 h-7 text-white hover:text-brand-400 transition"
                           title={isThisPlaying ? "Pause" : "Play"}
                         >
                           {isThisPlaying ? (
@@ -237,7 +237,7 @@ export const FavoritesView = ({
                       className="w-10 h-10 rounded object-cover bg-[#1f1f1f] shrink-0"
                     />
                     <div className="truncate">
-                      <p className={`text-sm font-medium truncate ${isThisTrack ? 'text-[#1ed760]' : 'text-white'}`}>
+                      <p className={`text-sm font-medium truncate ${isThisTrack ? 'text-brand-500' : 'text-white'}`}>
                         {track.title}
                       </p>
                       <p className="text-xs text-[#b3b3b3] truncate mt-0.5">
@@ -268,10 +268,10 @@ export const FavoritesView = ({
 
                   <button
                     onClick={(e) => handleHeartClick(e, track.id)}
-                    className="p-1 text-[#1ed760] hover:scale-110 transition"
+                    className="p-1 text-brand-500 hover:scale-110 transition"
                     title="Remove from Liked Songs"
                   >
-                    <Heart size={16} className="fill-[#1ed760]" />
+                    <Heart size={16} className="fill-brand-500" />
                   </button>
 
                   <span className="text-right text-xs font-mono text-[#b3b3b3]">

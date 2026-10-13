@@ -37,7 +37,7 @@ export const LoginModal = () => {
         <div className="flex flex-col items-center text-center mb-6">
           <MattLabLogo
             variant="badge"
-            bgColor="#1ed760"
+            bgColor="var(--brand-primary)"
             color="#000000"
             className="w-14 h-14 rounded-full shadow-lg mb-3"
           />
@@ -75,7 +75,7 @@ export const LoginModal = () => {
                 required
                 autoFocus
                 autoComplete="username"
-                className="w-full bg-[#1e1e1e] border border-white/10 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-white placeholder-[#666] outline-none focus:border-[#1ed760] focus:ring-1 focus:ring-[#1ed760] transition"
+                className="w-full bg-[#1e1e1e] border border-white/10 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-white placeholder-[#666] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition"
               />
             </div>
           </div>
@@ -96,7 +96,7 @@ export const LoginModal = () => {
                 placeholder="Password"
                 required
                 autoComplete="current-password"
-                className="w-full bg-[#1e1e1e] border border-white/10 rounded-xl pl-10 pr-10 py-2.5 text-sm text-white placeholder-[#666] outline-none focus:border-[#1ed760] focus:ring-1 focus:ring-[#1ed760] transition"
+                className="w-full bg-[#1e1e1e] border border-white/10 rounded-xl pl-10 pr-10 py-2.5 text-sm text-white placeholder-[#666] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition"
               />
               <button
                 type="button"
@@ -113,7 +113,7 @@ export const LoginModal = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full mt-2 bg-[#1ed760] hover:bg-[#1fdf64] text-black font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-lg hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
+            className="w-full mt-2 bg-brand-500 hover:bg-brand-400 text-black font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-lg hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
           >
             {isSubmitting ? (
               <>

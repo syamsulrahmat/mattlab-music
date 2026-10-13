@@ -67,8 +67,14 @@ def extract_embedded_cover(audio_file: Any) -> Optional[bytes]:
     return None
 
 def find_folder_cover(file_path: Path) -> Optional[bytes]:
-    """Look for cover.jpg, folder.jpg in the track's directory."""
+    """Look for cover.jpg, folder.jpg in the track's directory.
+    Skip if inside 'Spotify Downloads' because playlist folders contain varied songs by different artists,
+    not a single cohesive album.
+    """
     parent_dir = file_path.parent
+    if "Spotify Downloads" in parent_dir.parts:
+        return None
+
     for fname in COVER_FILENAMES:
         cand = parent_dir / fname
         if cand.exists() and cand.is_file():
@@ -357,3 +363,70 @@ def scan_music_library() -> Dict[str, Any]:
     }
     logger.info(f"Scan complete in {elapsed}s: {added_count} added, {unchanged_count} unchanged, {updated_count} updated, {deleted_count} removed.")
     return summary
+
+
+def index_single_audio_file(file_path: Path) -> Optional[int]:
+    """Parse and immediately upsert a single audio file into database, returning track_id."""
+    if not file_path.exists() or file_path.suffix.lower() not in SUPPORTED_EXTENSIONS:
+        return None
+
+    data = parse_audio_file(file_path)
+    if not data:
+        return None
+
+    full_path_str = str(file_path.resolve())
+    with get_db() as conn:
+        cursor = conn.cursor()
+
+        # 1. Artist
+        cursor.execute("SELECT id FROM artists WHERE name = ? COLLATE NOCASE", (data["artist"],))
+        artist_row = cursor.fetchone()
+        if artist_row:
+            artist_id = artist_row["id"]
+        else:
+            cursor.execute("INSERT INTO artists (name) VALUES (?)", (data["artist"],))
+            artist_id = cursor.lastrowid
+
+        # 2. Album & Cover
+        cover_path = data.get("cover_path")
+
+        cursor.execute("SELECT id, cover_path FROM albums WHERE title = ? AND artist_id = ?", (data["album"], artist_id))
+        album_row = cursor.fetchone()
+        if album_row:
+            album_id = album_row["id"]
+            if cover_path and not album_row["cover_path"]:
+                cursor.execute("UPDATE albums SET cover_path = ? WHERE id = ?", (cover_path, album_id))
+        else:
+            cursor.execute(
+                "INSERT INTO albums (title, artist_id, year, cover_path) VALUES (?, ?, ?, ?)",
+                (data["album"], artist_id, data["year"], cover_path)
+            )
+            album_id = cursor.lastrowid
+
+        # 3. Track
+        cursor.execute("""
+            INSERT INTO tracks (
+                title, artist_id, album_id, track_number, disc_number,
+                duration_seconds, file_path, file_format, file_size, bitrate, mtime
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(file_path) DO UPDATE SET
+                title = excluded.title,
+                artist_id = excluded.artist_id,
+                album_id = excluded.album_id,
+                track_number = excluded.track_number,
+                disc_number = excluded.disc_number,
+                duration_seconds = excluded.duration_seconds,
+                file_format = excluded.file_format,
+                file_size = excluded.file_size,
+                bitrate = excluded.bitrate,
+                mtime = excluded.mtime
+        """, (
+            data["title"], artist_id, album_id, data["track_number"], data["disc_number"],
+            data["duration"], full_path_str, data["file_format"], data["file_size"],
+            data["bitrate"], data["mtime"]
+        ))
+
+        cursor.execute("SELECT id FROM tracks WHERE file_path = ?", (full_path_str,))
+        track_row = cursor.fetchone()
+        return track_row["id"] if track_row else None
+
