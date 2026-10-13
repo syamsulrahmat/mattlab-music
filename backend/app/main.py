@@ -1,7 +1,13 @@
-from fastapi import FastAPI
+from pathlib import Path
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
 from app.database import init_db
-from app.routes import stream, library, scan, playlists, lyrics, request_music
+from app.auth import get_user_from_request, get_user_count
+from app.routes import stream, library, scan, playlists, lyrics, request_music, auth_routes
 
 app = FastAPI(
     title="MattLab Music App API",
@@ -9,10 +15,10 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Allow all origins for dev and remote PWA access
+# Allow origins for dev and remote PWA access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origin_regex=r"^https?://.*$",  # Allow any origin with credentials
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -23,15 +29,66 @@ def on_startup():
     init_db()
     request_music.start_auto_import_watcher()
 
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    """Global API authentication middleware."""
+    # Allow non-API routes (static frontend HTML, CSS, JS, favicons, etc.)
+    if not request.url.path.startswith("/api"):
+        return await call_next(request)
+
+    # Allow CORS preflight requests
+    if request.method == "OPTIONS":
+        return await call_next(request)
+
+    # Whitelisted public API endpoints
+    public_paths = {
+        "/api/auth/status",
+        "/api/auth/setup",
+        "/api/auth/login",
+        "/api/client-error",
+    }
+    if request.url.path in public_paths:
+        return await call_next(request)
+
+    # Check authentication
+    user = get_user_from_request(request)
+    if not user:
+        if get_user_count() == 0:
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={"detail": "Initial setup required", "setup_required": True},
+            )
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"detail": "Authentication required", "authenticated": False},
+        )
+
+    # Store user in request state
+    request.state.user = user
+
+    # Restrict system management endpoints to Admin
+    if request.url.path.startswith("/api/scan") and user.get("role") != "admin":
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={"detail": "Admin privileges required"},
+        )
+
+    if request.url.path.startswith("/api/request") and user.get("role") != "admin":
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={"detail": "Admin privileges required to manage music downloads"},
+        )
+
+    return await call_next(request)
+
 # Mount routers
+app.include_router(auth_routes.router, prefix="/api")
 app.include_router(stream.router, prefix="/api")
 app.include_router(library.router, prefix="/api")
 app.include_router(scan.router, prefix="/api")
 app.include_router(playlists.router, prefix="/api")
 app.include_router(lyrics.router, prefix="/api")
 app.include_router(request_music.router, prefix="/api")
-
-from pydantic import BaseModel
 
 class ClientError(BaseModel):
     type: str = ""
@@ -42,9 +99,6 @@ class ClientError(BaseModel):
 def client_error_endpoint(data: ClientError):
     print(f"\n🔥🔥🔥 [BROWSER ERROR] Type: {data.type}\nMessage: {data.message}\nStack: {data.stack}\n", flush=True)
     return {"status": "ok"}
-
-from pathlib import Path
-from fastapi.staticfiles import StaticFiles
 
 FRONTEND_DIST = Path("/app/frontend_dist")
 if FRONTEND_DIST.exists():

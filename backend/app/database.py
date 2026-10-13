@@ -93,11 +93,22 @@ def init_db() -> None:
             UNIQUE(playlist_id, track_id)
         );
 
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL COLLATE NOCASE,
+            password_hash TEXT NOT NULL,
+            role TEXT DEFAULT 'user',
+            display_name TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_login TIMESTAMP
+        );
+
         CREATE INDEX IF NOT EXISTS idx_tracks_album ON tracks(album_id);
         CREATE INDEX IF NOT EXISTS idx_tracks_artist ON tracks(artist_id);
         CREATE INDEX IF NOT EXISTS idx_albums_artist ON albums(artist_id);
         CREATE INDEX IF NOT EXISTS idx_tracks_title ON tracks(title);
         CREATE INDEX IF NOT EXISTS idx_playlist_tracks ON playlist_tracks(playlist_id, position);
+        CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
         """)
 
         # Migration: ensure position column exists on playlists

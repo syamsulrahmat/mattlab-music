@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Home, Search, X, RefreshCw, Music2, Server, HardDrive, DownloadCloud } from 'lucide-react';
+import { Home, Search, X, RefreshCw, HardDrive, DownloadCloud, Users, LogOut } from 'lucide-react';
 import { MattLabLogo } from './MattLabLogo';
+import { useAuth } from '../context/AuthContext';
 
 export const TopBar = ({ 
   searchQuery, 
@@ -11,12 +12,11 @@ export const TopBar = ({
   stats, 
   onRefreshScan,
   onRequestMusic,
-  canGoBack,
-  canGoForward,
-  onGoBack,
-  onGoForward
+  onOpenUserManagement,
 }) => {
+  const { user, isAdmin, logout } = useAuth();
   const [isScanning, setIsScanning] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const handleScanClick = async () => {
     setIsScanning(true);
@@ -86,7 +86,7 @@ export const TopBar = ({
         </div>
       </div>
 
-      {/* Right: Unraid Sync Status + Rescan Button + Server Avatar */}
+      {/* Right: Unraid Sync Status + Rescan Button + User Profile Avatar */}
       <div className="flex items-center gap-3 shrink-0">
         {stats && (
           <div className="hidden lg:flex items-center gap-1.5 text-xs text-[#b3b3b3] font-medium px-2 py-1 bg-[#121212] rounded-full border border-white/5">
@@ -97,30 +97,89 @@ export const TopBar = ({
           </div>
         )}
 
-        <button
-          onClick={onRequestMusic}
-          className="bg-[#1ed760] hover:bg-[#1fdf64] text-black text-xs font-bold px-3 py-2 rounded-full flex items-center gap-1.5 transition hover:scale-105 active:scale-95 shadow-md shrink-0"
-          title="Request Music via Torrent (Lidarr)"
-        >
-          <DownloadCloud size={14} className="stroke-[2.5]" />
-          <span className="hidden sm:inline">Request</span>
-        </button>
+        {/* Admin only: Request Music button */}
+        {isAdmin && (
+          <button
+            onClick={onRequestMusic}
+            className="bg-[#1ed760] hover:bg-[#1fdf64] text-black text-xs font-bold px-3 py-2 rounded-full flex items-center gap-1.5 transition hover:scale-105 active:scale-95 shadow-md shrink-0"
+            title="Request Music via Torrent (Lidarr)"
+          >
+            <DownloadCloud size={14} className="stroke-[2.5]" />
+            <span className="hidden sm:inline">Request</span>
+          </button>
+        )}
 
-        <button
-          onClick={handleScanClick}
-          disabled={isScanning}
-          className="bg-[#1f1f1f] hover:bg-[#282828] text-white text-xs font-semibold px-3 py-2 rounded-full flex items-center gap-1.5 transition hover:scale-105 active:scale-95 disabled:opacity-50"
-          title="Rescan Unraid Music Library"
-        >
-          <RefreshCw size={13} className={isScanning ? 'animate-spin text-[#1ed760]' : 'text-[#b3b3b3]'} />
-          <span className="hidden sm:inline">{isScanning ? 'Syncing...' : 'Rescan'}</span>
-        </button>
+        {/* Admin only: Rescan library button */}
+        {isAdmin && (
+          <button
+            onClick={handleScanClick}
+            disabled={isScanning}
+            className="bg-[#1f1f1f] hover:bg-[#282828] text-white text-xs font-semibold px-3 py-2 rounded-full flex items-center gap-1.5 transition hover:scale-105 active:scale-95 disabled:opacity-50"
+            title="Rescan Unraid Music Library"
+          >
+            <RefreshCw size={13} className={isScanning ? 'animate-spin text-[#1ed760]' : 'text-[#b3b3b3]'} />
+            <span className="hidden sm:inline">{isScanning ? 'Syncing...' : 'Rescan'}</span>
+          </button>
+        )}
 
-        <div 
-          className="w-9 h-9 rounded-full bg-[#1f1f1f] hover:bg-[#282828] text-[#1ed760] font-bold text-xs flex items-center justify-center ring-1 ring-white/10 shadow transition cursor-pointer"
-          title="MattLab Server"
-        >
-          <Server size={16} />
+        {/* User Profile Avatar & Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+            className="w-9 h-9 rounded-full bg-[#1f1f1f] hover:bg-[#282828] text-[#1ed760] font-bold text-xs flex items-center justify-center ring-1 ring-white/10 shadow transition cursor-pointer"
+            title={user ? `${user.display_name || user.username} (${user.role})` : 'Account'}
+          >
+            {user ? (user.username || 'U').slice(0, 2).toUpperCase() : 'U'}
+          </button>
+
+          {isUserMenuOpen && (
+            <>
+              {/* Backdrop */}
+              <div 
+                className="fixed inset-0 z-40" 
+                onClick={() => setIsUserMenuOpen(false)} 
+              />
+              <div className="absolute right-0 mt-2 w-56 bg-[#282828] border border-white/10 rounded-xl shadow-2xl py-2 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
+                <div className="px-3 py-2 border-b border-white/10">
+                  <div className="font-bold text-white text-sm truncate">
+                    {user?.display_name || user?.username}
+                  </div>
+                  <div className="text-[#a7a7a7] text-[11px] flex items-center justify-between mt-0.5">
+                    <span>@{user?.username}</span>
+                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                      isAdmin ? 'bg-[#1ed760]/20 text-[#1ed760]' : 'bg-white/10 text-[#a7a7a7]'
+                    }`}>
+                      {isAdmin ? 'Admin' : 'User'}
+                    </span>
+                  </div>
+                </div>
+
+                {isAdmin && (
+                  <button
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      onOpenUserManagement?.();
+                    }}
+                    className="w-full text-left px-3 py-2.5 text-white hover:bg-white/10 flex items-center gap-2.5 transition"
+                  >
+                    <Users size={15} className="text-[#1ed760]" />
+                    <span>User Management</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    logout();
+                  }}
+                  className="w-full text-left px-3 py-2.5 text-red-400 hover:bg-red-500/10 flex items-center gap-2.5 transition"
+                >
+                  <LogOut size={15} />
+                  <span>Log Out</span>
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </header>

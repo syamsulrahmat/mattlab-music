@@ -19,7 +19,12 @@ import { AddToPlaylistModal } from './components/AddToPlaylistModal';
 import { CreatePlaylistModal } from './components/CreatePlaylistModal';
 import { RequestMusicModal } from './components/RequestMusicModal';
 import { CommandPaletteModal } from './components/CommandPaletteModal';
+import { SetupAdminModal } from './components/SetupAdminModal';
+import { LoginModal } from './components/LoginModal';
+import { UserManagementModal } from './components/UserManagementModal';
+import { MattLabLogo } from './components/MattLabLogo';
 import { PlayerProvider, usePlayer } from './context/PlayerContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
 const MainAppContent = () => {
   // Navigation & View States
@@ -43,6 +48,10 @@ const MainAppContent = () => {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [requestMusicInitialQuery, setRequestMusicInitialQuery] = useState('');
   const [searchRefreshTrigger, setSearchRefreshTrigger] = useState(0);
+  const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
+
+  // Authentication Context
+  const { user, isAdmin, isAuthenticated, setupRequired, isLoading: isAuthLoading } = useAuth();
 
   const handleOpenRequestMusic = (initialQuery = '') => {
     setRequestMusicInitialQuery(initialQuery);
@@ -112,10 +121,12 @@ const MainAppContent = () => {
   };
 
   useEffect(() => {
-    fetchStats();
-    fetchAlbums();
-    fetchPlaylists();
-  }, []);
+    if (isAuthenticated) {
+      fetchStats();
+      fetchAlbums();
+      fetchPlaylists();
+    }
+  }, [isAuthenticated]);
 
   // Centralized Navigation Dispatcher
   const navigateTo = useCallback((nextState) => {
@@ -405,6 +416,31 @@ const MainAppContent = () => {
     }
   };
 
+  // Auth Guard Views
+  if (isAuthLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen w-screen bg-[#000000] text-white select-none">
+        <MattLabLogo
+          variant="badge"
+          bgColor="#1ed760"
+          color="#000000"
+          className="w-16 h-16 rounded-full shadow-2xl mb-4 animate-pulse"
+        />
+        <div className="text-sm font-semibold text-[#a7a7a7]">
+          Connecting to MattLab Music...
+        </div>
+      </div>
+    );
+  }
+
+  if (setupRequired) {
+    return <SetupAdminModal />;
+  }
+
+  if (!isAuthenticated) {
+    return <LoginModal />;
+  }
+
   return (
     <div className="flex flex-col h-screen w-screen bg-[#000000] overflow-hidden select-none text-white font-sans">
       {/* 1. Top Global Navigation Bar (64px, bg-[#000000]) */}
@@ -417,6 +453,7 @@ const MainAppContent = () => {
         stats={stats}
         onRefreshScan={handleRefreshScan}
         onRequestMusic={() => handleOpenRequestMusic(searchQuery || '')}
+        onOpenUserManagement={() => setIsUserManagementOpen(true)}
         canGoBack={canGoBack}
         canGoForward={canGoForward}
         onGoBack={handleGoBack}
@@ -656,14 +693,22 @@ const MainAppContent = () => {
         onSelectArtist={handleSelectArtist}
         onRequestMusic={(q) => handleOpenRequestMusic(q || '')}
       />
+
+      {/* Admin User Management Modal */}
+      <UserManagementModal
+        isOpen={isUserManagementOpen}
+        onClose={() => setIsUserManagementOpen(false)}
+      />
     </div>
   );
 };
 
 export const App = () => {
   return (
-    <PlayerProvider>
-      <MainAppContent />
-    </PlayerProvider>
+    <AuthProvider>
+      <PlayerProvider>
+        <MainAppContent />
+      </PlayerProvider>
+    </AuthProvider>
   );
 };
