@@ -1197,11 +1197,11 @@ def check_and_import_stuck_lidarr_items():
                         except Exception as e:
                             print(f"[AutoImport] Failed to copy {f.name}: {e}")
 
-                    # Remove from Lidarr queue
+                    # Remove from Lidarr queue without touching the torrent client (VueTorrent)
                     if rec_id:
                         try:
                             req = urllib.request.Request(
-                                f"{LIDARR_URL}/api/v1/queue/{rec_id}?apiKey={LIDARR_API_KEY}&removeFromClient=true",
+                                f"{LIDARR_URL}/api/v1/queue/{rec_id}?apiKey={LIDARR_API_KEY}&removeFromClient=false",
                                 method="DELETE",
                                 headers={"Accept": "application/json"}
                             )

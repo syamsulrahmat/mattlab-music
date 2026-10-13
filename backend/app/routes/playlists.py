@@ -181,6 +181,54 @@ async def get_playlist_detail(playlist_id: int):
         "tracks": tracks,
     }
 
+class PlaylistUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+class BulkRemoveRequest(BaseModel):
+    track_ids: List[int]
+
+@router.patch("/playlists/{playlist_id}")
+async def update_playlist(playlist_id: int, payload: PlaylistUpdate):
+    """Rename a playlist and/or update its description."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM playlists WHERE id = ?", (playlist_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Playlist not found")
+
+        if payload.name is not None:
+            clean_name = payload.name.strip()
+            if not clean_name:
+                raise HTTPException(status_code=400, detail="Playlist name cannot be empty")
+            cursor.execute(
+                "UPDATE playlists SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (clean_name[:100], playlist_id),
+            )
+        if payload.description is not None:
+            cursor.execute(
+                "UPDATE playlists SET description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (payload.description.strip()[:300], playlist_id),
+            )
+        cursor.execute("SELECT id, name, description FROM playlists WHERE id = ?", (playlist_id,))
+        row = cursor.fetchone()
+    return dict(row)
+
+@router.post("/playlists/{playlist_id}/tracks/remove")
+async def bulk_remove_tracks(playlist_id: int, payload: BulkRemoveRequest):
+    """Remove several tracks from a playlist in one call (multi-select delete)."""
+    if not payload.track_ids:
+        return {"status": "removed", "count": 0}
+    with get_db() as conn:
+        cursor = conn.cursor()
+        placeholders = ",".join("?" for _ in payload.track_ids)
+        cursor.execute(
+            f"DELETE FROM playlist_tracks WHERE playlist_id = ? AND track_id IN ({placeholders})",
+            (playlist_id, *payload.track_ids),
+        )
+        removed = cursor.rowcount
+    return {"status": "removed", "count": removed}
+
 @router.post("/playlists/{playlist_id}/tracks")
 async def add_track_to_playlist(playlist_id: int, payload: AddTrackRequest):
     """Add a track to a playlist, checking for duplicates."""

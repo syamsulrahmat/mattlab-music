@@ -25,7 +25,7 @@ export const SearchView = ({
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
-      if ((e.key === 'Enter' || e.code === 'Space') && selectedTrackId && results?.tracks) {
+      if (e.key === 'Enter' && selectedTrackId && results?.tracks) {
         const found = results.tracks.find((t) => t.id === selectedTrackId);
         if (found) {
           e.preventDefault();

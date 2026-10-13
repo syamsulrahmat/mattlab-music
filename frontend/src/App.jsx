@@ -194,7 +194,13 @@ const MainAppContent = () => {
 
       if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
 
-      if (e.code === 'Space') {
+      if ((e.ctrlKey || e.metaKey) && e.code === 'ArrowUp') {
+        e.preventDefault();
+        setVolume(Math.min(1, volume + 0.05));
+      } else if ((e.ctrlKey || e.metaKey) && e.code === 'ArrowDown') {
+        e.preventDefault();
+        setVolume(Math.max(0, volume - 0.05));
+      } else if (e.code === 'Space') {
         e.preventDefault();
         togglePlay();
       } else if (e.code === 'ArrowLeft') {
@@ -203,12 +209,6 @@ const MainAppContent = () => {
       } else if (e.code === 'ArrowRight') {
         e.preventDefault();
         seek(Math.min(duration || 100, currentTime + 5));
-      } else if (e.code === 'ArrowUp') {
-        e.preventDefault();
-        setVolume(Math.min(1, volume + 0.05));
-      } else if (e.code === 'ArrowDown') {
-        e.preventDefault();
-        setVolume(Math.max(0, volume - 0.05));
       } else if (e.key === 'm' || e.key === 'M') {
         e.preventDefault();
         toggleMute();
@@ -536,12 +536,13 @@ const MainAppContent = () => {
               )}
 
               {activeTab === 'playlist-detail' && (
-                <div className="p-4 sm:p-6">
+                <div className="w-full">
                   {selectedPlaylistId ? (
                     <PlaylistDetail
                       playlistId={selectedPlaylistId}
                       onBack={handleGoBack}
                       onPlaylistDeleted={handlePlaylistDeleted}
+                      onPlaylistUpdated={fetchPlaylists}
                       onSelectAlbum={handleSelectAlbum}
                       onSelectArtist={handleSelectArtist}
                       onContextMenu={handleOpenContextMenu}

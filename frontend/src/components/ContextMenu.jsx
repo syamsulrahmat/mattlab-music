@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { 
-  Play, Pause, Plus, Heart, ListPlus, Disc3, Mic2, CornerDownRight 
+  Play, Pause, Plus, Heart, ListPlus, Disc3, Mic2, CornerDownRight, Trash2 
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 
@@ -175,6 +175,23 @@ export const ContextMenu = ({
               <Mic2 size={15} className="text-[#b3b3b3]" />
               <span>Go to artist</span>
             </button>
+          )}
+
+          {(data.onDelete || data.onRemoveFromPlaylist) && (
+            <>
+              <div className="h-[1px] bg-white/10 my-1 mx-2" />
+              <button
+                onClick={() => {
+                  if (data.onDelete) data.onDelete();
+                  else if (data.onRemoveFromPlaylist) data.onRemoveFromPlaylist();
+                  onClose();
+                }}
+                className="w-full text-left px-3.5 py-2 hover:bg-red-500/20 hover:text-red-400 flex items-center gap-2.5 transition text-red-400 font-semibold"
+              >
+                <Trash2 size={15} />
+                <span>{data.deleteLabel || 'Delete from playlist'}</span>
+              </button>
+            </>
           )}
         </>
       )}

@@ -18,13 +18,13 @@ export const FavoritesView = ({
   const [tracks, setTracks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTrackId, setSelectedTrackId] = useState(null);
-  const { currentTrack, isPlaying, playTrack, togglePlay, toggleFavorite } = usePlayer();
+  const { currentTrack, isPlaying, isBuffering, playTrack, togglePlay, toggleFavorite } = usePlayer();
 
   // Keyboard navigation: Enter or Space to play selected track
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
-      if ((e.key === 'Enter' || e.code === 'Space') && selectedTrackId && tracks.length > 0) {
+      if (e.key === 'Enter' && selectedTrackId && tracks.length > 0) {
         const found = tracks.find((t) => t.id === selectedTrackId);
         if (found) {
           e.preventDefault();
@@ -139,10 +139,12 @@ export const FavoritesView = ({
             {tracks.map((track, idx) => {
               const isThisTrack = currentTrack?.id === track.id;
               const isThisPlaying = isThisTrack && isPlaying;
+              const isThisBuffering = isThisTrack && isBuffering;
               const isSelected = selectedTrackId === track.id;
               return (
                 <div
                   key={track.id}
+                  data-track-id={track.id}
                   onClick={() => setSelectedTrackId(track.id)}
                   onDoubleClick={() => playTrack(track, tracks)}
                   onContextMenu={(e) => {
@@ -164,35 +166,56 @@ export const FavoritesView = ({
                     e.dataTransfer.setData('text/plain', String(track.id));
                     e.dataTransfer.effectAllowed = 'copy';
                   }}
-                  className={`grid grid-cols-[40px_1fr_1fr_40px_70px] px-4 py-3 rounded-md group transition items-center cursor-pointer select-none active:cursor-grabbing ${
-                    isThisTrack
-                      ? 'bg-[#242424] text-[#1ed760]'
-                      : isSelected
+                  className={`grid grid-cols-[40px_1fr_1fr_40px_70px] px-4 py-2.5 rounded-lg group transition items-center cursor-default select-none ${
+                    isSelected
                       ? 'bg-[#2a2a2a] ring-1 ring-white/20 text-white'
                       : 'hover:bg-[#1f1f1f] text-white'
                   }`}
                 >
-                  <span className="text-sm font-medium text-[#b3b3b3] group-hover:hidden">
-                    {isThisPlaying ? <span className="text-[#1ed760]">▶</span> : idx + 1}
-                  </span>
-                  <span 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (isThisTrack) {
-                        togglePlay();
-                      } else {
-                        playTrack(track, tracks);
-                      }
-                    }}
-                    className="hidden group-hover:block text-[#1ed760] cursor-pointer"
-                    title="Play"
-                  >
-                    {isThisPlaying ? (
-                      <Pause size={16} className="fill-current" />
-                    ) : (
-                      <Play size={16} className="fill-current" />
-                    )}
-                  </span>
+                  {/* Column 1: Index / Play-Pause / Animated Equalizer / Loading Wave */}
+                  <div className="flex items-center justify-center w-8 h-8">
+                    {/* Unfocused state (group-hover:hidden) */}
+                    <div className="flex items-center justify-center group-hover:hidden">
+                      {isThisBuffering ? (
+                        /* Mini Circular Green Spinner */
+                        <div className="w-3.5 h-3.5 border-2 border-[#1ed760] border-t-transparent rounded-full animate-spin" title="Loading audio..." />
+                      ) : isThisPlaying ? (
+                        /* Animated Spotify Equalizer Bars */
+                        <div className="flex items-end justify-center gap-[2.5px] w-3.5 h-3.5 pb-0.5" title="Playing">
+                          <span className="w-[3px] bg-[#1ed760] rounded-full animate-eq-1" />
+                          <span className="w-[3px] bg-[#1ed760] rounded-full animate-eq-2" />
+                          <span className="w-[3px] bg-[#1ed760] rounded-full animate-eq-3" />
+                          <span className="w-[3px] bg-[#1ed760] rounded-full animate-eq-4" />
+                        </div>
+                      ) : (
+                        /* Normal track number (green if current track paused, gray otherwise) */
+                        <span className={`text-sm font-medium ${isThisTrack ? 'text-[#1ed760]' : 'text-[#b3b3b3]'}`}>
+                          {idx + 1}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Hover state (hidden group-hover:flex) */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isThisTrack) {
+                          togglePlay();
+                        } else {
+                          playTrack(track, tracks);
+                        }
+                      }}
+                      className="hidden group-hover:flex items-center justify-center w-7 h-7 text-white hover:text-[#1ed760] transition"
+                      title={isThisPlaying || isThisBuffering ? "Pause" : "Play"}
+                    >
+                      {isThisPlaying || isThisBuffering ? (
+                        <Pause size={15} className="fill-current" />
+                      ) : (
+                        <Play size={15} className="fill-current ml-0.5" />
+                      )}
+                    </button>
+                  </div>
 
                   <div className="flex items-center gap-3 truncate pr-4">
                     <img
@@ -218,15 +241,17 @@ export const FavoritesView = ({
                     </div>
                   </div>
 
-                  <span 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (onSelectAlbum) onSelectAlbum(track.album_id);
-                    }}
-                    className="hidden md:block text-xs text-[#b3b3b3] hover:text-white hover:underline truncate cursor-pointer pr-4"
-                  >
-                    {track.album_title}
-                  </span>
+                  <div className="hidden md:block truncate pr-4">
+                    <span 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onSelectAlbum) onSelectAlbum(track.album_id);
+                      }}
+                      className="text-xs text-[#b3b3b3] hover:text-white hover:underline truncate cursor-pointer inline"
+                    >
+                      {track.album_title}
+                    </span>
+                  </div>
 
                   <button
                     onClick={(e) => handleHeartClick(e, track.id)}

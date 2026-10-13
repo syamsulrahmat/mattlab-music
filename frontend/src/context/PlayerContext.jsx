@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { audioPreloader } from '../utils/audioPreloader';
+import { shuffleArray } from '../utils/shuffle';
 
 const PlayerContext = createContext(null);
 
@@ -7,6 +8,7 @@ export const PlayerProvider = ({ children }) => {
   const audioRef = useRef(new Audio());
   const [currentTrack, setCurrentTrack] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(() => {
@@ -54,6 +56,9 @@ export const PlayerProvider = ({ children }) => {
 
     const handleTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
+      if (!audio.paused && audio.currentTime > 0) {
+        setIsBuffering(false);
+      }
     };
 
     const handleLoadedMetadata = () => {
@@ -61,17 +66,41 @@ export const PlayerProvider = ({ children }) => {
     };
 
     const handleEnded = () => {
+      setIsBuffering(false);
       handleNextTrackAuto();
     };
 
     const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
+    const handlePause = () => {
+      setIsPlaying(false);
+      setIsBuffering(false);
+    };
+    const handleWaiting = () => setIsBuffering(true);
+    const handlePlaying = () => {
+      setIsBuffering(false);
+      setIsPlaying(true);
+    };
+    const handleLoadStart = () => setIsBuffering(true);
+    const handleCanPlay = () => {
+      if (!audio.paused && audio.currentTime > 0) {
+        setIsBuffering(false);
+      }
+    };
+    const handleError = () => {
+      setIsBuffering(false);
+      setIsPlaying(false);
+    };
 
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
+    audio.addEventListener('waiting', handleWaiting);
+    audio.addEventListener('playing', handlePlaying);
+    audio.addEventListener('loadstart', handleLoadStart);
+    audio.addEventListener('canplay', handleCanPlay);
+    audio.addEventListener('error', handleError);
 
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate);
@@ -79,6 +108,11 @@ export const PlayerProvider = ({ children }) => {
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
+      audio.removeEventListener('waiting', handleWaiting);
+      audio.removeEventListener('playing', handlePlaying);
+      audio.removeEventListener('loadstart', handleLoadStart);
+      audio.removeEventListener('canplay', handleCanPlay);
+      audio.removeEventListener('error', handleError);
     };
   }, [queue, queueIndex, repeatMode, isShuffle]);
 
@@ -117,7 +151,7 @@ export const PlayerProvider = ({ children }) => {
     if (newQueue) {
       if (isShuffle && newQueue.length > 1) {
         const others = newQueue.filter((t) => t.id !== track.id);
-        const shuffledOthers = [...others].sort(() => Math.random() - 0.5);
+        const shuffledOthers = shuffleArray(others);
         setQueue([track, ...shuffledOthers]);
         setQueueIndex(0);
       } else {
@@ -128,9 +162,13 @@ export const PlayerProvider = ({ children }) => {
     }
 
     setCurrentTrack(track);
+    setIsBuffering(true);
     const preloadedAudio = audioPreloader.getPreloadedAudio(track.id);
     audio.src = preloadedAudio || track.stream_url || `/api/stream/${track.id}`;
-    audio.play().catch((err) => console.warn('Autoplay prevented:', err));
+    audio.play().catch((err) => {
+      console.warn('Autoplay prevented:', err);
+      setIsBuffering(false);
+    });
 
     // Background prefetch lyrics so they render instantly with 0ms delay
     if (track?.id) {
@@ -162,7 +200,13 @@ export const PlayerProvider = ({ children }) => {
     if (isPlaying) {
       audio.pause();
     } else {
-      audio.play().catch((err) => console.warn('Play prevented:', err));
+      if (audio.readyState < 3) {
+        setIsBuffering(true);
+      }
+      audio.play().catch((err) => {
+        console.warn('Play prevented:', err);
+        setIsBuffering(false);
+      });
     }
   };
 
@@ -191,7 +235,7 @@ export const PlayerProvider = ({ children }) => {
       playTrack(queue[nextIdx]);
     } else if (repeatMode === 'all') {
       if (isShuffle) {
-        const reshuffled = [...queue].sort(() => Math.random() - 0.5);
+        const reshuffled = shuffleArray(queue);
         setQueue(reshuffled);
         setQueueIndex(0);
         playTrack(reshuffled[0]);
@@ -227,7 +271,7 @@ export const PlayerProvider = ({ children }) => {
       if (next && queue.length > 1 && queueIndex >= 0) {
         const upcoming = queue.slice(queueIndex + 1);
         if (upcoming.length > 1) {
-          const shuffledUpcoming = [...upcoming].sort(() => Math.random() - 0.5);
+          const shuffledUpcoming = shuffleArray(upcoming);
           setQueue([...queue.slice(0, queueIndex + 1), ...shuffledUpcoming]);
         }
       }
@@ -675,6 +719,7 @@ export const PlayerProvider = ({ children }) => {
       value={{
         currentTrack,
         isPlaying,
+        isBuffering,
         currentTime,
         duration,
         volume,
