@@ -192,21 +192,25 @@ const MainAppContent = () => {
         return;
       }
 
-      if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
-
-      if ((e.ctrlKey || e.metaKey) && e.code === 'ArrowUp') {
+      if ((e.ctrlKey || e.metaKey) && (e.code === 'ArrowUp' || e.key === 'ArrowUp')) {
         e.preventDefault();
         setVolume(Math.min(1, volume + 0.05));
-      } else if ((e.ctrlKey || e.metaKey) && e.code === 'ArrowDown') {
+      } else if ((e.ctrlKey || e.metaKey) && (e.code === 'ArrowDown' || e.key === 'ArrowDown')) {
         e.preventDefault();
         setVolume(Math.max(0, volume - 0.05));
+      } else if ((e.ctrlKey || e.metaKey) && (e.code === 'ArrowLeft' || e.key === 'ArrowLeft')) {
+        e.preventDefault();
+        prevTrack();
+      } else if ((e.ctrlKey || e.metaKey) && (e.code === 'ArrowRight' || e.key === 'ArrowRight')) {
+        e.preventDefault();
+        nextTrack();
       } else if (e.code === 'Space') {
         e.preventDefault();
         togglePlay();
-      } else if (e.code === 'ArrowLeft') {
+      } else if (e.code === 'ArrowLeft' || e.key === 'ArrowLeft') {
         e.preventDefault();
         seek(Math.max(0, currentTime - 5));
-      } else if (e.code === 'ArrowRight') {
+      } else if (e.code === 'ArrowRight' || e.key === 'ArrowRight') {
         e.preventDefault();
         seek(Math.min(duration || 100, currentTime + 5));
       } else if (e.key === 'm' || e.key === 'M') {

@@ -401,49 +401,62 @@ export const AlbumDetail = ({
                     : 'hover:bg-[#1f1f1f] text-white'
                 }`}
               >
-                {/* Column 1: Index / Play-Pause / Animated Equalizer / Loading Wave */}
+                {/* Column 1: Index / Play-Pause / Animated Equalizer / Loading Spinner */}
                 <div className="flex items-center justify-center w-8 h-8">
-                  {/* Unfocused state (group-hover:hidden) */}
-                  <div className="flex items-center justify-center group-hover:hidden">
-                    {isThisBuffering ? (
-                      /* Mini Circular Green Spinner */
-                      <div className="w-3.5 h-3.5 border-2 border-[#1ed760] border-t-transparent rounded-full animate-spin" title="Loading audio..." />
-                    ) : isThisPlaying ? (
-                      /* Animated Spotify Equalizer Bars */
-                      <div className="flex items-end justify-center gap-[2.5px] w-3.5 h-3.5 pb-0.5" title="Playing">
-                        <span className="w-[3px] bg-[#1ed760] rounded-full animate-eq-1" />
-                        <span className="w-[3px] bg-[#1ed760] rounded-full animate-eq-2" />
-                        <span className="w-[3px] bg-[#1ed760] rounded-full animate-eq-3" />
-                        <span className="w-[3px] bg-[#1ed760] rounded-full animate-eq-4" />
-                      </div>
-                    ) : (
-                      /* Normal track number (green if current track paused, gray otherwise) */
-                      <span className={`text-sm font-medium ${isThisTrack ? 'text-[#1ed760]' : 'text-[#b3b3b3]'}`}>
-                        {idx + 1}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Hover state (hidden group-hover:flex) */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (isThisTrack) {
+                  {isThisBuffering ? (
+                    /* Spinner stays visible even on hover until song actually plays */
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
                         togglePlay();
-                      } else {
-                        handleTrackPlay(track);
-                      }
-                    }}
-                    className="hidden group-hover:flex items-center justify-center w-7 h-7 text-white hover:text-[#1ed760] transition"
-                    title={isThisPlaying || isThisBuffering ? "Pause" : "Play"}
-                  >
-                    {isThisPlaying || isThisBuffering ? (
-                      <Pause size={15} className="fill-current" />
-                    ) : (
-                      <Play size={15} className="fill-current ml-0.5" />
-                    )}
-                  </button>
+                      }}
+                      className="flex items-center justify-center w-7 h-7 cursor-pointer"
+                      title="Buffering audio... (click to cancel)"
+                    >
+                      <div className="w-3.5 h-3.5 border-2 border-[#1ed760] border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : (
+                    <>
+                      {/* Unfocused state (group-hover:hidden) */}
+                      <div className="flex items-center justify-center group-hover:hidden">
+                        {isThisPlaying ? (
+                          /* Animated Spotify Equalizer Bars */
+                          <div className="flex items-end justify-center gap-[2.5px] w-3.5 h-3.5 pb-0.5" title="Playing">
+                            <span className="w-[3px] bg-[#1ed760] rounded-full animate-eq-1" />
+                            <span className="w-[3px] bg-[#1ed760] rounded-full animate-eq-2" />
+                            <span className="w-[3px] bg-[#1ed760] rounded-full animate-eq-3" />
+                            <span className="w-[3px] bg-[#1ed760] rounded-full animate-eq-4" />
+                          </div>
+                        ) : (
+                          /* Normal track number (green if current track paused, gray otherwise) */
+                          <span className={`text-sm font-medium ${isThisTrack ? 'text-[#1ed760]' : 'text-[#b3b3b3]'}`}>
+                            {idx + 1}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Hover state (hidden group-hover:flex) */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isThisTrack) {
+                            togglePlay();
+                          } else {
+                            handleTrackPlay(track);
+                          }
+                        }}
+                        className="hidden group-hover:flex items-center justify-center w-7 h-7 text-white hover:text-[#1ed760] transition"
+                        title={isThisPlaying ? "Pause" : "Play"}
+                      >
+                        {isThisPlaying ? (
+                          <Pause size={15} className="fill-current" />
+                        ) : (
+                          <Play size={15} className="fill-current ml-0.5" />
+                        )}
+                      </button>
+                    </>
+                  )}
                 </div>
 
                 {/* Column 2: Title & Artist info */}
