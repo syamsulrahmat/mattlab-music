@@ -5,7 +5,22 @@ import { shuffleArray } from '../utils/shuffle';
 const PlayerContext = createContext(null);
 
 export const PlayerProvider = ({ children }) => {
-  const audioRef = useRef(new Audio());
+  const audioRef = useRef(null);
+  const standbyAudioRef = useRef(null);
+  const isCrossfadingRef = useRef(false);
+  const crossfadeTimerRef = useRef(null);
+
+  if (!audioRef.current) {
+    const a = new Audio();
+    a.crossOrigin = 'anonymous';
+    audioRef.current = a;
+  }
+  if (!standbyAudioRef.current) {
+    const b = new Audio();
+    b.crossOrigin = 'anonymous';
+    standbyAudioRef.current = b;
+  }
+
   const [currentTrack, setCurrentTrack] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
@@ -23,6 +38,237 @@ export const PlayerProvider = ({ children }) => {
   const [favoriteIds, setFavoriteIds] = useState(new Set());
   const [preloadedTrackIds, setPreloadedTrackIds] = useState(() => audioPreloader.getPreloadedTrackIds());
   const [preloadCount, setPreloadCountState] = useState(() => audioPreloader.getMaxPreloadCount());
+
+  // Karaoke Mode (Pure Demucs AI Instrumental Toggle - starts OFF by default on load/reload)
+  const [isKaraokeMode, setIsKaraokeMode] = useState(() => {
+    try {
+      localStorage.removeItem('music_karaoke_enabled');
+    } catch (_) {}
+    return false;
+  });
+
+  // AI Stem Status: { [trackId]: { exists: boolean, status: string, progress: number } }
+  const [karaokeStemStatus, setKaraokeStemStatus] = useState({});
+  const [isGeneratingStems, setIsGeneratingStems] = useState(false);
+
+  // In-app Toast Notification System
+  const [toastMessage, setToastMessage] = useState(null);
+  const toastTimeoutRef = useRef(null);
+
+  const showToast = useCallback((msg, duration = 4000) => {
+    setToastMessage(msg);
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastMessage(null);
+    }, duration);
+  }, []);
+
+  const fetchKaraokeStatus = useCallback(async (trackId) => {
+    if (!trackId) return null;
+    try {
+      const res = await fetch(`/api/karaoke/${trackId}/status`);
+      if (res.ok) {
+        const data = await res.json();
+        setKaraokeStemStatus((prev) => ({
+          ...prev,
+          [trackId]: data
+        }));
+        return data;
+      }
+    } catch (_) {}
+    return null;
+  }, []);
+
+  const crossfadeToSource = useCallback((targetSrc, targetMode) => {
+    const currentAudio = audioRef.current;
+    const standbyAudio = standbyAudioRef.current;
+    if (!currentTrack || !currentAudio || !standbyAudio) return;
+
+    const baseVolume = isMuted ? 0 : volume;
+    const wasPlaying = !currentAudio.paused;
+    const currentTimeSnapshot = currentAudio.currentTime;
+
+    // If audio is paused, just switch source directly without crossfade
+    if (!wasPlaying) {
+      setIsKaraokeMode(targetMode);
+      currentAudio.src = targetSrc;
+      currentAudio.currentTime = currentTimeSnapshot;
+      return;
+    }
+
+    // Cancel any running crossfade
+    if (crossfadeTimerRef.current) {
+      cancelAnimationFrame(crossfadeTimerRef.current);
+      crossfadeTimerRef.current = null;
+    }
+
+    isCrossfadingRef.current = true;
+    setIsKaraokeMode(targetMode);
+
+    // Prepare standby audio
+    standbyAudio.src = targetSrc;
+    standbyAudio.volume = 0;
+    standbyAudio.playbackRate = currentAudio.playbackRate;
+
+    const startCrossfade = async () => {
+      try {
+        standbyAudio.currentTime = currentAudio.currentTime;
+        await standbyAudio.play();
+      } catch (err) {
+        console.warn('Crossfade play interrupted:', err);
+        currentAudio.src = targetSrc;
+        currentAudio.currentTime = currentTimeSnapshot;
+        currentAudio.volume = baseVolume;
+        currentAudio.play().catch(() => {});
+        isCrossfadingRef.current = false;
+        return;
+      }
+
+      const durationMs = 350;
+      const startTime = performance.now();
+
+      const crossfadeStep = (now) => {
+        const elapsed = now - startTime;
+        const progress = Math.min(1, Math.max(0, elapsed / durationMs));
+
+        // Equal-power crossfade curve: constant perceived loudness
+        const outFactor = Math.cos(progress * 0.5 * Math.PI);
+        const inFactor = Math.sin(progress * 0.5 * Math.PI);
+
+        currentAudio.volume = Math.max(0, Math.min(1, baseVolume * outFactor));
+        standbyAudio.volume = Math.max(0, Math.min(1, baseVolume * inFactor));
+
+        if (progress < 1) {
+          crossfadeTimerRef.current = requestAnimationFrame(crossfadeStep);
+        } else {
+          // Completed crossfade
+          currentAudio.pause();
+          currentAudio.volume = 0;
+          standbyAudio.volume = baseVolume;
+
+          // Swap active audio reference
+          audioRef.current = standbyAudio;
+          standbyAudioRef.current = currentAudio;
+
+          isCrossfadingRef.current = false;
+          crossfadeTimerRef.current = null;
+        }
+      };
+
+      crossfadeTimerRef.current = requestAnimationFrame(crossfadeStep);
+    };
+
+    if (standbyAudio.readyState >= 3) {
+      startCrossfade();
+    } else {
+      let isHandled = false;
+      const onReady = () => {
+        if (isHandled) return;
+        isHandled = true;
+        standbyAudio.removeEventListener('canplay', onReady);
+        standbyAudio.removeEventListener('seeked', onReady);
+        startCrossfade();
+      };
+
+      standbyAudio.addEventListener('canplay', onReady, { once: true });
+      standbyAudio.addEventListener('seeked', onReady, { once: true });
+
+      setTimeout(() => {
+        if (!isHandled) onReady();
+      }, 2000);
+    }
+  }, [currentTrack, volume, isMuted]);
+
+  const generateKaraokeStems = useCallback(async (trackId) => {
+    if (!trackId) return;
+    setIsGeneratingStems(true);
+    setKaraokeStemStatus((prev) => ({
+      ...prev,
+      [trackId]: { exists: false, status: 'queued', progress: 0 }
+    }));
+
+    try {
+      const res = await fetch(`/api/karaoke/${trackId}/generate`, { method: 'POST' });
+      if (res.ok) {
+        const pollTimer = setInterval(async () => {
+          const statusRes = await fetch(`/api/karaoke/${trackId}/status`);
+          if (statusRes.ok) {
+            const data = await statusRes.json();
+            setKaraokeStemStatus((prev) => ({
+              ...prev,
+              [trackId]: data
+            }));
+
+            if (data.exists || data.status === 'ready' || data.status === 'failed') {
+              clearInterval(pollTimer);
+              setIsGeneratingStems(false);
+
+              // If currently playing this track in karaoke mode, seamlessly crossfade to instrumental!
+              if ((data.exists || data.status === 'ready') && currentTrack?.id === trackId && isKaraokeMode) {
+                crossfadeToSource(`/api/karaoke/${trackId}/stream/instrumental`, true);
+              }
+            }
+          }
+        }, 3000);
+      } else {
+        setIsGeneratingStems(false);
+      }
+    } catch (err) {
+      console.error('Failed to request karaoke stems:', err);
+      setIsGeneratingStems(false);
+    }
+  }, [currentTrack?.id, isKaraokeMode, crossfadeToSource]);
+
+  const batchGenerateKaraoke = useCallback(async (trackIds) => {
+    if (!Array.isArray(trackIds) || trackIds.length === 0) return;
+    try {
+      showToast(`⚡ Pre-caching ${trackIds.length} tracks for Karaoke...`);
+      const res = await fetch('/api/karaoke/batch-generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ track_ids: trackIds })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.queued_count > 0) {
+          showToast(`⚡ Queued ${data.queued_count} tracks for Karaoke (${data.already_ready_count} already cached)`);
+        } else {
+          showToast(`✨ All ${data.already_ready_count} tracks are already cached for Karaoke!`);
+        }
+        if (currentTrack?.id && trackIds.includes(currentTrack.id)) {
+          fetchKaraokeStatus(currentTrack.id);
+        }
+        return data;
+      }
+    } catch (err) {
+      console.error('Failed to batch generate karaoke stems:', err);
+      showToast('⚠️ Failed to queue karaoke stem generation');
+    }
+  }, [currentTrack?.id, fetchKaraokeStatus, showToast]);
+
+  const toggleKaraoke = useCallback(async () => {
+    if (!currentTrack) return;
+
+    let stemInfo = karaokeStemStatus[currentTrack.id];
+    if (stemInfo === undefined) {
+      stemInfo = await fetchKaraokeStatus(currentTrack.id);
+    }
+
+    if (!isKaraokeMode) {
+      // User turned Karaoke ON
+      if (stemInfo?.exists) {
+        crossfadeToSource(`/api/karaoke/${currentTrack.id}/stream/instrumental`, true);
+      } else {
+        // Stems not ready; start stem separation
+        generateKaraokeStems(currentTrack.id);
+      }
+    } else {
+      // User turned Karaoke OFF: restore original track stream
+      const preloaded = audioPreloader.getPreloadedAudio(currentTrack.id);
+      const originalSrc = preloaded || currentTrack.stream_url || `/api/stream/${currentTrack.id}`;
+      crossfadeToSource(originalSrc, false);
+    }
+  }, [isKaraokeMode, currentTrack, karaokeStemStatus, fetchKaraokeStatus, generateKaraokeStems, crossfadeToSource]);
 
   const setPreloadCount = useCallback((count) => {
     const updated = audioPreloader.setMaxPreloadCount(count);
@@ -63,76 +309,135 @@ export const PlayerProvider = ({ children }) => {
   // Initialize audio element settings
   useEffect(() => {
     const audio = audioRef.current;
-    audio.volume = volume;
+    if (audio && !isCrossfadingRef.current) {
+      audio.volume = isMuted ? 0 : volume;
+    }
 
-    const handleTimeUpdate = () => {
-      setCurrentTime(audio.currentTime);
-      if (!audio.paused && audio.currentTime > 0) {
+    const handleTimeUpdate = (e) => {
+      if (e.target !== audioRef.current) return;
+      setCurrentTime(e.target.currentTime);
+      if (!e.target.paused && e.target.currentTime > 0) {
         setIsBuffering(false);
       }
     };
 
-    const handleLoadedMetadata = () => {
-      setDuration(audio.duration || 0);
+    const handleLoadedMetadata = (e) => {
+      if (e.target !== audioRef.current) return;
+      setDuration(e.target.duration || 0);
     };
 
-    const handleEnded = () => {
+    const handleEnded = (e) => {
+      if (e.target !== audioRef.current || isCrossfadingRef.current) return;
       setIsBuffering(false);
       handleNextTrackAuto();
     };
 
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => {
+    const handlePlay = (e) => {
+      if (e.target !== audioRef.current) return;
+      setIsPlaying(true);
+    };
+
+    const handlePause = (e) => {
+      if (e.target !== audioRef.current || isCrossfadingRef.current) return;
       setIsPlaying(false);
       setIsBuffering(false);
     };
-    const handleWaiting = () => setIsBuffering(true);
-    const handlePlaying = () => {
+
+    const handleWaiting = (e) => {
+      if (e.target !== audioRef.current || isCrossfadingRef.current) return;
+      setIsBuffering(true);
+    };
+
+    const handlePlaying = (e) => {
+      if (e.target !== audioRef.current) return;
       setIsBuffering(false);
       setIsPlaying(true);
     };
-    const handleLoadStart = () => setIsBuffering(true);
-    const handleCanPlay = () => {
-      if (!audio.paused && audio.currentTime > 0) {
+
+    const handleLoadStart = (e) => {
+      if (e.target !== audioRef.current || isCrossfadingRef.current) return;
+      setIsBuffering(true);
+    };
+
+    const handleCanPlay = (e) => {
+      if (e.target !== audioRef.current) return;
+      if (!e.target.paused && e.target.currentTime > 0) {
         setIsBuffering(false);
       }
     };
-    const handleError = () => {
+
+    const handleError = (e) => {
+      if (e.target !== audioRef.current || isCrossfadingRef.current) return;
       setIsBuffering(false);
       setIsPlaying(false);
     };
 
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-    audio.addEventListener('ended', handleEnded);
-    audio.addEventListener('play', handlePlay);
-    audio.addEventListener('pause', handlePause);
-    audio.addEventListener('waiting', handleWaiting);
-    audio.addEventListener('playing', handlePlaying);
-    audio.addEventListener('loadstart', handleLoadStart);
-    audio.addEventListener('canplay', handleCanPlay);
-    audio.addEventListener('error', handleError);
+    const elements = [audioRef.current, standbyAudioRef.current].filter(Boolean);
+    elements.forEach((el) => {
+      el.addEventListener('timeupdate', handleTimeUpdate);
+      el.addEventListener('loadedmetadata', handleLoadedMetadata);
+      el.addEventListener('ended', handleEnded);
+      el.addEventListener('play', handlePlay);
+      el.addEventListener('pause', handlePause);
+      el.addEventListener('waiting', handleWaiting);
+      el.addEventListener('playing', handlePlaying);
+      el.addEventListener('loadstart', handleLoadStart);
+      el.addEventListener('canplay', handleCanPlay);
+      el.addEventListener('error', handleError);
+    });
 
     return () => {
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
-      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      audio.removeEventListener('ended', handleEnded);
-      audio.removeEventListener('play', handlePlay);
-      audio.removeEventListener('pause', handlePause);
-      audio.removeEventListener('waiting', handleWaiting);
-      audio.removeEventListener('playing', handlePlaying);
-      audio.removeEventListener('loadstart', handleLoadStart);
-      audio.removeEventListener('canplay', handleCanPlay);
-      audio.removeEventListener('error', handleError);
+      elements.forEach((el) => {
+        el.removeEventListener('timeupdate', handleTimeUpdate);
+        el.removeEventListener('loadedmetadata', handleLoadedMetadata);
+        el.removeEventListener('ended', handleEnded);
+        el.removeEventListener('play', handlePlay);
+        el.removeEventListener('pause', handlePause);
+        el.removeEventListener('waiting', handleWaiting);
+        el.removeEventListener('playing', handlePlaying);
+        el.removeEventListener('loadstart', handleLoadStart);
+        el.removeEventListener('canplay', handleCanPlay);
+        el.removeEventListener('error', handleError);
+      });
     };
-  }, [queue, queueIndex, repeatMode, isShuffle]);
+  }, [queue, queueIndex, repeatMode, isShuffle, isKaraokeMode]);
 
   // Sync volume to audio element
   useEffect(() => {
     const audio = audioRef.current;
-    audio.volume = isMuted ? 0 : volume;
+    if (audio && !isCrossfadingRef.current) {
+      audio.volume = isMuted ? 0 : volume;
+    }
     localStorage.setItem('music_volume', volume.toString());
   }, [volume, isMuted]);
+
+  // Prefetch karaoke stem status whenever current track changes
+  useEffect(() => {
+    if (currentTrack?.id) {
+      fetchKaraokeStatus(currentTrack.id);
+    }
+  }, [currentTrack?.id, fetchKaraokeStatus]);
+
+  // Pre-buffer alternate audio stream (instrumental or vocal) on standby element for instant 0ms crossfade
+  useEffect(() => {
+    if (!currentTrack?.id || isCrossfadingRef.current) return;
+    const standbyAudio = standbyAudioRef.current;
+    if (!standbyAudio) return;
+
+    const stemInfo = karaokeStemStatus[currentTrack.id];
+    if (stemInfo?.exists) {
+      const preloadedAudio = audioPreloader.getPreloadedAudio(currentTrack.id);
+      const standardUrl = preloadedAudio || currentTrack.stream_url || `/api/stream/${currentTrack.id}`;
+      const instrumentalUrl = `/api/karaoke/${currentTrack.id}/stream/instrumental`;
+      const targetSrc = isKaraokeMode ? standardUrl : instrumentalUrl;
+
+      if (!standbyAudio.src || !standbyAudio.src.includes(targetSrc)) {
+        standbyAudio.src = targetSrc;
+        standbyAudio.preload = 'auto';
+        standbyAudio.volume = 0;
+      }
+    }
+  }, [currentTrack?.id, karaokeStemStatus, isKaraokeMode]);
 
   // Update Media Session API for iOS / OS lock screen controls
   useEffect(() => {
@@ -157,8 +462,23 @@ export const PlayerProvider = ({ children }) => {
     }
   }, [currentTrack]);
 
-  const playTrack = (track, newQueue = null) => {
+  const playTrack = async (track, newQueue = null) => {
+    // Cancel any in-flight crossfade and reset standby audio
+    if (crossfadeTimerRef.current) {
+      cancelAnimationFrame(crossfadeTimerRef.current);
+      crossfadeTimerRef.current = null;
+    }
+    isCrossfadingRef.current = false;
+
+    if (standbyAudioRef.current) {
+      standbyAudioRef.current.pause();
+      standbyAudioRef.current.volume = 0;
+      standbyAudioRef.current.src = '';
+    }
+
     const audio = audioRef.current;
+    audio.volume = isMuted ? 0 : volume;
+
     if (newQueue) {
       if (isShuffle && newQueue.length > 1) {
         const others = newQueue.filter((t) => t.id !== track.id);
@@ -174,8 +494,27 @@ export const PlayerProvider = ({ children }) => {
 
     setCurrentTrack(track);
     setIsBuffering(true);
+
+    // Fetch stem info
+    let stemInfo = karaokeStemStatus[track.id];
+    if (stemInfo === undefined) {
+      fetchKaraokeStatus(track.id).then((info) => {
+        if (info?.exists && isKaraokeMode && audio.src && !audio.src.includes(`/api/karaoke/${track.id}/stream/instrumental`)) {
+          crossfadeToSource(`/api/karaoke/${track.id}/stream/instrumental`, true);
+        }
+      });
+    }
+
     const preloadedAudio = audioPreloader.getPreloadedAudio(track.id);
-    audio.src = preloadedAudio || track.stream_url || `/api/stream/${track.id}`;
+    const standardUrl = preloadedAudio || track.stream_url || `/api/stream/${track.id}`;
+
+    if (isKaraokeMode && stemInfo?.exists) {
+      // Studio Stem Mode
+      audio.src = `/api/karaoke/${track.id}/stream/instrumental`;
+    } else {
+      audio.src = standardUrl;
+    }
+
     audio.play().catch((err) => {
       console.warn('Autoplay prevented:', err);
       setIsBuffering(false);
@@ -201,6 +540,7 @@ export const PlayerProvider = ({ children }) => {
 
   const togglePlay = () => {
     const audio = audioRef.current;
+
     if (!currentTrack) {
       if (queue.length > 0) {
         playTrack(queue[0]);
@@ -210,6 +550,9 @@ export const PlayerProvider = ({ children }) => {
 
     if (isPlaying) {
       audio.pause();
+      if (isCrossfadingRef.current && standbyAudioRef.current) {
+        standbyAudioRef.current.pause();
+      }
     } else {
       if (audio.readyState < 3) {
         setIsBuffering(true);
@@ -218,12 +561,18 @@ export const PlayerProvider = ({ children }) => {
         console.warn('Play prevented:', err);
         setIsBuffering(false);
       });
+      if (isCrossfadingRef.current && standbyAudioRef.current) {
+        standbyAudioRef.current.play().catch(() => {});
+      }
     }
   };
 
   const seek = (time) => {
     const audio = audioRef.current;
     audio.currentTime = time;
+    if (isCrossfadingRef.current && standbyAudioRef.current) {
+      standbyAudioRef.current.currentTime = time;
+    }
     setCurrentTime(time);
   };
 
@@ -772,6 +1121,15 @@ export const PlayerProvider = ({ children }) => {
         togglePiP,
         fadePause,
         fadeResume,
+        isKaraokeMode,
+        toggleKaraoke,
+        karaokeStemStatus,
+        isGeneratingStems,
+        fetchKaraokeStatus,
+        generateKaraokeStems,
+        batchGenerateKaraoke,
+        toastMessage,
+        showToast,
       }}
     >
       {children}

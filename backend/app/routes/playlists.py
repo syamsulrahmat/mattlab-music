@@ -369,3 +369,35 @@ async def create_playlist_from_album(album_id: int):
         "name": playlist_name,
         "track_count": len(tracks)
     }
+
+@router.post("/playlists/{playlist_id}/take-ownership")
+async def take_playlist_ownership(playlist_id: int):
+    """Convert an imported Spotify playlist into a standard local user-owned playlist."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name, spotify_id FROM playlists WHERE id = ?", (playlist_id,))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Playlist not found")
+        if not row["spotify_id"]:
+            raise HTTPException(status_code=400, detail="Playlist is already a local user-owned playlist")
+
+        cursor.execute("""
+            UPDATE playlists
+            SET spotify_id = NULL,
+                spotify_url = NULL,
+                auto_sync = 0,
+                sync_status = NULL,
+                last_synced_at = NULL,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        """, (playlist_id,))
+
+        cursor.execute("DELETE FROM spotify_sync_tracks WHERE playlist_id = ?", (playlist_id,))
+
+    return {
+        "status": "ok",
+        "message": f"Successfully took ownership of playlist '{row['name']}'",
+        "playlist_id": playlist_id,
+    }
+

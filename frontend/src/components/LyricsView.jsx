@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import { Mic2, Music, RefreshCw, X, ArrowDownCircle } from 'lucide-react';
+import { Mic2, Music, RefreshCw, X, ArrowDownCircle, MicOff, Mic, Loader2 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 
 // Multi-format LRC Parser supporting [m:ss], [mm:ss.xx], [mm:ss.xxx], multiple timestamps per line
@@ -79,7 +79,17 @@ const formatPlainLyrics = (text) => {
 };
 
 export const LyricsView = ({ onClose }) => {
-  const { currentTrack, currentTime, duration, seek } = usePlayer();
+  const { 
+    currentTrack, 
+    currentTime, 
+    duration, 
+    seek,
+    isKaraokeMode,
+    toggleKaraoke,
+    karaokeStemStatus,
+    isGeneratingStems,
+    generateKaraokeStems
+  } = usePlayer();
   const [lyricsData, setLyricsData] = useState(() => {
     if (currentTrack?.id) {
       try {
@@ -308,6 +318,52 @@ export const LyricsView = ({ onClose }) => {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          {/* Karaoke Mode Pill */}
+          <div className="flex items-center gap-2 bg-[#1f1f1f]/90 border border-white/10 rounded-full px-2.5 py-1 text-xs text-white">
+            <button
+              onClick={toggleKaraoke}
+              className={`flex items-center gap-1.5 transition font-semibold ${
+                isKaraokeMode ? 'text-brand-500' : 'text-[#aaa] hover:text-white'
+              }`}
+              title={
+                isKaraokeMode 
+                  ? 'Karaoke Active (Click to restore vocals)' 
+                  : karaokeStemStatus[currentTrack?.id]?.exists
+                  ? 'Click to play Studio Instrumental'
+                  : 'Generate Studio Instrumental with AI'
+              }
+            >
+              <MicOff size={14} className={isKaraokeMode ? 'text-brand-500' : ''} />
+              <span className="hidden sm:inline">Karaoke</span>
+            </button>
+
+            {/* Stem Badge or Generate Button */}
+            {currentTrack && (
+              karaokeStemStatus[currentTrack.id]?.exists ? (
+                <span className="flex items-center gap-1 text-[10px] font-bold bg-brand-500/20 text-brand-300 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  <Mic size={10} className="text-brand-400" />
+                  Studio
+                </span>
+              ) : (
+                <button
+                  onClick={() => generateKaraokeStems(currentTrack.id)}
+                  disabled={isGeneratingStems || karaokeStemStatus[currentTrack.id]?.status === 'queued' || karaokeStemStatus[currentTrack.id]?.status === 'processing'}
+                  className="flex items-center gap-1 text-[10px] font-medium text-brand-400 hover:text-brand-300 disabled:opacity-50 transition px-1"
+                  title="Generate pristine studio stems with server Demucs"
+                >
+                  {isGeneratingStems || karaokeStemStatus[currentTrack.id]?.status === 'processing' || karaokeStemStatus[currentTrack.id]?.status === 'queued' ? (
+                    <>
+                      <Loader2 size={10} className="animate-spin text-brand-500" />
+                      <span>Separating (~1.5 min)...</span>
+                    </>
+                  ) : (
+                    <span>Generate Instrumental</span>
+                  )}
+                </button>
+              )
+            )}
+          </div>
+
           <button
             onClick={() => fetchLyrics(currentTrack.id, true)}
             disabled={isLoading}
@@ -333,7 +389,7 @@ export const LyricsView = ({ onClose }) => {
         ref={containerRef}
         onWheel={handleContainerScroll}
         onTouchMove={handleContainerScroll}
-        className="flex-1 overflow-y-auto px-6 sm:px-12 md:px-20 py-24 space-y-6 text-center md:text-left relative"
+        className="flex-1 overflow-y-auto px-6 sm:px-12 md:px-20 py-16 space-y-6 text-center md:text-left relative"
       >
         {isLoading && !lyricsData ? (
           <div className="flex flex-col items-center justify-center h-full py-24 text-[#b3b3b3] gap-3">

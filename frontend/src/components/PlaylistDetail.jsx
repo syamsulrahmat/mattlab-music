@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { 
   Play, Pause, Trash2, Clock, Music, Shuffle, 
   Search, X, Pencil, ArrowUpDown, GripVertical, Calendar, 
-  CheckSquare, Square, Check, AlertTriangle, RefreshCw, ExternalLink
+  CheckSquare, Square, Check, AlertTriangle, RefreshCw, ExternalLink, UserCheck
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { PlaylistCover } from './PlaylistCover';
@@ -36,11 +36,13 @@ const formatAddedAt = (dateStr) => {
 
 export const PlaylistDetail = ({ 
   playlistId, 
+  refreshTrigger,
   onPlaylistDeleted, 
   onPlaylistUpdated,
   onSelectAlbum, 
   onSelectArtist, 
-  onContextMenu 
+  onContextMenu,
+  onPromptTakeOwnership,
 }) => {
   const [playlist, setPlaylist] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -130,7 +132,7 @@ export const PlaylistDetail = ({
     setSortOrder('asc');
     setSpotifyStatus(null);
     fetchPlaylist();
-  }, [playlistId]);
+  }, [playlistId, refreshTrigger]);
 
   // Live polling for Spotify playlists
   useEffect(() => {
@@ -688,7 +690,10 @@ export const PlaylistDetail = ({
   return (
     <div className="pb-16 select-none relative w-full">
       {/* 4. Full-bleed Header Banner taking all the area without back button */}
-      <div className="bg-gradient-to-b from-emerald-950/45 via-[#181818]/75 to-[#121212] px-6 sm:px-8 pt-8 sm:pt-10 pb-8 sm:pb-10 w-full border-b border-white/5">
+      <div 
+        onContextMenu={(e) => onContextMenu?.(e, 'playlist', playlist)}
+        className="bg-gradient-to-b from-emerald-950/45 via-[#181818]/75 to-[#121212] px-6 sm:px-8 pt-8 sm:pt-10 pb-8 sm:pb-10 w-full border-b border-white/5"
+      >
         <div className="flex flex-col md:flex-row gap-6 md:gap-7 items-start md:items-end">
           <div 
             onClick={() => setIsEditingDetails(true)} 
@@ -813,6 +818,14 @@ export const PlaylistDetail = ({
                   <span className="hidden md:inline">Open in Spotify</span>
                 </a>
               )}
+              <button
+                onClick={() => onPromptTakeOwnership?.(playlist)}
+                className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-xs font-semibold text-[#b3b3b3] hover:text-white transition flex items-center gap-1.5"
+                title="Unlink from Spotify and take full local ownership"
+              >
+                <UserCheck size={13} className="text-brand-400" />
+                <span className="hidden sm:inline">Take Ownership</span>
+              </button>
               <button
                 onClick={handleSyncNow}
                 disabled={isSyncingNow}

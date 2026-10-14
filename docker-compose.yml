@@ -17,6 +17,26 @@ services:
       - DB_PATH=/data/music.db
       - COVERS_DIR=/data/covers
       - DOWNLOADS_DIR=/downloads
+      - DEMUCS_SERVICE_URL=http://demucs:8000
     ports:
       - "8085:8085"
       - "4533:8085"
+
+  demucs:
+    build:
+      context: ./demucs-service
+      dockerfile: Dockerfile
+    container_name: music-app-demucs
+    restart: unless-stopped
+    volumes:
+      - /mnt/user/Media/Music:/music:ro
+      - /mnt/cache/appdata/music-app/karaoke:/karaoke
+      - /mnt/cache/appdata/music-app/torch_cache:/cache/torch
+    environment:
+      - KARAOKE_DIR=/karaoke
+      - TORCH_HOME=/cache/torch
+    deploy:
+      resources:
+        limits:
+          cpus: '3.0'
+          memory: 3500M

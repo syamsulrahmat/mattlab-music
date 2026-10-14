@@ -61,6 +61,9 @@ const MainAppContent = () => {
   const [isDeletingPlaylist, setIsDeletingPlaylist] = useState(false);
   const [playlistToRename, setPlaylistToRename] = useState(null);
   const [isRenamingPlaylist, setIsRenamingPlaylist] = useState(false);
+  const [playlistToTakeOwnership, setPlaylistToTakeOwnership] = useState(null);
+  const [isTakingOwnership, setIsTakingOwnership] = useState(false);
+  const [playlistRefreshTrigger, setPlaylistRefreshTrigger] = useState(0);
 
   // Authentication Context
   const { user, isAdmin, isAuthenticated, setupRequired, isLoading: isAuthLoading } = useAuth();
@@ -97,6 +100,8 @@ const MainAppContent = () => {
     prevTrack,
     isMiniPlayerOpen,
     setIsMiniPlayerOpen,
+    toastMessage,
+    showToast,
   } = usePlayer();
 
   const fetchStats = async () => {
@@ -485,6 +490,36 @@ const MainAppContent = () => {
     }
   };
 
+  const handleConfirmTakeOwnership = async () => {
+    if (!playlistToTakeOwnership) return;
+    try {
+      setIsTakingOwnership(true);
+      const res = await fetch(`/api/playlists/${playlistToTakeOwnership.id}/take-ownership`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        await fetchPlaylists();
+        setPlaylistRefreshTrigger((prev) => prev + 1);
+        if (showToast) {
+          showToast(`✨ You now own "${playlistToTakeOwnership.name}". Unlinked from Spotify.`);
+        }
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        if (showToast) {
+          showToast(`⚠️ ${errData.detail || 'Failed to take ownership of playlist'}`);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to take ownership:', err);
+      if (showToast) {
+        showToast('⚠️ Failed to take ownership of playlist');
+      }
+    } finally {
+      setIsTakingOwnership(false);
+      setPlaylistToTakeOwnership(null);
+    }
+  };
+
   const handleLibraryUpdated = useCallback(() => {
     fetchStats();
     fetchAlbums();
@@ -686,12 +721,14 @@ const MainAppContent = () => {
                   {selectedPlaylistId ? (
                     <PlaylistDetail
                       playlistId={selectedPlaylistId}
+                      refreshTrigger={playlistRefreshTrigger}
                       onBack={handleGoBack}
                       onPlaylistDeleted={handlePlaylistDeleted}
                       onPlaylistUpdated={fetchPlaylists}
                       onSelectAlbum={handleSelectAlbum}
                       onSelectArtist={handleSelectArtist}
                       onContextMenu={handleOpenContextMenu}
+                      onPromptTakeOwnership={(pl) => setPlaylistToTakeOwnership(pl)}
                     />
                   ) : (
                     <div className="p-8 text-center text-[#b3b3b3]">
@@ -760,6 +797,7 @@ const MainAppContent = () => {
         onPlaylistDeleted={handlePlaylistDeleted}
         onPromptDeletePlaylist={(pl) => setPlaylistToDelete(pl)}
         onPromptRenamePlaylist={(pl) => setPlaylistToRename(pl)}
+        onPromptTakeOwnership={(pl) => setPlaylistToTakeOwnership(pl)}
         onCreatePlaylistPrompt={handleOpenCreatePlaylist}
         onImportSpotifyPrompt={handleOpenImportSpotify}
       />
@@ -854,6 +892,24 @@ const MainAppContent = () => {
         onClose={() => setPlaylistToRename(null)}
         isLoading={isRenamingPlaylist}
       />
+
+      {/* In-App Take Ownership Confirmation Modal */}
+      <ConfirmModal
+        isOpen={Boolean(playlistToTakeOwnership)}
+        title={`Take ownership of "${playlistToTakeOwnership?.name}"?`}
+        message="This will unlink the playlist from Spotify sync and turn it into a standard local playlist. All downloaded songs will be kept, and you will be able to rename, reorder, and add or remove tracks."
+        confirmText="Take Ownership"
+        onConfirm={handleConfirmTakeOwnership}
+        onClose={() => setPlaylistToTakeOwnership(null)}
+        isLoading={isTakingOwnership}
+      />
+
+      {/* Floating In-App Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-[#1e1e1e]/95 backdrop-blur-md border border-brand-500/40 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-3 duration-200">
+          <span>{toastMessage}</span>
+        </div>
+      )}
     </div>
   );
 };
