@@ -330,18 +330,10 @@ const MainAppContent = () => {
 
   const handleSearchChange = (val) => {
     setSearchQuery(val);
-    // Only leave current session/view once characters are actually typed
-    if (val && val.trim().length > 0) {
-      setIsLyricsOpen(false);
-      if (activeTab !== 'search' || isLyricsOpen) {
-        navigateTo({ tab: 'search', searchQuery: val, isLyricsOpen: false });
-      }
-    }
   };
 
   const handleClearSearch = () => {
     setSearchQuery('');
-    // When aborting search, close search view and return back to previous session
     if (activeTab === 'search') {
       if (canGoBack) {
         handleGoBack();
@@ -352,13 +344,7 @@ const MainAppContent = () => {
   };
 
   const handleFocusSearch = () => {
-    // Stay on current session/view when clicking search bar; only switch if query exists
-    if (searchQuery && searchQuery.trim().length > 0) {
-      if (isLyricsOpen) setIsLyricsOpen(false);
-      if (activeTab !== 'search') {
-        navigateTo({ tab: 'search', searchQuery, isLyricsOpen: false });
-      }
-    }
+    // TopBar displays self-contained floating search without unmounting the current view
   };
 
   const handleSelectAlbum = (albumId) => {
@@ -590,6 +576,9 @@ const MainAppContent = () => {
         stats={stats}
         onRefreshScan={handleRefreshScan}
         onRequestMusic={() => handleOpenRequestMusic(searchQuery || '')}
+        onSelectAlbum={handleSelectAlbum}
+        onSelectArtist={handleSelectArtist}
+        onContextMenu={handleOpenContextMenu}
         onOpenUserManagement={() => setIsUserManagementOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
         canGoBack={canGoBack}

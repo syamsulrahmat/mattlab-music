@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Home, Search, X, RefreshCw, HardDrive, DownloadCloud, Users, LogOut, Settings } from 'lucide-react';
 import { MattLabLogo } from './MattLabLogo';
+import { SearchFloatingModal } from './SearchFloatingModal';
 import { useAuth } from '../context/AuthContext';
+import { usePlayer } from '../context/PlayerContext';
 
 export const TopBar = ({ 
   searchQuery, 
@@ -12,17 +14,132 @@ export const TopBar = ({
   stats, 
   onRefreshScan,
   onRequestMusic,
+  onSelectAlbum,
+  onSelectArtist,
+  onContextMenu,
   onOpenUserManagement,
   onOpenSettings,
 }) => {
-  const { user, isAdmin, logout } = useAuth();
+    const { user, isAdmin, logout } = useAuth();
+  const { currentTrack, playTrack, togglePlay } = usePlayer();
   const [isScanning, setIsScanning] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isFloatingSearchOpen, setIsFloatingSearchOpen] = useState(false);
+  const [searchResults, setSearchResults] = useState({ tracks: [], albums: [], artists: [], correctedQuery: null });
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const searchInputRef = useRef(null);
+  const debounceRef = useRef(null);
 
   const handleScanClick = async () => {
     setIsScanning(true);
     await onRefreshScan();
     setTimeout(() => setIsScanning(false), 2000);
+  };
+
+  // Live search debounced for floating search modal
+  useEffect(() => {
+    const q = searchQuery?.trim() || '';
+    if (!q) {
+      setSearchResults({ tracks: [], albums: [], artists: [], correctedQuery: null });
+      setIsSearching(false);
+      setSelectedIndex(0);
+      setIsFloatingSearchOpen(false);
+      return;
+    }
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    debounceRef.current = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&limit=15`);
+        if (res.ok) {
+          const data = await res.json();
+          setSearchResults({
+            tracks: Array.isArray(data.tracks) ? data.tracks.slice(0, 6) : [],
+            albums: Array.isArray(data.albums) ? data.albums.slice(0, 4) : [],
+            artists: Array.isArray(data.artists) ? data.artists.slice(0, 4) : [],
+            correctedQuery: data.corrected_query || null,
+          });
+          setSelectedIndex(0);
+        }
+      } catch (err) {
+        console.error('TopBar floating search error:', err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 180);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [searchQuery]);
+
+  // Linear list of navigable items for Up/Down arrow selection
+  const navigableItems = useMemo(() => {
+    const items = [];
+    searchResults.tracks?.forEach((t) => items.push({ type: 'track', data: t }));
+    searchResults.albums?.forEach((a) => items.push({ type: 'album', data: a }));
+    searchResults.artists?.forEach((ar) => items.push({ type: 'artist', data: ar }));
+    if (searchQuery?.trim()) {
+      items.push({
+        type: 'request',
+        query: searchResults.correctedQuery || searchQuery.trim(),
+      });
+    }
+    return items;
+  }, [searchResults, searchQuery]);
+
+  const executeSelectedItem = (item) => {
+    if (!item) return;
+    if (item.type === 'track') {
+      if (currentTrack?.id === item.data.id) {
+        togglePlay();
+      } else {
+        playTrack(item.data, searchResults.tracks);
+      }
+      // Keep search modal open so user can preview/play music until explicitly dismissed
+    } else if (item.type === 'album') {
+      onSelectAlbum?.(item.data.id);
+      setIsFloatingSearchOpen(false);
+    } else if (item.type === 'artist') {
+      onSelectArtist?.(item.data.id);
+      setIsFloatingSearchOpen(false);
+    } else if (item.type === 'request') {
+      onRequestMusic?.(item.query);
+      setIsFloatingSearchOpen(false);
+    }
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      setIsFloatingSearchOpen(false);
+      searchInputRef.current?.blur();
+      return;
+    }
+
+    if (!isFloatingSearchOpen || navigableItems.length === 0) {
+      if (e.key === 'ArrowDown' && searchQuery?.trim()) {
+        e.preventDefault();
+        setIsFloatingSearchOpen(true);
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev < navigableItems.length - 1 ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev > 0 ? prev - 1 : navigableItems.length - 1));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (selectedIndex >= 0 && selectedIndex < navigableItems.length) {
+        executeSelectedItem(navigableItems[selectedIndex]);
+      }
+    }
   };
 
   return (
@@ -56,34 +173,81 @@ export const TopBar = ({
           <Home size={20} />
         </button>
 
-        {/* Pill/Capsule Search Input */}
-        <div className="relative flex-1 max-w-md flex items-center">
+        {/* Pill/Capsule Search Input: matching floating search dropdown width */}
+        <div className="relative flex-1 flex items-center">
           <div className="absolute left-3.5 pointer-events-none text-[#b3b3b3] flex items-center">
             <Search size={18} />
           </div>
           <input
+            ref={searchInputRef}
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onFocus={onFocusSearch}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              if (e.target.value.trim()) {
+                setIsFloatingSearchOpen(true);
+              } else {
+                setIsFloatingSearchOpen(false);
+              }
+            }}
+            onFocus={() => {
+              if (searchQuery?.trim()) {
+                setIsFloatingSearchOpen(true);
+              }
+              onFocusSearch?.();
+            }}
+            onKeyDown={handleSearchKeyDown}
             placeholder="What do you want to play?"
             className="w-full bg-[#1f1f1f] hover:bg-[#242424] focus:bg-[#242424] text-white pl-10 pr-9 py-2.5 rounded-full text-xs sm:text-sm font-medium outline-none border border-transparent focus:border-white/20 transition placeholder-[#b3b3b3]"
           />
           {searchQuery && (
             <button
               onClick={() => {
+                setSearchQuery('');
+                setIsFloatingSearchOpen(false);
                 if (onClearSearch) {
                   onClearSearch();
-                } else {
-                  setSearchQuery('');
                 }
+                searchInputRef.current?.focus();
               }}
               className="absolute right-3 text-[#b3b3b3] hover:text-white p-0.5 rounded-full"
-              title="Clear Search & Return"
+              title="Clear Search"
             >
               <X size={16} />
             </button>
           )}
+
+          {/* Self-Contained Floating Search Results Dropdown */}
+          <SearchFloatingModal
+            isOpen={isFloatingSearchOpen && Boolean(searchQuery?.trim())}
+            onClose={() => setIsFloatingSearchOpen(false)}
+            query={searchQuery}
+            results={searchResults}
+            isLoading={isSearching}
+            selectedIndex={selectedIndex}
+            setSelectedIndex={setSelectedIndex}
+            onSelectTrack={(track) => {
+              if (currentTrack?.id === track.id) {
+                togglePlay();
+              } else {
+                playTrack(track, searchResults.tracks);
+              }
+              // Do not dismiss search modal yet; wait until user dismisses
+            }}
+            onSelectAlbum={(albumId) => {
+              onSelectAlbum?.(albumId);
+              setIsFloatingSearchOpen(false);
+            }}
+            onSelectArtist={(artistId) => {
+              onSelectArtist?.(artistId);
+              setIsFloatingSearchOpen(false);
+            }}
+            onRequestMusic={(q) => {
+              onRequestMusic?.(q);
+              setIsFloatingSearchOpen(false);
+            }}
+            onContextMenu={onContextMenu}
+          />
         </div>
       </div>
 

@@ -1,6 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, Play, Pause, Disc3, Mic2, DownloadCloud, X, Music, Sparkles } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
+
+const formatDuration = (seconds) => {
+  if (!seconds || isNaN(seconds)) return '';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+};
 
 export const CommandPaletteModal = ({
   isOpen,
@@ -80,6 +87,75 @@ export const CommandPaletteModal = ({
     };
   }, [query, isOpen]);
 
+  // Flat linear list of navigable items for Up/Down selection
+  const navigableItems = useMemo(() => {
+    const items = [];
+    results.tracks?.forEach((track) => items.push({ type: 'track', data: track }));
+    results.albums?.forEach((album) => items.push({ type: 'album', data: album }));
+    results.artists?.forEach((artist) => items.push({ type: 'artist', data: artist }));
+    if (query.trim().length > 0) {
+      items.push({
+        type: 'request',
+        query: results.correctedQuery || query.trim(),
+      });
+    }
+    return items;
+  }, [results, query]);
+
+  // Auto-scroll selected element into view
+  useEffect(() => {
+    if (selectedIndex >= 0) {
+      const el = document.getElementById(`cp-item-${selectedIndex}`);
+      if (el) {
+        el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }
+  }, [selectedIndex]);
+
+  const executeItem = (item) => {
+    if (!item) return;
+    if (item.type === 'track') {
+      if (currentTrack?.id === item.data.id) {
+        togglePlay();
+      } else {
+        playTrack(item.data, results.tracks);
+      }
+      // Stay in modal until user dismisses
+    } else if (item.type === 'album') {
+      if (onSelectAlbum) onSelectAlbum(item.data.id);
+      onClose();
+    } else if (item.type === 'artist') {
+      if (onSelectArtist) onSelectArtist(item.data.id);
+      onClose();
+    } else if (item.type === 'request') {
+      if (onRequestMusic) onRequestMusic(item.query);
+      onClose();
+    }
+  };
+
+  const handleInputKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      e.preventDefault();
+      onClose();
+      return;
+    }
+    if (navigableItems.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev < navigableItems.length - 1 ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev > 0 ? prev - 1 : navigableItems.length - 1));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (selectedIndex >= 0 && selectedIndex < navigableItems.length) {
+        executeItem(navigableItems[selectedIndex]);
+      }
+    }
+  };
+
   if (!isOpen) return null;
 
   const totalResults =
@@ -104,6 +180,7 @@ export const CommandPaletteModal = ({
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleInputKeyDown}
             placeholder="Search tracks, albums, artists, or type to request..."
             className="flex-1 bg-transparent text-white placeholder-[#888] text-base font-medium outline-none"
           />
@@ -136,11 +213,17 @@ export const CommandPaletteModal = ({
             <div className="py-8 text-center text-[#888]">
               <p className="text-sm">No results in your library for "{query}"</p>
               <button
+                id="cp-item-0"
+                onMouseEnter={() => setSelectedIndex(0)}
                 onClick={() => {
                   onClose();
                   if (onRequestMusic) onRequestMusic(query);
                 }}
-                className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-500 text-black font-bold text-xs hover:bg-brand-400 transition shadow-lg active:scale-95"
+                className={`mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-xs transition shadow-lg active:scale-95 ${
+                  selectedIndex === 0
+                    ? 'bg-brand-400 text-black ring-2 ring-white/30 scale-105'
+                    : 'bg-brand-500 text-black hover:bg-brand-400'
+                }`}
               >
                 <DownloadCloud size={14} />
                 <span>Request & Download "{query}" from Torrent/Spotify</span>
@@ -163,25 +246,64 @@ export const CommandPaletteModal = ({
                 Tracks
               </p>
               <div className="space-y-1">
-                {results.tracks.map((track) => {
-                  const isThisPlaying = currentTrack?.id === track.id && isPlaying;
+                {results.tracks.map((track, idx) => {
+                  const itemIndex = idx;
+                  const isSelected = selectedIndex === itemIndex;
+                  const isCurrentTrack = currentTrack?.id === track.id;
+                  const isThisPlaying = isCurrentTrack && isPlaying;
                   return (
                     <div
+                      id={`cp-item-${itemIndex}`}
                       key={track.id}
+                      onMouseEnter={() => setSelectedIndex(itemIndex)}
                       onClick={() => {
-                        playTrack(track);
-                        onClose();
+                        if (currentTrack?.id === track.id) {
+                          togglePlay();
+                        } else {
+                          playTrack(track, results.tracks);
+                        }
                       }}
-                      className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-white/10 cursor-pointer group transition"
+                      className={`flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer group transition ${
+                        isSelected
+                          ? 'bg-white/15 ring-1 ring-white/20'
+                          : 'hover:bg-white/10'
+                      }`}
                     >
                       <div className="flex items-center gap-3 truncate flex-1 min-w-0">
-                        <img
-                          src={track.cover_url || '/api/covers/0'}
-                          alt=""
-                          className="w-10 h-10 rounded object-cover bg-[#222] shrink-0"
-                        />
+                        {/* Spotify-style Cover Artwork with Play/Pause overlay */}
+                        <div className="relative w-10 h-10 rounded overflow-hidden bg-[#222] shrink-0 shadow-sm">
+                          <img
+                            src={track.cover_url || '/api/covers/0'}
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
+                          <div
+                            className={`absolute inset-0 bg-black/60 flex items-center justify-center transition-opacity ${
+                              isThisPlaying
+                                ? 'opacity-100'
+                                : isSelected
+                                ? 'opacity-100'
+                                : 'opacity-0 group-hover:opacity-100'
+                            }`}
+                          >
+                            {isThisPlaying ? (
+                              <Pause size={16} className="text-white fill-white" />
+                            ) : (
+                              <Play size={16} className="text-white fill-white ml-0.5" />
+                            )}
+                          </div>
+                        </div>
+
                         <div className="truncate flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-white group-hover:text-brand-400 truncate transition">
+                          <p
+                            className={`text-sm font-semibold truncate transition ${
+                              isThisPlaying
+                                ? 'text-brand-400 font-bold'
+                                : isSelected
+                                ? 'text-brand-400'
+                                : 'text-white group-hover:text-brand-400'
+                            }`}
+                          >
                             {track.title}
                           </p>
                           <p className="text-xs text-[#b3b3b3] truncate mt-0.5">
@@ -189,25 +311,13 @@ export const CommandPaletteModal = ({
                           </p>
                         </div>
                       </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (currentTrack?.id === track.id) {
-                            togglePlay();
-                          } else {
-                            playTrack(track);
-                          }
-                          onClose();
-                        }}
-                        className="w-8 h-8 rounded-full bg-brand-500 text-black flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow hover:scale-105 active:scale-95 ml-2"
-                        title={isThisPlaying ? 'Pause' : 'Play'}
-                      >
-                        {isThisPlaying ? (
-                          <Pause size={14} className="fill-black" />
-                        ) : (
-                          <Play size={14} className="fill-black ml-0.5" />
-                        )}
-                      </button>
+
+                      {/* Track Duration on right */}
+                      {track.duration > 0 && (
+                        <span className="text-xs text-[#888] group-hover:text-white shrink-0 ml-3 font-mono">
+                          {formatDuration(track.duration)}
+                        </span>
+                      )}
                     </div>
                   );
                 })}
@@ -222,30 +332,44 @@ export const CommandPaletteModal = ({
                 Albums
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                {results.albums.map((album) => (
-                  <div
-                    key={album.id}
-                    onClick={() => {
-                      if (onSelectAlbum) onSelectAlbum(album.id);
-                      onClose();
-                    }}
-                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 cursor-pointer group transition"
-                  >
-                    <img
-                      src={album.cover_url || `/api/covers/${album.id}`}
-                      alt=""
-                      className="w-10 h-10 rounded object-cover bg-[#222] shrink-0"
-                    />
-                    <div className="truncate flex-1 min-w-0">
-                      <p className="text-xs font-bold text-white group-hover:text-brand-400 truncate">
-                        {album.title}
-                      </p>
-                      <p className="text-[11px] text-[#b3b3b3] truncate">
-                        {album.artist_name}
-                      </p>
+                {results.albums.map((album, idx) => {
+                  const itemIndex = (results.tracks?.length || 0) + idx;
+                  const isSelected = selectedIndex === itemIndex;
+                  return (
+                    <div
+                      id={`cp-item-${itemIndex}`}
+                      key={album.id}
+                      onMouseEnter={() => setSelectedIndex(itemIndex)}
+                      onClick={() => {
+                        if (onSelectAlbum) onSelectAlbum(album.id);
+                        onClose();
+                      }}
+                      className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer group transition ${
+                        isSelected
+                          ? 'bg-white/15 ring-1 ring-white/20'
+                          : 'hover:bg-white/10'
+                      }`}
+                    >
+                      <img
+                        src={album.cover_url || `/api/covers/${album.id}`}
+                        alt=""
+                        className="w-10 h-10 rounded object-cover bg-[#222] shrink-0"
+                      />
+                      <div className="truncate flex-1 min-w-0">
+                        <p
+                          className={`text-xs font-bold truncate transition ${
+                            isSelected ? 'text-brand-400' : 'text-white group-hover:text-brand-400'
+                          }`}
+                        >
+                          {album.title}
+                        </p>
+                        <p className="text-[11px] text-[#b3b3b3] truncate">
+                          {album.artist_name}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -257,26 +381,40 @@ export const CommandPaletteModal = ({
                 Artists
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                {results.artists.map((artist) => (
-                  <div
-                    key={artist.id}
-                    onClick={() => {
-                      if (onSelectArtist) onSelectArtist(artist.id);
-                      onClose();
-                    }}
-                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 cursor-pointer group transition"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-[#242424] flex items-center justify-center text-brand-500 shrink-0">
-                      <Mic2 size={18} />
+                {results.artists.map((artist, idx) => {
+                  const itemIndex = (results.tracks?.length || 0) + (results.albums?.length || 0) + idx;
+                  const isSelected = selectedIndex === itemIndex;
+                  return (
+                    <div
+                      id={`cp-item-${itemIndex}`}
+                      key={artist.id}
+                      onMouseEnter={() => setSelectedIndex(itemIndex)}
+                      onClick={() => {
+                        if (onSelectArtist) onSelectArtist(artist.id);
+                        onClose();
+                      }}
+                      className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer group transition ${
+                        isSelected
+                          ? 'bg-white/15 ring-1 ring-white/20'
+                          : 'hover:bg-white/10'
+                      }`}
+                    >
+                      <div className="w-10 h-10 rounded-full bg-[#242424] flex items-center justify-center text-brand-500 shrink-0">
+                        <Mic2 size={18} />
+                      </div>
+                      <div className="truncate flex-1 min-w-0">
+                        <p
+                          className={`text-xs font-bold truncate transition ${
+                            isSelected ? 'text-brand-400' : 'text-white group-hover:text-brand-400'
+                          }`}
+                        >
+                          {artist.name}
+                        </p>
+                        <p className="text-[11px] text-[#b3b3b3]">Artist</p>
+                      </div>
                     </div>
-                    <div className="truncate flex-1 min-w-0">
-                      <p className="text-xs font-bold text-white group-hover:text-brand-400 truncate">
-                        {artist.name}
-                      </p>
-                      <p className="text-[11px] text-[#b3b3b3]">Artist</p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -284,31 +422,62 @@ export const CommandPaletteModal = ({
           {/* Quick Request Button at the bottom if user typed query */}
           {query.trim().length > 0 && (
             <div className="pt-2 border-t border-white/5">
-              <button
-                onClick={() => {
-                  onClose();
-                  if (onRequestMusic) onRequestMusic(results.correctedQuery || query);
-                }}
-                className="w-full flex items-center justify-between p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white transition text-left group"
-              >
-                <div className="flex items-center gap-2.5">
-                  <DownloadCloud size={18} className="text-brand-500" />
-                  <div>
-                    <p className="text-xs font-bold text-white group-hover:text-brand-400 transition">
-                      Request "{results.correctedQuery || query}" via Torrent / Spotify
-                      {results.correctedQuery && (
-                        <span className="text-brand-500 text-[10px] ml-1.5 font-normal">(corrected)</span>
-                      )}
-                    </p>
-                    <p className="text-[10px] text-[#888]">
-                      Search Lidarr & torrent indexers to download
-                    </p>
-                  </div>
-                </div>
-                <span className="text-xs text-[#888] group-hover:text-white">→</span>
-              </button>
+              {(() => {
+                const requestIndex = (results.tracks?.length || 0) + (results.albums?.length || 0) + (results.artists?.length || 0);
+                const isSelected = selectedIndex === requestIndex;
+                return (
+                  <button
+                    id={`cp-item-${requestIndex}`}
+                    onMouseEnter={() => setSelectedIndex(requestIndex)}
+                    onClick={() => {
+                      onClose();
+                      if (onRequestMusic) onRequestMusic(results.correctedQuery || query);
+                    }}
+                    className={`w-full flex items-center justify-between p-2.5 rounded-xl transition text-left group ${
+                      isSelected
+                        ? 'bg-brand-500/20 ring-1 ring-brand-500/40 text-white'
+                        : 'bg-white/5 hover:bg-white/10 text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <DownloadCloud size={18} className="text-brand-500" />
+                      <div>
+                        <p className="text-xs font-bold text-white group-hover:text-brand-400 transition">
+                          Request "{results.correctedQuery || query}" via Torrent / Spotify
+                          {results.correctedQuery && (
+                            <span className="text-brand-500 text-[10px] ml-1.5 font-normal">(corrected)</span>
+                          )}
+                        </p>
+                        <p className="text-[10px] text-[#888]">
+                          Search Lidarr & torrent indexers to download
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs text-[#888] group-hover:text-white">→</span>
+                  </button>
+                );
+              })()}
             </div>
           )}
+        </div>
+
+        {/* Keyboard Navigation Footer Hints */}
+        <div className="px-3.5 py-2 bg-[#121212] border-t border-white/5 flex items-center justify-between text-[11px] text-[#777]">
+          <div className="flex items-center gap-2">
+            <span>
+              <kbd className="bg-white/10 px-1 py-0.5 rounded text-white/80 font-mono text-[10px]">↑</kbd>{' '}
+              <kbd className="bg-white/10 px-1 py-0.5 rounded text-white/80 font-mono text-[10px]">↓</kbd> Navigate
+            </span>
+            <span>•</span>
+            <span>
+              <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-white/80 font-mono text-[10px]">Enter</kbd> Select
+            </span>
+            <span>•</span>
+            <span>
+              <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-white/80 font-mono text-[10px]">Esc</kbd> Close
+            </span>
+          </div>
+          <span className="text-[#555] hidden sm:inline">Ctrl + K</span>
         </div>
       </div>
     </div>
