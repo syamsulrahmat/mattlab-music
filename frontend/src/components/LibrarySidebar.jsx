@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Library, Plus, Heart, Music, Disc3, Mic2, X, Check, GripVertical } from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { Library, Plus, Heart, Music, Disc3, Mic2, X, Check, GripVertical, Search, ArrowUpDown } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { PlaylistCover } from './PlaylistCover';
 import { SpotifyIcon } from './SpotifyIcon';
@@ -8,6 +8,7 @@ export const LibrarySidebar = ({
   activeTab,
   setActiveTab,
   playlists = [],
+  selectedPlaylistId,
   onSelectPlaylist,
   onCreatePlaylistPrompt,
   onImportSpotifyPrompt,
@@ -22,7 +23,54 @@ export const LibrarySidebar = ({
   const [dropFeedback, setDropFeedback] = useState(null);
   const [draggedPlaylistIdx, setDraggedPlaylistIdx] = useState(null);
   const [playlistDropTarget, setPlaylistDropTarget] = useState(null);
-  const { toggleFavorite } = usePlayer();
+  
+  // Library search and sorting states
+  const [librarySearchQuery, setLibrarySearchQuery] = useState('');
+  const [playlistSort, setPlaylistSort] = useState('custom'); // 'custom', 'name_asc', 'name_desc', 'recent', 'tracks'
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+  const sortMenuRef = useRef(null);
+
+  const { toggleFavorite, currentTrack, isPlaying } = usePlayer();
+
+  // Close sort menu on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (sortMenuRef.current && !sortMenuRef.current.contains(e.target)) {
+        setIsSortMenuOpen(false);
+      }
+    };
+    if (isSortMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isSortMenuOpen]);
+
+  // Filter & sort playlists
+  const displayPlaylists = useMemo(() => {
+    let list = [...playlists];
+    if (librarySearchQuery.trim()) {
+      const q = librarySearchQuery.toLowerCase().trim();
+      list = list.filter((p) => p.name.toLowerCase().includes(q));
+    }
+    if (playlistSort === 'name_asc') {
+      list.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (playlistSort === 'name_desc') {
+      list.sort((a, b) => b.name.localeCompare(a.name));
+    } else if (playlistSort === 'recent') {
+      list.sort((a, b) => new Date(b.created_at || b.added_at || 0) - new Date(a.created_at || a.added_at || 0));
+    } else if (playlistSort === 'tracks') {
+      list.sort((a, b) => (b.track_count || 0) - (a.track_count || 0));
+    }
+    return list;
+  }, [playlists, librarySearchQuery, playlistSort]);
+
+  const showLikedSongs = useMemo(() => {
+    if (!librarySearchQuery.trim()) return true;
+    const q = librarySearchQuery.toLowerCase().trim();
+    return 'liked songs'.includes(q) || 'favorites'.includes(q);
+  }, [librarySearchQuery]);
+
+  const isCustomOrder = playlistSort === 'custom' && !librarySearchQuery.trim();
 
   const content = (
     <div className="flex flex-col h-full min-h-0 bg-[#121212] rounded-lg overflow-hidden select-none">
@@ -91,6 +139,121 @@ export const LibrarySidebar = ({
         </button>
       </div>
 
+      {/* Sub-bar: Search in library (left) & Playlist reordering (right) */}
+      <div className="px-3 py-2 flex items-center justify-between gap-2 border-b border-white/5 shrink-0">
+        {/* Left: Search input to filter playlists */}
+        <div className="relative flex-1">
+          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#777]" />
+          <input
+            type="text"
+            placeholder="Search in library..."
+            value={librarySearchQuery}
+            onChange={(e) => setLibrarySearchQuery(e.target.value)}
+            className="w-full bg-[#181818] hover:bg-[#202020] focus:bg-[#202020] text-xs text-white pl-7 pr-6 py-1.5 rounded-full border border-white/5 focus:border-white/20 outline-none transition placeholder:text-[#666]"
+          />
+          {librarySearchQuery && (
+            <button
+              onClick={() => setLibrarySearchQuery('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-[#777] hover:text-white"
+            >
+              <X size={12} />
+            </button>
+          )}
+        </div>
+
+        {/* Right: Reordering / Sorting dropdown */}
+        <div className="relative shrink-0" ref={sortMenuRef}>
+          <button
+            onClick={() => setIsSortMenuOpen((prev) => !prev)}
+            className={`p-1.5 rounded-md hover:bg-[#202020] text-xs flex items-center gap-1 transition ${
+              playlistSort !== 'custom' ? 'text-brand-400 bg-brand-500/10' : 'text-[#888] hover:text-white'
+            }`}
+            title="Sort playlists"
+          >
+            <ArrowUpDown size={14} />
+            <span className="text-[11px] font-medium hidden sm:inline">
+              {playlistSort === 'custom'
+                ? 'Custom'
+                : playlistSort === 'name_asc'
+                ? 'A-Z'
+                : playlistSort === 'name_desc'
+                ? 'Z-A'
+                : playlistSort === 'recent'
+                ? 'Recent'
+                : 'Songs'}
+            </span>
+          </button>
+
+          {isSortMenuOpen && (
+            <div className="absolute right-0 top-full mt-1 w-44 bg-[#1f1f1f] border border-white/10 rounded-lg shadow-2xl py-1 z-50 text-xs">
+              <div className="px-3 py-1 text-[10px] uppercase font-bold text-[#666] tracking-wider">
+                Sort Playlists
+              </div>
+              <button
+                onClick={() => {
+                  setPlaylistSort('custom');
+                  setIsSortMenuOpen(false);
+                }}
+                className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-white/10 transition ${
+                  playlistSort === 'custom' ? 'text-brand-500 font-bold' : 'text-white'
+                }`}
+              >
+                <span>Custom order</span>
+                {playlistSort === 'custom' && <Check size={13} />}
+              </button>
+              <button
+                onClick={() => {
+                  setPlaylistSort('name_asc');
+                  setIsSortMenuOpen(false);
+                }}
+                className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-white/10 transition ${
+                  playlistSort === 'name_asc' ? 'text-brand-500 font-bold' : 'text-white'
+                }`}
+              >
+                <span>Alphabetical (A–Z)</span>
+                {playlistSort === 'name_asc' && <Check size={13} />}
+              </button>
+              <button
+                onClick={() => {
+                  setPlaylistSort('name_desc');
+                  setIsSortMenuOpen(false);
+                }}
+                className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-white/10 transition ${
+                  playlistSort === 'name_desc' ? 'text-brand-500 font-bold' : 'text-white'
+                }`}
+              >
+                <span>Alphabetical (Z–A)</span>
+                {playlistSort === 'name_desc' && <Check size={13} />}
+              </button>
+              <button
+                onClick={() => {
+                  setPlaylistSort('recent');
+                  setIsSortMenuOpen(false);
+                }}
+                className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-white/10 transition ${
+                  playlistSort === 'recent' ? 'text-brand-500 font-bold' : 'text-white'
+                }`}
+              >
+                <span>Recently added</span>
+                {playlistSort === 'recent' && <Check size={13} />}
+              </button>
+              <button
+                onClick={() => {
+                  setPlaylistSort('tracks');
+                  setIsSortMenuOpen(false);
+                }}
+                className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-white/10 transition ${
+                  playlistSort === 'tracks' ? 'text-brand-500 font-bold' : 'text-white'
+                }`}
+              >
+                <span>Most songs</span>
+                {playlistSort === 'tracks' && <Check size={13} />}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Playlists & Liked Songs Section */}
       <div 
         onContextMenu={(e) => {
@@ -101,79 +264,104 @@ export const LibrarySidebar = ({
         className="flex-1 min-h-0 overflow-y-auto px-2 py-2 space-y-1"
       >
         {/* Liked Songs Special Item */}
-        <div
-          onClick={() => {
-            setActiveTab('favorites');
-            if (onCloseMobile) onCloseMobile();
-          }}
-          onContextMenu={(e) => {
-            if (onContextMenu) {
-              onContextMenu(e, 'favorites', { id: 'favorites', name: 'Liked Songs' });
-            }
-          }}
-          onDragOver={(e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'copy';
-            setDragOverId('favorites');
-          }}
-          onDragLeave={() => {
-            if (dragOverId === 'favorites') setDragOverId(null);
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragOverId(null);
-            let trackId = null;
-            try {
-              const json = e.dataTransfer.getData('application/json');
-              if (json) trackId = JSON.parse(json).id;
-            } catch (_) {}
-            if (!trackId) {
-              trackId = parseInt(e.dataTransfer.getData('text/plain'), 10);
-            }
-            if (trackId) {
-              toggleFavorite(trackId);
-              setDropFeedback({ id: 'favorites', message: 'Added to Liked Songs!' });
-              setTimeout(() => setDropFeedback(null), 2500);
-            }
-          }}
-          className={`flex items-center gap-3 p-2 rounded-md cursor-pointer transition border ${
-            dragOverId === 'favorites'
-              ? 'bg-brand-500/20 border-brand-500 scale-[1.02] shadow-lg'
-              : activeTab === 'favorites'
-              ? 'bg-[#242424] border-transparent'
-              : 'hover:bg-[#1f1f1f] border-transparent'
-          }`}
-        >
-          <div className="w-12 h-12 rounded-md bg-gradient-to-br from-indigo-700 via-purple-700 to-indigo-900 flex items-center justify-center shrink-0 shadow">
-            <Heart size={20} className="fill-white text-white" />
-          </div>
-          <div className="truncate flex-1">
-            <div className="flex items-center justify-between">
-              <p className={`text-sm font-semibold truncate ${
-                activeTab === 'favorites' ? 'text-brand-500' : 'text-white'
-              }`}>
-                Liked Songs
-              </p>
-              {dropFeedback?.id === 'favorites' && (
-                <span className="text-[10px] text-brand-500 font-bold flex items-center gap-0.5">
-                  <Check size={11} /> Added!
-                </span>
+        {showLikedSongs && (() => {
+          const isFavoritesSelected = activeTab === 'favorites';
+          const isPlayingFavorites = isPlaying && currentTrack?.playlist_id === 'favorites';
+
+          return (
+            <div
+              onClick={() => {
+                setActiveTab('favorites');
+                if (onCloseMobile) onCloseMobile();
+              }}
+              onContextMenu={(e) => {
+                if (onContextMenu) {
+                  onContextMenu(e, 'favorites', { id: 'favorites', name: 'Liked Songs' });
+                }
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+                setDragOverId('favorites');
+              }}
+              onDragLeave={() => {
+                if (dragOverId === 'favorites') setDragOverId(null);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOverId(null);
+                let trackId = null;
+                try {
+                  const json = e.dataTransfer.getData('application/json');
+                  if (json) trackId = JSON.parse(json).id;
+                } catch (_) {}
+                if (!trackId) {
+                  trackId = parseInt(e.dataTransfer.getData('text/plain'), 10);
+                }
+                if (trackId) {
+                  toggleFavorite(trackId);
+                  setDropFeedback({ id: 'favorites', message: 'Added to Liked Songs!' });
+                  setTimeout(() => setDropFeedback(null), 2500);
+                }
+              }}
+              className={`flex items-center gap-3 p-2 rounded-md cursor-pointer transition border relative ${
+                dragOverId === 'favorites'
+                  ? 'bg-brand-500/20 border-brand-500 scale-[1.02] shadow-lg'
+                  : isFavoritesSelected
+                  ? 'bg-[#282828] border-brand-500/40 shadow-sm'
+                  : 'hover:bg-[#1f1f1f] border-transparent'
+              }`}
+            >
+              {isFavoritesSelected && (
+                <div className="absolute left-0 top-2 bottom-2 w-1 bg-brand-500 rounded-r-full shadow-sm shadow-brand-500/50" />
               )}
-              {dragOverId === 'favorites' && !dropFeedback && (
-                <span className="text-[10px] text-brand-500 font-bold">
-                  + Drop to save
-                </span>
-              )}
+              <div className="w-12 h-12 rounded-md bg-gradient-to-br from-indigo-700 via-purple-700 to-indigo-900 flex items-center justify-center shrink-0 shadow">
+                <Heart size={20} className="fill-white text-white" />
+              </div>
+              <div className="truncate flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 truncate">
+                    <p className={`text-sm font-semibold truncate ${
+                      isFavoritesSelected
+                        ? 'text-brand-400 font-bold'
+                        : isPlayingFavorites
+                        ? 'text-brand-500 font-bold'
+                        : 'text-white'
+                    }`}>
+                      Liked Songs
+                    </p>
+                    {isPlayingFavorites && (
+                      <div className="flex items-end justify-center gap-[2px] w-3 h-3 pb-0.5 shrink-0" title="Playing">
+                        <span className="w-[2px] bg-brand-500 rounded-full animate-eq-1" />
+                        <span className="w-[2px] bg-brand-500 rounded-full animate-eq-2" />
+                        <span className="w-[2px] bg-brand-500 rounded-full animate-eq-3" />
+                        <span className="w-[2px] bg-brand-500 rounded-full animate-eq-4" />
+                      </div>
+                    )}
+                  </div>
+                  {dropFeedback?.id === 'favorites' && (
+                    <span className="text-[10px] text-brand-500 font-bold flex items-center gap-0.5">
+                      <Check size={11} /> Added!
+                    </span>
+                  )}
+                  {dragOverId === 'favorites' && !dropFeedback && (
+                    <span className="text-[10px] text-brand-500 font-bold">
+                      + Drop to save
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-[#b3b3b3] truncate mt-0.5">
+                  Playlist • Auto-collected
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-[#b3b3b3] truncate mt-0.5">
-              Playlist • Auto-collected
-            </p>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* User Playlists */}
-        {playlists.map((pl, idx) => {
-          const isSelected = activeTab === 'playlist-detail' && pl.id === onSelectPlaylist?.currentId;
+        {displayPlaylists.map((pl, idx) => {
+          const isSelected = activeTab === 'playlist-detail' && pl.id === selectedPlaylistId;
+          const isPlayingThis = isPlaying && currentTrack?.playlist_id === pl.id;
           const isDragOverTrack = dragOverId === pl.id;
           const hasFeedback = dropFeedback?.id === pl.id;
           const isTargetAbove = playlistDropTarget?.idx === idx && playlistDropTarget?.position === 'above';
@@ -182,7 +370,7 @@ export const LibrarySidebar = ({
 
           return (
             <React.Fragment key={pl.id}>
-              {isTargetAbove && (
+              {isCustomOrder && isTargetAbove && (
                 <div className="h-0.5 w-full bg-brand-500 rounded-full my-1 shadow-sm shadow-brand-500/50" />
               )}
               <div
@@ -197,7 +385,7 @@ export const LibrarySidebar = ({
                 }}
                 onDragOver={(e) => {
                   e.preventDefault();
-                  if (draggedPlaylistIdx !== null) {
+                  if (isCustomOrder && draggedPlaylistIdx !== null) {
                     e.dataTransfer.dropEffect = 'move';
                     const rect = e.currentTarget.getBoundingClientRect();
                     const midY = rect.top + rect.height / 2;
@@ -217,8 +405,8 @@ export const LibrarySidebar = ({
                   e.preventDefault();
                   setDragOverId(null);
 
-                  // 1. If dragging a playlist to reorder
-                  if (draggedPlaylistIdx !== null) {
+                  // 1. If dragging a playlist to reorder (only in custom order mode)
+                  if (isCustomOrder && draggedPlaylistIdx !== null) {
                     const fromIdx = draggedPlaylistIdx;
                     let toIdx = idx;
                     if (playlistDropTarget?.position === 'below' && fromIdx > idx) {
@@ -270,16 +458,19 @@ export const LibrarySidebar = ({
                     setTimeout(() => setDropFeedback(null), 3000);
                   }
                 }}
-                className={`flex items-center gap-2.5 p-2 rounded-md cursor-pointer group transition border ${
+                className={`flex items-center gap-2.5 p-2 rounded-md cursor-pointer group transition border relative ${
                   isBeingDragged
                     ? 'opacity-40 border-dashed border-white/20'
                     : isDragOverTrack
                     ? 'bg-brand-500/20 border-brand-500 scale-[1.02] shadow-lg'
                     : isSelected
-                    ? 'bg-[#242424] border-transparent'
+                    ? 'bg-[#282828] border-brand-500/40 shadow-sm'
                     : 'hover:bg-[#1f1f1f] border-transparent'
                 }`}
               >
+                {isSelected && (
+                  <div className="absolute left-0 top-2 bottom-2 w-1 bg-brand-500 rounded-r-full shadow-sm shadow-brand-500/50" />
+                )}
                 <div className="relative shrink-0">
                   <PlaylistCover covers={pl.covers || []} size="w-12 h-12" iconSize={20} />
                   {isDragOverTrack && (
@@ -288,11 +479,27 @@ export const LibrarySidebar = ({
                 </div>
                 <div className="truncate flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <p className={`text-sm font-semibold truncate ${
-                      isSelected || isDragOverTrack ? 'text-brand-500' : 'text-white'
-                    }`}>
-                      {pl.name}
-                    </p>
+                    <div className="flex items-center gap-1.5 truncate">
+                      <p className={`text-sm font-semibold truncate ${
+                        isSelected
+                          ? 'text-brand-400 font-bold'
+                          : isPlayingThis
+                          ? 'text-brand-500 font-bold'
+                          : isDragOverTrack
+                          ? 'text-brand-400'
+                          : 'text-white'
+                      }`}>
+                        {pl.name}
+                      </p>
+                      {isPlayingThis && (
+                        <div className="flex items-end justify-center gap-[2px] w-3 h-3 pb-0.5 shrink-0" title="Playing">
+                          <span className="w-[2px] bg-brand-500 rounded-full animate-eq-1" />
+                          <span className="w-[2px] bg-brand-500 rounded-full animate-eq-2" />
+                          <span className="w-[2px] bg-brand-500 rounded-full animate-eq-3" />
+                          <span className="w-[2px] bg-brand-500 rounded-full animate-eq-4" />
+                        </div>
+                      )}
+                    </div>
                     {hasFeedback && (
                       <span className={`text-[10px] font-bold flex items-center gap-0.5 ${
                         dropFeedback?.error ? 'text-amber-400' : 'text-brand-500'
@@ -315,36 +522,40 @@ export const LibrarySidebar = ({
                     <span>Playlist • {pl.track_count} {pl.track_count === 1 ? 'song' : 'songs'}</span>
                   </p>
                 </div>
-                <div 
-                  draggable="true"
-                  onDragStart={(e) => {
-                    e.stopPropagation();
-                    e.dataTransfer.setData('application/x-playlist-id', String(pl.id));
-                    e.dataTransfer.setData('application/x-playlist-idx', String(idx));
-                    e.dataTransfer.effectAllowed = 'move';
-                    setDraggedPlaylistIdx(idx);
-                  }}
-                  onDragEnd={() => {
-                    setDraggedPlaylistIdx(null);
-                    setPlaylistDropTarget(null);
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                  className="shrink-0 text-white/0 group-hover:text-white/30 hover:!text-white cursor-grab active:cursor-grabbing p-1 transition"
-                  title="Drag to rearrange playlist order"
-                >
-                  <GripVertical size={14} />
-                </div>
+                {isCustomOrder && (
+                  <div 
+                    draggable="true"
+                    onDragStart={(e) => {
+                      e.stopPropagation();
+                      e.dataTransfer.setData('application/x-playlist-id', String(pl.id));
+                      e.dataTransfer.setData('application/x-playlist-idx', String(idx));
+                      e.dataTransfer.effectAllowed = 'move';
+                      setDraggedPlaylistIdx(idx);
+                    }}
+                    onDragEnd={() => {
+                      setDraggedPlaylistIdx(null);
+                      setPlaylistDropTarget(null);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="shrink-0 text-white/0 group-hover:text-white/30 hover:!text-white cursor-grab active:cursor-grabbing p-1 transition"
+                    title="Drag to rearrange playlist order"
+                  >
+                    <GripVertical size={14} />
+                  </div>
+                )}
               </div>
-              {isTargetBelow && (
+              {isCustomOrder && isTargetBelow && (
                 <div className="h-0.5 w-full bg-brand-500 rounded-full my-1 shadow-sm shadow-brand-500/50" />
               )}
             </React.Fragment>
           );
         })}
 
-        {playlists.length === 0 && (
+        {displayPlaylists.length === 0 && (
           <div className="px-3 py-6 text-center text-xs text-[#666]">
-            No custom playlists yet. Tap <span className="text-white">+</span> to create one!
+            {librarySearchQuery.trim()
+              ? 'No matching playlists found.'
+              : 'No custom playlists yet. Tap + to create one!'}
           </div>
         )}
       </div>

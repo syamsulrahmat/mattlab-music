@@ -2,7 +2,8 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { 
   Play, Pause, Trash2, Clock, Music, Shuffle, 
   Search, X, Pencil, ArrowUpDown, GripVertical, Calendar, 
-  CheckSquare, Square, Check, AlertTriangle, RefreshCw, ExternalLink, UserCheck
+  CheckSquare, Square, Check, AlertTriangle, RefreshCw, ExternalLink, UserCheck, Lock,
+  Type, Mic2, Disc3, ChevronDown, ListOrdered
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { PlaylistCover } from './PlaylistCover';
@@ -63,6 +64,21 @@ export const PlaylistDetail = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('custom'); // 'custom', 'title', 'artist', 'album', 'added_at', 'duration'
   const [sortOrder, setSortOrder] = useState('asc'); // 'asc', 'desc'
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+  const sortMenuRef = useRef(null);
+
+  // Close sort menu on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (sortMenuRef.current && !sortMenuRef.current.contains(e.target)) {
+        setIsSortMenuOpen(false);
+      }
+    };
+    if (isSortMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isSortMenuOpen]);
 
   // Inline edit modal
   const [isEditingDetails, setIsEditingDetails] = useState(false);
@@ -82,7 +98,8 @@ export const PlaylistDetail = ({
     isShuffle, 
     toggleShuffle, 
     setQueue, 
-    setQueueIndex 
+    setQueueIndex,
+    showToast,
   } = usePlayer();
 
   const fetchPlaylistSilently = async () => {
@@ -181,15 +198,30 @@ export const PlaylistDetail = ({
     if (isSyncingNow || !playlistId) return;
     setIsSyncingNow(true);
     try {
-      await fetch(`/api/spotify/sync-now/${playlistId}`, { method: 'POST' });
+      const syncRes = await fetch(`/api/spotify/sync-now/${playlistId}`, { method: 'POST' });
       const res = await fetch(`/api/spotify/status/${playlistId}`);
       if (res.ok) {
         setSpotifyStatus(await res.json());
       }
       fetchPlaylistSilently();
       if (onPlaylistUpdated) onPlaylistUpdated();
+
+      if (syncRes.ok) {
+        const syncData = await syncRes.json();
+        const newCount = syncData.new_tracks_added ?? 0;
+        if (showToast) {
+          if (newCount > 0) {
+            showToast(`✨ Playlist updated: ${newCount} new ${newCount === 1 ? 'song' : 'songs'} entered the chart!`);
+          } else {
+            showToast('✨ Playlist updated: all songs are up to date with chart.');
+          }
+        }
+      }
     } catch (err) {
       console.error('Failed to sync now:', err);
+      if (showToast) {
+        showToast('⚠️ Failed to sync with Spotify');
+      }
     } finally {
       setIsSyncingNow(false);
     }
@@ -308,13 +340,16 @@ export const PlaylistDetail = ({
   // Playback handlers using unbiased Fisher-Yates shuffle
   const handleTrackPlay = (track) => {
     if (track.isSyncPending) return;
-    const playableTracks = tracks.filter((t) => !t.isSyncPending);
+    const playableTracks = tracks
+      .filter((t) => !t.isSyncPending)
+      .map((t) => ({ ...t, playlist_id: playlistId }));
     if (playableTracks.length === 0) return;
 
+    const trackWithPl = { ...track, playlist_id: playlistId };
     if (isShuffle && playableTracks.length > 1) {
-      playTrack(track, shuffledQueueStartingWith(track, playableTracks));
+      playTrack(trackWithPl, shuffledQueueStartingWith(trackWithPl, playableTracks));
     } else {
-      playTrack(track, playableTracks);
+      playTrack(trackWithPl, playableTracks);
     }
   };
 
@@ -322,7 +357,9 @@ export const PlaylistDetail = ({
     if (isCurrentPlayingInPlaylist) {
       togglePlay();
     } else {
-      const playableTracks = tracks.filter((t) => !t.isSyncPending);
+      const playableTracks = tracks
+        .filter((t) => !t.isSyncPending)
+        .map((t) => ({ ...t, playlist_id: playlistId }));
       if (playableTracks.length === 0) return;
       if (isShuffle) {
         const shuffled = shuffleArray(playableTracks);
@@ -337,10 +374,12 @@ export const PlaylistDetail = ({
     const nextShuffle = !isShuffle;
     toggleShuffle();
 
-    const playableTracks = tracks.filter((t) => !t.isSyncPending);
+    const playableTracks = tracks
+      .filter((t) => !t.isSyncPending)
+      .map((t) => ({ ...t, playlist_id: playlistId }));
     if (nextShuffle) {
       if (isCurrentPlayingInPlaylist && currentTrack) {
-        setQueue(shuffledQueueStartingWith(currentTrack, playableTracks));
+        setQueue(shuffledQueueStartingWith({ ...currentTrack, playlist_id: playlistId }, playableTracks));
         setQueueIndex(0);
       } else if (!isPlaying && playableTracks.length > 0) {
         const shuffled = shuffleArray(playableTracks);
@@ -600,7 +639,9 @@ export const PlaylistDetail = ({
   };
 
   const handlePlaySelected = () => {
-    const selectedList = tracks.filter((t) => selectedTrackIds.has(t.id));
+    const selectedList = tracks
+      .filter((t) => selectedTrackIds.has(t.id))
+      .map((t) => ({ ...t, playlist_id: playlistId }));
     if (selectedList.length === 0) return;
     if (isShuffle) {
       const shuffled = shuffleArray(selectedList);
@@ -765,109 +806,24 @@ export const PlaylistDetail = ({
         </div>
       </div>
 
-      {/* Spotify Synchronized Playlist Banner */}
-      {playlist.spotify_id && (
-        <div className="bg-gradient-to-r from-emerald-950/40 via-[#13281c]/30 to-[#121212] border-b border-white/5 px-6 sm:px-8 py-3.5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#1DB954]/10 border border-[#1DB954]/20 flex items-center justify-center text-[#1DB954] shrink-0 shadow-inner">
-                <SpotifyIcon size={22} />
-              </div>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
-                    Spotify Auto-Sync
-                  </h4>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#1DB954]/15 text-[#1DB954] border border-[#1DB954]/20">
-                    {playlist.auto_sync ? 'Auto-sync active (every 6h)' : 'Manual sync'}
-                  </span>
-                  {spotifyStatus && (spotifyStatus.downloading > 0 || spotifyStatus.pending > 0) && (
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-brand-500/15 text-brand-400 border border-brand-500/20 flex items-center gap-1 animate-pulse">
-                      <RefreshCw size={10} className="animate-spin" />
-                      Downloading {spotifyStatus.downloading} song(s)...
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-[#b3b3b3] mt-0.5">
-                  {spotifyStatus ? (
-                    <>
-                      <strong className="text-white">{spotifyStatus.matched}</strong> of{' '}
-                      <strong className="text-white">{spotifyStatus.total}</strong> songs downloaded
-                      {spotifyStatus.downloading > 0 && ` • ${spotifyStatus.downloading} downloading`}
-                      {spotifyStatus.pending > 0 && ` • ${spotifyStatus.pending} queued`}
-                      {spotifyStatus.failed > 0 && ` • ${spotifyStatus.failed} failed`}
-                      {spotifyStatus.last_synced_at && ` • Last synced: ${formatAddedAt(spotifyStatus.last_synced_at)}`}
-                    </>
-                  ) : (
-                    'Checking Spotify sync status...'
-                  )}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 self-start sm:self-auto">
-              {playlist.spotify_url && (
-                <a
-                  href={playlist.spotify_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-xs font-semibold text-[#b3b3b3] hover:text-white transition flex items-center gap-1.5"
-                  title="Open original playlist on Spotify"
-                >
-                  <ExternalLink size={13} />
-                  <span className="hidden md:inline">Open in Spotify</span>
-                </a>
-              )}
-              <button
-                onClick={() => onPromptTakeOwnership?.(playlist)}
-                className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-xs font-semibold text-[#b3b3b3] hover:text-white transition flex items-center gap-1.5"
-                title="Unlink from Spotify and take full local ownership"
-              >
-                <UserCheck size={13} className="text-brand-400" />
-                <span className="hidden sm:inline">Take Ownership</span>
-              </button>
-              <button
-                onClick={handleSyncNow}
-                disabled={isSyncingNow}
-                className="px-3.5 py-1.5 rounded-full bg-[#1DB954] hover:bg-[#1ed760] text-black text-xs font-bold transition flex items-center gap-1.5 shadow disabled:opacity-50 active:scale-95"
-                title="Force an immediate check for newly added tracks"
-              >
-                <RefreshCw size={13} className={isSyncingNow ? 'animate-spin' : ''} />
-                <span>{isSyncingNow ? 'Syncing...' : 'Sync Now'}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Progress bar if not 100% matched */}
-          {spotifyStatus && spotifyStatus.total > 0 && spotifyStatus.matched < spotifyStatus.total && (
-            <div className="mt-3">
-              <div className="flex items-center justify-between text-[11px] text-[#888] mb-1">
-                <span>
-                  {spotifyStatus.downloading > 0 ? 'Downloading missing songs via yt-dlp & tagging...' : 'Queued downloads'}
-                </span>
-                <span className="font-semibold text-white">
-                  {Math.round((spotifyStatus.matched / spotifyStatus.total) * 100)}%
-                </span>
-              </div>
-              <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-[#1DB954] rounded-full transition-all duration-500"
-                  style={{ width: `${Math.round((spotifyStatus.matched / spotifyStatus.total) * 100)}%` }}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Offscreen pre-rendered drag ghost for instantaneous frame-0 locked drag feedback */}
+      <div
+        id="spotify-locked-drag-ghost"
+        style={{ position: 'fixed', top: '-9999px', left: '-9999px', pointerEvents: 'none', zIndex: -100 }}
+        className="flex items-center gap-2 px-3.5 py-2 bg-[#181818] text-white text-xs font-semibold rounded-full border border-white/20 shadow-2xl"
+      >
+        <Lock size={14} className="text-[#1DB954]" />
+        <span>Spotify Chart • Order Locked</span>
+      </div>
 
       {/* 3. Action & Filter Bar (scrolls naturally with the page) */}
       <div className="px-6 sm:px-8 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        {/* Left: Play/Pause in green circle, shuffle, edit */}
-        <div className="flex items-center gap-3">
+        {/* Left: Play/Pause in green circle, shuffle, edit, take ownership */}
+        <div className="flex items-center gap-3 flex-wrap">
           <button
             onClick={handlePlayAll}
             disabled={tracks.length === 0}
-            className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-brand-500 hover:bg-brand-400 hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-xl transition disabled:opacity-40"
+            className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-brand-500 hover:bg-brand-400 hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-xl transition disabled:opacity-40 shrink-0"
             title="Play Playlist"
           >
             {isCurrentPlayingInPlaylist && isPlaying ? (
@@ -898,12 +854,23 @@ export const PlaylistDetail = ({
           >
             <Pencil size={18} />
           </button>
+
+          {playlist?.spotify_id && (
+            <button
+              onClick={() => onPromptTakeOwnership?.(playlist)}
+              className="px-3.5 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-xs font-semibold text-[#b3b3b3] hover:text-white transition flex items-center gap-1.5 border border-white/5"
+              title="Unlink from Spotify and take full local ownership"
+            >
+              <UserCheck size={14} className="text-brand-400" />
+              <span>Take Ownership</span>
+            </button>
+          )}
         </div>
 
-        {/* Right: Search bar, custom order dropdown, delete button */}
-        <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+        {/* Right: In-playlist search, icon sort dropdown, sync now icon, open in spotify icon, delete */}
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           {/* In-playlist search */}
-          <div className="relative flex-1 sm:w-56">
+          <div className="relative flex-1 sm:w-52">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#888]" />
             <input
               type="text"
@@ -922,49 +889,189 @@ export const PlaylistDetail = ({
             )}
           </div>
 
-          {/* Sort dropdown */}
-          <div className="flex items-center gap-1.5 bg-[#242424] border border-white/5 rounded-full px-3 py-1.5 text-xs text-[#b3b3b3]">
-            <ArrowUpDown size={13} className="text-[#888]" />
-            <select
-              value={sortBy}
-              onChange={(e) => {
-                setSortBy(e.target.value);
-                if (e.target.value === 'custom') setSortOrder('asc');
-              }}
-              className="bg-transparent text-white text-xs outline-none cursor-pointer"
+          {/* Sort dropdown with icons */}
+          <div className="relative shrink-0 flex items-center gap-1 bg-[#242424] hover:bg-[#2a2a2a] border border-white/5 rounded-full px-2.5 py-1.5 transition" ref={sortMenuRef}>
+            <button
+              onClick={() => setIsSortMenuOpen((prev) => !prev)}
+              className="flex items-center gap-1.5 text-xs text-[#b3b3b3] hover:text-white transition outline-none"
+              title={`Sorted by: ${
+                sortBy === 'custom'
+                  ? (playlist?.spotify_id ? 'Spotify Chart Order' : 'Custom Order')
+                  : sortBy === 'title'
+                  ? 'Title'
+                  : sortBy === 'artist'
+                  ? 'Artist'
+                  : sortBy === 'album'
+                  ? 'Album'
+                  : sortBy === 'added_at'
+                  ? 'Date Added'
+                  : 'Duration'
+              }`}
             >
-              <option value="custom" className="bg-[#242424] text-white">Custom order</option>
-              <option value="title" className="bg-[#242424] text-white">Title</option>
-              <option value="artist" className="bg-[#242424] text-white">Artist</option>
-              <option value="album" className="bg-[#242424] text-white">Album</option>
-              <option value="added_at" className="bg-[#242424] text-white">Date added</option>
-              <option value="duration" className="bg-[#242424] text-white">Duration</option>
-            </select>
+              {sortBy === 'custom' ? (
+                playlist?.spotify_id ? <Lock size={14} className="text-[#1DB954]" /> : <ListOrdered size={14} className="text-[#888]" />
+              ) : sortBy === 'title' ? (
+                <Type size={14} className="text-brand-400" />
+              ) : sortBy === 'artist' ? (
+                <Mic2 size={14} className="text-brand-400" />
+              ) : sortBy === 'album' ? (
+                <Disc3 size={14} className="text-brand-400" />
+              ) : sortBy === 'added_at' ? (
+                <Calendar size={14} className="text-brand-400" />
+              ) : (
+                <Clock size={14} className="text-brand-400" />
+              )}
+              <ChevronDown size={11} className="text-[#777]" />
+            </button>
 
             {sortBy !== 'custom' && (
               <button
                 onClick={() => setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
-                className="text-[11px] font-bold text-brand-500 hover:underline px-1"
-                title={`Sort ${sortOrder === 'asc' ? 'Ascending' : 'Descending'}`}
+                className="text-[11px] font-bold text-brand-500 hover:text-brand-400 pl-0.5 pr-1 transition"
+                title={`Sort direction: ${sortOrder === 'asc' ? 'Ascending' : 'Descending'}`}
               >
                 {sortOrder === 'asc' ? '↑' : '↓'}
               </button>
             )}
+
+            {isSortMenuOpen && (
+              <div className="absolute right-0 top-full mt-1.5 w-48 bg-[#1f1f1f] border border-white/10 rounded-lg shadow-2xl py-1 z-50 text-xs">
+                <div className="px-3 py-1 text-[10px] uppercase font-bold text-[#666] tracking-wider">
+                  Sort By
+                </div>
+                <button
+                  onClick={() => {
+                    setSortBy('custom');
+                    setSortOrder('asc');
+                    setIsSortMenuOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-white/10 transition ${
+                    sortBy === 'custom' ? 'text-brand-500 font-bold' : 'text-white'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    {playlist?.spotify_id ? <Lock size={14} className="text-[#1DB954]" /> : <ListOrdered size={14} />}
+                    <span>{playlist?.spotify_id ? 'Spotify chart order' : 'Custom order'}</span>
+                  </span>
+                  {sortBy === 'custom' && <Check size={13} />}
+                </button>
+                <button
+                  onClick={() => {
+                    setSortBy('title');
+                    setIsSortMenuOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-white/10 transition ${
+                    sortBy === 'title' ? 'text-brand-500 font-bold' : 'text-white'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <Type size={14} />
+                    <span>Title</span>
+                  </span>
+                  {sortBy === 'title' && <Check size={13} />}
+                </button>
+                <button
+                  onClick={() => {
+                    setSortBy('artist');
+                    setIsSortMenuOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-white/10 transition ${
+                    sortBy === 'artist' ? 'text-brand-500 font-bold' : 'text-white'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <Mic2 size={14} />
+                    <span>Artist</span>
+                  </span>
+                  {sortBy === 'artist' && <Check size={13} />}
+                </button>
+                <button
+                  onClick={() => {
+                    setSortBy('album');
+                    setIsSortMenuOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-white/10 transition ${
+                    sortBy === 'album' ? 'text-brand-500 font-bold' : 'text-white'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <Disc3 size={14} />
+                    <span>Album</span>
+                  </span>
+                  {sortBy === 'album' && <Check size={13} />}
+                </button>
+                <button
+                  onClick={() => {
+                    setSortBy('added_at');
+                    setIsSortMenuOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-white/10 transition ${
+                    sortBy === 'added_at' ? 'text-brand-500 font-bold' : 'text-white'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <Calendar size={14} />
+                    <span>Date added</span>
+                  </span>
+                  {sortBy === 'added_at' && <Check size={13} />}
+                </button>
+                <button
+                  onClick={() => {
+                    setSortBy('duration');
+                    setIsSortMenuOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-white/10 transition ${
+                    sortBy === 'duration' ? 'text-brand-500 font-bold' : 'text-white'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <Clock size={14} />
+                    <span>Duration</span>
+                  </span>
+                  {sortBy === 'duration' && <Check size={13} />}
+                </button>
+              </div>
+            )}
           </div>
 
+          {/* Sync Now icon button (if playlist is synced with Spotify) */}
+          {playlist?.spotify_id && (
+            <button
+              onClick={handleSyncNow}
+              disabled={isSyncingNow}
+              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-[#b3b3b3] hover:text-[#1DB954] transition flex items-center justify-center disabled:opacity-50 shrink-0"
+              title={isSyncingNow ? 'Syncing...' : 'Sync Now with Spotify'}
+            >
+              <RefreshCw size={15} className={isSyncingNow ? 'animate-spin text-[#1DB954]' : ''} />
+            </button>
+          )}
+
+          {/* Open in Spotify icon button (if playlist has spotify_url) */}
+          {playlist?.spotify_url && (
+            <a
+              href={playlist.spotify_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-[#b3b3b3] hover:text-[#1DB954] transition flex items-center justify-center shrink-0"
+              title="Open on Spotify"
+            >
+              <SpotifyIcon size={16} />
+            </a>
+          )}
+
+          {/* Delete playlist icon button */}
           <button
             onClick={() => setIsConfirmDeleteOpen(true)}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[#888] hover:text-red-400 p-2 rounded-lg transition"
+            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-[#888] hover:text-red-400 transition flex items-center justify-center shrink-0"
             title="Delete playlist"
           >
             <Trash2 size={16} />
-            <span className="hidden sm:inline">Delete</span>
           </button>
         </div>
       </div>
 
       {/* Reorder notice if sorted differently */}
-      {!isDragEnabled && rawTracks.length > 1 && (
+      {!playlist?.spotify_id && !isDragEnabled && rawTracks.length > 1 && (
         <div className="px-6 sm:px-8 pb-3">
           <div className="text-[11px] text-[#777] flex items-center gap-1.5">
             <span>💡 Track reordering is active when sorted by <strong>Custom order</strong> with search cleared.</span>
@@ -993,7 +1100,7 @@ export const PlaylistDetail = ({
         <div className="px-6 sm:px-8">
           {/* Sticky Tracklist Column Header Row */}
           <div className="sticky top-0 z-30 bg-[#121212]/95 backdrop-blur-md mb-2">
-            <div className="grid grid-cols-[36px_1fr_36px_50px] md:grid-cols-[40px_3fr_2fr_36px_60px] lg:grid-cols-[40px_4fr_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-[#b3b3b3] border-b border-white/10 items-center">
+            <div className="grid grid-cols-[36px_1fr_56px_50px] md:grid-cols-[40px_3fr_2fr_56px_60px] lg:grid-cols-[40px_4fr_3fr_2fr_56px_60px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-[#b3b3b3] border-b border-white/10 items-center">
               <span className="text-center">#</span>
               <div className="flex items-center gap-3 truncate pr-3">
                 <span className="w-10 shrink-0" />
@@ -1009,13 +1116,22 @@ export const PlaylistDetail = ({
           </div>
 
           {/* Track Rows (Seamless Canvas) */}
-          <div className="space-y-0.5">
+          <div 
+            onDragOver={(e) => {
+              if (playlist?.spotify_id) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+              }
+            }}
+            className="space-y-0.5"
+          >
               {tracks.map((track, idx) => {
                 const isThisTrack = currentTrack?.id === track.id;
                 const isThisPlaying = isThisTrack && isPlaying;
                 const isThisBuffering = isThisTrack && isBuffering;
                 const isSelected = selectedTrackIds.has(track.id);
                 const isDragOver = dragOverTrackIdx === idx;
+                const isBeingDragged = draggedTrackIdx === idx;
 
                 return (
                   <div
@@ -1035,8 +1151,17 @@ export const PlaylistDetail = ({
                         });
                       }
                     }}
-                    draggable={isDragEnabled && !track.isSyncPending ? "true" : "false"}
+                    draggable={(!playlist?.spotify_id && isDragEnabled && !track.isSyncPending) || (playlist?.spotify_id && !track.isSyncPending) ? "true" : "false"}
                     onDragStart={(e) => {
+                      if (playlist?.spotify_id) {
+                        e.dataTransfer.effectAllowed = 'copy';
+                        e.dataTransfer.setData('text/plain', '');
+                        const ghost = document.getElementById('spotify-locked-drag-ghost');
+                        if (ghost) {
+                          e.dataTransfer.setDragImage(ghost, 20, 16);
+                        }
+                        return;
+                      }
                       if (!isDragEnabled || track.isSyncPending) return;
                       e.dataTransfer.setData('text/track-index', String(idx));
                       e.dataTransfer.setData('application/json', JSON.stringify({
@@ -1051,20 +1176,38 @@ export const PlaylistDetail = ({
                       e.dataTransfer.effectAllowed = 'copyMove';
                       setDraggedTrackIdx(idx);
                     }}
+                    onDragEnd={() => {
+                      setDraggedTrackIdx(null);
+                      setDragOverTrackIdx(null);
+                    }}
                     onDragOver={(e) => {
+                      if (playlist?.spotify_id) {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'copy';
+                        return;
+                      }
                       if (!isDragEnabled || track.isSyncPending) return;
                       e.preventDefault();
                       e.dataTransfer.dropEffect = 'move';
                       if (dragOverTrackIdx !== idx) setDragOverTrackIdx(idx);
                     }}
-                    onDragLeave={() => {
+                    onDragLeave={(e) => {
+                      if (e.currentTarget.contains(e.relatedTarget)) return;
                       if (dragOverTrackIdx === idx) setDragOverTrackIdx(null);
                     }}
-                    onDrop={(e) => handleDrop(e, idx)}
-                    className={`grid grid-cols-[36px_1fr_36px_50px] md:grid-cols-[40px_3fr_2fr_36px_60px] lg:grid-cols-[40px_4fr_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center cursor-default select-none active:cursor-grabbing ${
-                      isDragOver ? 'border-t-2 border-brand-500 bg-brand-500/10' : ''
-                    } ${
-                      isSelected
+                    onDrop={(e) => {
+                      if (playlist?.spotify_id) {
+                        e.preventDefault();
+                        return;
+                      }
+                      handleDrop(e, idx);
+                    }}
+                    className={`grid grid-cols-[36px_1fr_56px_50px] md:grid-cols-[40px_3fr_2fr_56px_60px] lg:grid-cols-[40px_4fr_3fr_2fr_56px_60px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center cursor-default select-none ${
+                      isBeingDragged
+                        ? 'opacity-40 border-dashed border-white/20'
+                        : isDragOver
+                        ? 'border-t-2 border-brand-500 bg-brand-500/10 shadow-lg'
+                        : isSelected
                         ? 'bg-[#2a2a2a] ring-1 ring-white/20 text-white'
                         : track.isSyncPending
                         ? 'hover:bg-[#1a1a1a] opacity-85 text-white'
@@ -1218,12 +1361,40 @@ export const PlaylistDetail = ({
                       {track.isSyncPending ? (track.syncStatus === 'downloading' ? 'Downloading...' : 'Queued') : formatAddedAt(track.added_at)}
                     </span>
 
-                    {/* Column 5: Trash icon */}
-                    <div className="flex items-center justify-center">
+                    {/* Column 5: Actions (Drag Handle & Trash) */}
+                    <div className="flex items-center justify-center gap-1">
+                      {isDragEnabled && !track.isSyncPending && (
+                        <div
+                          draggable="true"
+                          onDragStart={(e) => {
+                            e.stopPropagation();
+                            e.dataTransfer.setData('text/track-index', String(idx));
+                            e.dataTransfer.setData('application/json', JSON.stringify({
+                              id: track.id,
+                              title: track.title,
+                              artist_name: track.artist_name,
+                              album_id: track.album_id,
+                              album_title: track.album_title,
+                              cover_url: track.cover_url
+                            }));
+                            e.dataTransfer.setData('text/plain', String(track.id));
+                            e.dataTransfer.effectAllowed = 'move';
+                            setDraggedTrackIdx(idx);
+                          }}
+                          onDragEnd={() => {
+                            setDraggedTrackIdx(null);
+                            setDragOverTrackIdx(null);
+                          }}
+                          className="p-1 cursor-grab active:cursor-grabbing text-white/20 group-hover:text-white/60 hover:!text-white transition rounded hover:bg-white/10"
+                          title="Drag to rearrange track order (or use Alt+Up/Down)"
+                        >
+                          <GripVertical size={15} />
+                        </div>
+                      )}
                       {!track.isSyncPending && (
                         <button
                           onClick={(e) => handleRemoveTrack(e, track.id)}
-                          className="opacity-0 group-hover:opacity-100 p-1 text-[#888] hover:text-red-400 transition"
+                          className="opacity-0 group-hover:opacity-100 p-1 text-[#888] hover:text-red-400 transition rounded hover:bg-white/10"
                           title="Remove from playlist"
                         >
                           <Trash2 size={15} />

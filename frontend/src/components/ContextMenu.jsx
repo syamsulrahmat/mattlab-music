@@ -461,9 +461,22 @@ export const ContextMenu = ({
 
           <div className="h-[1px] bg-white/10 my-1 mx-2" />
 
-          {/* Spotify Synced Actions */}
-          {data.spotify_id ? (
+          {/* Rename Playlist - Available on all playlists */}
+          <button
+            onClick={() => {
+              onClose();
+              onPromptRenamePlaylist?.(data);
+            }}
+            className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+          >
+            <Edit2 size={15} className="text-[#b3b3b3]" />
+            <span>Rename</span>
+          </button>
+
+          {/* Spotify Synced Actions (if still synced with Spotify) */}
+          {data.spotify_id && (
             <>
+              <div className="h-[1px] bg-white/10 my-1 mx-2" />
               <button
                 onClick={async () => {
                   onClose();
@@ -500,20 +513,6 @@ export const ContextMenu = ({
               >
                 <UserCheck size={15} />
                 <span>Take ownership</span>
-              </button>
-            </>
-          ) : (
-            <>
-              {/* Rename Playlist */}
-              <button
-                onClick={() => {
-                  onClose();
-                  onPromptRenamePlaylist?.(data);
-                }}
-                className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
-              >
-                <Edit2 size={15} className="text-[#b3b3b3]" />
-                <span>Rename playlist</span>
               </button>
             </>
           )}

@@ -598,6 +598,7 @@ const MainAppContent = () => {
           activeTab={activeTab}
           setActiveTab={handleSelectTab}
           playlists={playlists}
+          selectedPlaylistId={selectedPlaylistId}
           onSelectPlaylist={handleSelectPlaylist}
           onCreatePlaylistPrompt={handleOpenCreatePlaylist}
           onImportSpotifyPrompt={handleOpenImportSpotify}

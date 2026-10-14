@@ -104,15 +104,16 @@ async def list_playlists():
         """)
         playlists = [dict(row) for row in cursor.fetchall()]
 
-        # Attach up to 4 distinct album cover URLs for each playlist for 2x2 collage
+        # Attach up to 4 distinct album cover URLs for each playlist for 2x2 collage (first 4 albums by track position)
         for pl in playlists:
             cursor.execute("""
-                SELECT DISTINCT a.id AS album_id
+                SELECT a.id AS album_id
                 FROM playlist_tracks pt
                 JOIN tracks t ON pt.track_id = t.id
                 JOIN albums a ON t.album_id = a.id
                 WHERE pt.playlist_id = ? AND a.cover_path IS NOT NULL
-                ORDER BY RANDOM()
+                GROUP BY a.id
+                ORDER BY MIN(pt.position) ASC, MIN(pt.added_at) ASC
                 LIMIT 4
             """, (pl["id"],))
             rows = cursor.fetchall()
@@ -171,12 +172,13 @@ async def get_playlist_detail(playlist_id: int):
         ]
 
         cursor.execute("""
-            SELECT DISTINCT a.id AS album_id
+            SELECT a.id AS album_id
             FROM playlist_tracks pt
             JOIN tracks t ON pt.track_id = t.id
             JOIN albums a ON t.album_id = a.id
             WHERE pt.playlist_id = ? AND a.cover_path IS NOT NULL
-            ORDER BY RANDOM()
+            GROUP BY a.id
+            ORDER BY MIN(pt.position) ASC, MIN(pt.added_at) ASC
             LIMIT 4
         """, (playlist_id,))
         rows = cursor.fetchall()
@@ -382,6 +384,16 @@ async def take_playlist_ownership(playlist_id: int):
         if not row["spotify_id"]:
             raise HTTPException(status_code=400, detail="Playlist is already a local user-owned playlist")
 
+        # 1. Ensure all matched tracks from spotify_sync_tracks are in playlist_tracks
+        cursor.execute("""
+            INSERT INTO playlist_tracks (playlist_id, track_id, position)
+            SELECT playlist_id, track_id, position
+            FROM spotify_sync_tracks
+            WHERE playlist_id = ? AND track_id IS NOT NULL
+            ON CONFLICT(playlist_id, track_id) DO UPDATE SET position = excluded.position
+        """, (playlist_id,))
+
+        # 2. Sever Spotify sync ties and metadata so Lidarr / background sync stops
         cursor.execute("""
             UPDATE playlists
             SET spotify_id = NULL,
@@ -393,7 +405,16 @@ async def take_playlist_ownership(playlist_id: int):
             WHERE id = ?
         """, (playlist_id,))
 
+        # 3. Clean up sync tracks queue
         cursor.execute("DELETE FROM spotify_sync_tracks WHERE playlist_id = ?", (playlist_id,))
+
+        # 4. Normalize sequential positions (1..N) for smooth reordering
+        cursor.execute("""
+            SELECT id FROM playlist_tracks WHERE playlist_id = ? ORDER BY position ASC, added_at ASC
+        """, (playlist_id,))
+        p_tracks = cursor.fetchall()
+        for idx, pt in enumerate(p_tracks):
+            cursor.execute("UPDATE playlist_tracks SET position = ? WHERE id = ?", (idx + 1, pt["id"]))
 
     return {
         "status": "ok",

@@ -60,7 +60,8 @@ export const FavoritesView = ({
     if (isCurrentPlayingInFav) {
       togglePlay();
     } else if (tracks.length > 0) {
-      playTrack(tracks[0], tracks);
+      const favTracks = tracks.map((t) => ({ ...t, playlist_id: 'favorites' }));
+      playTrack(favTracks[0], favTracks);
     }
   };
 
@@ -146,7 +147,10 @@ export const FavoritesView = ({
                   key={track.id}
                   data-track-id={track.id}
                   onClick={() => setSelectedTrackId(track.id)}
-                  onDoubleClick={() => playTrack(track, tracks)}
+                  onDoubleClick={() => {
+                    const favTracks = tracks.map((t) => ({ ...t, playlist_id: 'favorites' }));
+                    playTrack({ ...track, playlist_id: 'favorites' }, favTracks);
+                  }}
                   onContextMenu={(e) => {
                     if (onContextMenu) {
                       e.preventDefault();
@@ -214,7 +218,8 @@ export const FavoritesView = ({
                             if (isThisTrack) {
                               togglePlay();
                             } else {
-                              playTrack(track, tracks);
+                              const favTracks = tracks.map((t) => ({ ...t, playlist_id: 'favorites' }));
+                              playTrack({ ...track, playlist_id: 'favorites' }, favTracks);
                             }
                           }}
                           className="hidden group-hover:flex items-center justify-center w-7 h-7 text-white hover:text-brand-400 transition"
