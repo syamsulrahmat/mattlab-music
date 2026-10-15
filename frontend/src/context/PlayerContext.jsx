@@ -1062,14 +1062,14 @@ export const PlayerProvider = ({ children }) => {
     if (lyricLine) {
       // Active line
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.font = 'normal 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
       const truncatedCurr = lyricLine.length > 30 ? lyricLine.substring(0, 28) + '...' : lyricLine;
       ctx.fillText(`“${truncatedCurr}”`, textX, 192);
 
       // Upcoming line
       if (upcomingLyric) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-        ctx.font = '500 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.font = 'normal 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
         const truncatedNext = upcomingLyric.length > 36 ? upcomingLyric.substring(0, 34) + '...' : upcomingLyric;
         ctx.fillText(truncatedNext, textX, 222);
       }
@@ -1078,7 +1078,7 @@ export const PlayerProvider = ({ children }) => {
       const rawAlbum = track?.album_title;
       if (rawAlbum) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.font = '500 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.font = 'normal 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
         const truncatedAlbum = rawAlbum.length > 32 ? rawAlbum.substring(0, 30) + '...' : rawAlbum;
         ctx.fillText(`Album: ${truncatedAlbum}`, textX, 192);
       } else {

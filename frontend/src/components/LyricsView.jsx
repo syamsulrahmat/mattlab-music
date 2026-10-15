@@ -332,7 +332,7 @@ export const LyricsView = ({ onClose }) => {
                   key={`${line.time}-${idx}`}
                   ref={(el) => (lineRefs.current[idx] = el)}
                   onClick={() => seek(line.time)}
-                  className={`transition-all duration-300 font-black cursor-pointer leading-relaxed ${
+                  className={`transition-all duration-300 font-normal cursor-pointer leading-relaxed ${
                     isActive
                       ? 'text-white text-2xl sm:text-3xl md:text-4xl scale-105 origin-left drop-shadow-md text-brand-500'
                       : isPast
@@ -347,7 +347,7 @@ export const LyricsView = ({ onClose }) => {
           </div>
         ) : lyricsData?.plainLyrics ? (
           /* Plain Unsynced Lyrics */
-          <div className="max-w-2xl mx-auto py-12 whitespace-pre-line text-white/80 font-medium text-base sm:text-lg leading-loose text-center">
+          <div className="max-w-2xl mx-auto py-12 whitespace-pre-line text-white/80 font-normal text-base sm:text-lg leading-loose text-center">
             {formatPlainLyrics(lyricsData.plainLyrics)}
           </div>
         ) : (

@@ -348,7 +348,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
           <p
             onClick={() => currentLineObj && seek(currentLineObj.time)}
             style={{ fontSize: `${currentLyricFontSize}px` }}
-            className={`font-extrabold truncate leading-tight cursor-pointer transition-all duration-150 ${
+            className={`font-normal truncate leading-tight cursor-pointer transition-all duration-150 ${
               currentLineObj ? 'text-brand-400 drop-shadow-sm hover:underline' : 'text-white/80'
             }`}
             title={currentLineObj ? `Current lyric: "${currentSentence}" (Click to rewind)` : currentSentence}
@@ -360,7 +360,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
           <p
             onClick={() => nextLineObj && seek(nextLineObj.time)}
             style={{ fontSize: `${upcomingLyricFontSize}px` }}
-            className={`font-medium text-white/50 truncate leading-tight transition-all duration-150 ${
+            className={`font-normal text-white/50 truncate leading-tight transition-all duration-150 ${
               nextLineObj ? 'hover:text-white/80 cursor-pointer hover:underline' : ''
             }`}
             title={nextLineObj ? `Next lyric: "${upcomingSentence}" (Click to seek)` : upcomingSentence}
@@ -532,9 +532,9 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                   ref={(el) => (lineRefs.current[idx] = el)}
                   onClick={() => seek(line.time)}
                   style={{ fontSize: `${isActive ? activeFontSize : inactiveFontSize}px` }}
-                  className={`transition-all duration-300 font-bold cursor-pointer px-2.5 py-1 rounded-lg ${
+                  className={`transition-all duration-300 font-normal cursor-pointer px-2.5 py-1 rounded-lg ${
                     isActive
-                      ? 'text-brand-400 font-extrabold bg-brand-500/15 scale-[1.03] shadow-sm'
+                      ? 'text-brand-400 font-normal bg-brand-500/15 scale-[1.03] shadow-sm'
                       : isPast
                       ? 'text-white/60 hover:text-white'
                       : 'text-white/30 hover:text-white/70'
@@ -547,7 +547,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
           ) : lyricsState?.plainLyrics ? (
             <div
               style={{ fontSize: `${inactiveFontSize}px` }}
-              className="text-white/80 leading-relaxed whitespace-pre-line py-4"
+              className="text-white/80 font-normal leading-relaxed whitespace-pre-line py-4"
             >
               {lyricsState.plainLyrics}
             </div>
