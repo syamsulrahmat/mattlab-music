@@ -285,79 +285,59 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
         ref={smallLyricsRef}
         className={`w-full h-full flex flex-col justify-between bg-[#121212] text-white font-sans select-none box-border overflow-hidden ${containerPadding}`}
       >
-        {/* Top row: Track Info (hidden in minimal) & Action Icons */}
-        <div className={`flex items-center ${isMinimalLayout ? 'justify-end' : 'justify-between'} w-full gap-1.5 shrink-0`}>
-          {!isMinimalLayout && (
-            <div className="flex items-center gap-1.5 truncate flex-1 min-w-0 pr-1">
-              <img
-                src={currentTrack?.cover_url || '/api/covers/0'}
-                alt=""
-                style={{ width: `${coverSize}px`, height: `${coverSize}px` }}
-                className="rounded object-cover bg-[#222] shrink-0 shadow-sm"
-              />
-              <div className="flex-1 min-w-0 truncate">
-                <p
-                  style={{ fontSize: `${titleFontSize}px` }}
-                  className="font-bold text-white truncate leading-tight"
-                >
-                  {currentTrack?.title || 'No Track'}
-                </p>
-                <p
-                  style={{ fontSize: `${artistFontSize}px` }}
-                  className="text-[#b3b3b3] truncate leading-tight"
-                >
-                  {currentTrack?.artist_name || ''}
-                </p>
+        {/* Top row: Track Info (hidden in minimal) & in-app utility icons */}
+        {(!isMinimalLayout || (!isPiP && onClose)) && (
+          <div className={`flex items-center ${isMinimalLayout ? 'justify-end' : 'justify-between'} w-full gap-1.5 shrink-0`}>
+            {!isMinimalLayout && (
+              <div className="flex items-center gap-1.5 truncate flex-1 min-w-0 pr-1">
+                <img
+                  src={currentTrack?.cover_url || '/api/covers/0'}
+                  alt=""
+                  style={{ width: `${coverSize}px`, height: `${coverSize}px` }}
+                  className="rounded object-cover bg-[#222] shrink-0 shadow-sm"
+                />
+                <div className="flex-1 min-w-0 truncate">
+                  <p
+                    style={{ fontSize: `${titleFontSize}px` }}
+                    className="font-bold text-white truncate leading-tight"
+                  >
+                    {currentTrack?.title || 'No Track'}
+                  </p>
+                  <p
+                    style={{ fontSize: `${artistFontSize}px` }}
+                    className="text-[#b3b3b3] truncate leading-tight"
+                  >
+                    {currentTrack?.artist_name || ''}
+                  </p>
+                </div>
               </div>
-            </div>
-          )}
-
-          <div className="flex items-center gap-0.5 shrink-0">
-            {/* Karaoke Mode */}
-            <button
-              type="button"
-              onClick={toggleKaraoke}
-              className={`p-1 rounded transition ${
-                isKaraokeMode ? 'text-brand-500 bg-brand-500/10' : 'text-[#888] hover:text-white'
-              }`}
-              title={isKaraokeMode ? 'Karaoke Active (Vocals Off)' : 'Toggle Karaoke'}
-            >
-              <MicOff size={headerIconSize} />
-            </button>
-
-            {/* Expand to Full Multi-line Lyrics */}
-            <button
-              type="button"
-              onClick={() => handleSetSizeMode('lyrics-full')}
-              className="p-1 text-[#888] hover:text-white rounded transition hover:bg-white/10"
-              title="Expand to Full Lyrics Window"
-            >
-              <Maximize2 size={headerIconSize} />
-            </button>
-
-            {/* Pop-out Document PiP (when rendered in-app) */}
-            {!isPiP && 'documentPictureInPicture' in window && (
-              <button
-                type="button"
-                onClick={togglePiP}
-                className="p-1 text-[#888] hover:text-brand-400 rounded transition hover:bg-white/10"
-                title="Pop out Picture-in-Picture window"
-              >
-                <PictureInPicture2 size={headerIconSize} />
-              </button>
             )}
 
-            {/* Close */}
-            <button
-              type="button"
-              onClick={() => (isPiP ? pipWindow?.close() : onClose())}
-              className="p-1 text-[#888] hover:text-white rounded transition hover:bg-white/10"
-              title="Close"
-            >
-              <X size={headerIconSize} />
-            </button>
+            {/* In-app fallback controls only (PiP uses native OS window controls) */}
+            {!isPiP && (
+              <div className="flex items-center gap-0.5 shrink-0">
+                {'documentPictureInPicture' in window && (
+                  <button
+                    type="button"
+                    onClick={togglePiP}
+                    className="p-1 text-[#888] hover:text-brand-400 rounded transition hover:bg-white/10"
+                    title="Pop out Picture-in-Picture window"
+                  >
+                    <PictureInPicture2 size={headerIconSize} />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="p-1 text-[#888] hover:text-white rounded transition hover:bg-white/10"
+                  title="Close"
+                >
+                  <X size={headerIconSize} />
+                </button>
+              </div>
+            )}
           </div>
-        </div>
+        )}
 
         {/* Center: The 2 Lines of Lyrics (Current sentence + Upcoming one) */}
         <div
@@ -507,39 +487,27 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
             </div>
           </div>
 
-          <div className="flex items-center gap-1 shrink-0">
-            {/* Karaoke Mode */}
-            <button
-              type="button"
-              onClick={toggleKaraoke}
-              className={`p-1.5 rounded-md transition ${
-                isKaraokeMode ? 'text-brand-500 bg-brand-500/10' : 'text-[#888] hover:text-white'
-              }`}
-              title={isKaraokeMode ? 'Karaoke Active (Vocals Off)' : 'Toggle Karaoke'}
-            >
-              <MicOff size={headerIconSize} />
-            </button>
-
-            {/* Shrink to 2-Line Small Lyrics Mode */}
-            <button
-              type="button"
-              onClick={() => handleSetSizeMode('lyrics-small')}
-              className="p-1.5 text-[#888] hover:text-white rounded-md transition hover:bg-white/10"
-              title="Shrink to 2-Line Lyrics Mode"
-            >
-              <Minimize2 size={headerIconSize} />
-            </button>
-
-            {/* Close */}
-            <button
-              type="button"
-              onClick={() => (isPiP ? pipWindow?.close() : onClose())}
-              className="p-1.5 text-[#888] hover:text-white rounded-md transition hover:bg-white/10"
-              title="Close"
-            >
-              <X size={headerIconSize} />
-            </button>
-          </div>
+          {/* Action buttons (only rendered in-app; PiP uses native OS window close button and resize) */}
+          {!isPiP && (
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => handleSetSizeMode('lyrics-small')}
+                className="p-1.5 text-[#888] hover:text-white rounded-md transition hover:bg-white/10"
+                title="Shrink to 2-Line Lyrics Mode"
+              >
+                <Minimize2 size={headerIconSize} />
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-1.5 text-[#888] hover:text-white rounded-md transition hover:bg-white/10"
+                title="Close"
+              >
+                <X size={headerIconSize} />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Lyrics Area (Scrollable) */}
@@ -672,8 +640,8 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
 
     if (sizeMode === 'micro') {
       return (
-        <div className="w-full h-full flex items-center justify-between px-3 py-1 bg-[#121212] text-white font-sans select-none box-border">
-          <div className="flex items-center gap-1.5 mx-auto">
+        <div className="w-full h-full flex items-center justify-center px-3 py-1 bg-[#121212] text-white font-sans select-none box-border">
+          <div className="flex items-center gap-2 mx-auto">
             <button
               onClick={prevTrack}
               className="p-1.5 text-[#b3b3b3] hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
@@ -694,28 +662,6 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
               title="Next"
             >
               <SkipForward size={15} />
-            </button>
-            <div className="w-px h-3.5 bg-white/10 mx-1" />
-            <button
-              onClick={() => handleSetSizeMode('lyrics-small')}
-              className="p-1 text-[#777] hover:text-white rounded transition"
-              title="2-Line Lyrics Mode"
-            >
-              <Mic2 size={12} />
-            </button>
-            <button
-              onClick={cycleSizeMode}
-              className="p-1 text-[#777] hover:text-white rounded transition"
-              title="Expand Mode"
-            >
-              <Maximize2 size={12} />
-            </button>
-            <button
-              onClick={() => pipWindow?.close()}
-              className="p-1 text-[#777] hover:text-white rounded transition"
-              title="Close PiP"
-            >
-              <X size={12} />
             </button>
           </div>
         </div>
@@ -740,29 +686,6 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                   {currentTrack?.artist_name || ''}
                 </p>
               </div>
-            </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <button
-                onClick={() => handleSetSizeMode('lyrics-small')}
-                className="p-1 text-[#777] hover:text-white rounded transition"
-                title="2-Line Lyrics Mode"
-              >
-                <Mic2 size={13} />
-              </button>
-              <button
-                onClick={cycleSizeMode}
-                className="p-1 text-[#777] hover:text-white rounded transition"
-                title="Shrink Mode"
-              >
-                <Minimize2 size={13} />
-              </button>
-              <button
-                onClick={() => pipWindow?.close()}
-                className="p-1 text-[#777] hover:text-white rounded transition"
-                title="Close PiP"
-              >
-                <X size={13} />
-              </button>
             </div>
           </div>
           {/* Scrubber progress */}
@@ -841,28 +764,6 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
             title="Next"
           >
             <SkipForward size={15} />
-          </button>
-          <div className="w-px h-3.5 bg-white/10 mx-0.5" />
-          <button
-            onClick={() => handleSetSizeMode('lyrics-small')}
-            className="p-1 text-[#777] hover:text-white rounded transition"
-            title="2-Line Lyrics Mode"
-          >
-            <Mic2 size={13} />
-          </button>
-          <button
-            onClick={cycleSizeMode}
-            className="p-1 text-[#777] hover:text-white rounded transition"
-            title="Shrink to 3-button mode"
-          >
-            <Minimize2 size={13} />
-          </button>
-          <button
-            onClick={() => pipWindow?.close()}
-            className="p-1 text-[#777] hover:text-white rounded transition"
-            title="Close PiP"
-          >
-            <X size={13} />
           </button>
         </div>
       </div>
