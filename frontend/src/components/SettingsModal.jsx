@@ -27,7 +27,8 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
-  Loader2
+  Loader2,
+  PictureInPicture2
 } from 'lucide-react';
 import { MattLabLogo } from './MattLabLogo';
 import { UserAvatar } from './UserAvatar';
@@ -228,7 +229,11 @@ export const SettingsModal = ({
     preloadCount, 
     setPreloadCount, 
     preloadedTrackIds, 
-    clearPreloadCache 
+    clearPreloadCache,
+    pipEngine,
+    setPipEngine,
+    togglePiP,
+    isPiPActive
   } = usePlayer();
   const [clearingCache, setClearingCache] = useState(false);
   const [cacheClearedSuccess, setCacheClearedSuccess] = useState(false);
@@ -1025,6 +1030,133 @@ export const SettingsModal = ({
                     <span className="text-[#bbb] font-medium">
                       {preloadedTrackIds?.size || 0} track{preloadedTrackIds?.size === 1 ? '' : 's'} in RAM
                     </span>
+                  </div>
+                </div>
+
+                {/* Picture-in-Picture (PiP) Display Engine Card */}
+                <div className="p-5 rounded-2xl bg-[#181818] border border-white/5 space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-white/5">
+                    <div>
+                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                        <PictureInPicture2 size={16} className="text-brand-500" />
+                        <span>Picture-in-Picture (PiP) Display Engine</span>
+                      </h4>
+                      <p className="text-xs text-[#888] mt-0.5">
+                        Select your preferred floating player window style when multitasking across desktop apps.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider ${
+                        pipEngine === 'interactive'
+                          ? 'bg-brand-500/15 text-brand-400 border border-brand-500/30'
+                          : 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
+                      }`}>
+                        {pipEngine === 'interactive' ? 'Document PiP (Interactive)' : 'Video PiP (16:9 Borderless)'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Dual Mode Selectable Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Option 1: Interactive Mini-Player (Main Branch Document PiP) */}
+                    <button
+                      type="button"
+                      onClick={() => setPipEngine('interactive')}
+                      className={`p-4 rounded-xl text-left border transition flex flex-col justify-between relative group ${
+                        pipEngine === 'interactive'
+                          ? 'bg-brand-500/10 border-brand-500 text-white shadow-sm ring-1 ring-brand-500/40'
+                          : 'bg-[#141414] border-white/5 hover:border-white/15 text-[#a7a7a7] hover:text-white'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs text-white">Interactive Mini-Player</span>
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30">
+                              DEFAULT
+                            </span>
+                          </div>
+                          {pipEngine === 'interactive' && (
+                            <Check size={14} className="text-brand-500 shrink-0" />
+                          )}
+                        </div>
+                        <p className="text-[11px] text-[#888] leading-relaxed mb-3">
+                          Ultra-compact HTML5 window with live synced lyrics, click-to-play buttons, track scrubber, volume control, and flexible micro-strip resizing (down to 185×65px).
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5 pt-2 border-t border-white/5 text-[10px]">
+                        <span className="px-2 py-0.5 rounded bg-white/5 text-[#aaa] border border-white/5">Ultra-Compact (185×65)</span>
+                        <span className="px-2 py-0.5 rounded bg-white/5 text-[#aaa] border border-white/5">Clickable Controls</span>
+                        <span className="px-2 py-0.5 rounded bg-white/5 text-[#aaa] border border-white/5">Live Lyrics Scroll</span>
+                        <span className="px-2 py-0.5 rounded bg-white/5 text-[#aaa] border border-white/5">Frameless Titlebar</span>
+                      </div>
+                    </button>
+
+                    {/* Option 2: YouTube-Style Frameless (16:9 Video Canvas PiP) */}
+                    <button
+                      type="button"
+                      onClick={() => setPipEngine('video')}
+                      className={`p-4 rounded-xl text-left border transition flex flex-col justify-between relative group ${
+                        pipEngine === 'video'
+                          ? 'bg-purple-500/10 border-purple-500 text-white shadow-sm ring-1 ring-purple-500/40'
+                          : 'bg-[#141414] border-white/5 hover:border-white/15 text-[#a7a7a7] hover:text-white'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs text-white">YouTube-Style Frameless</span>
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                              16:9 CINEMATIC
+                            </span>
+                          </div>
+                          {pipEngine === 'video' && (
+                            <Check size={14} className="text-purple-400 shrink-0" />
+                          )}
+                        </div>
+                        <p className="text-[11px] text-[#888] leading-relaxed mb-3">
+                          100% borderless floating card with album cover art, ambient glow, 2-line live lyrics, and Chrome's native OS hover controls with draggable timeline scrubber.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5 pt-2 border-t border-white/5 text-[10px]">
+                        <span className="px-2 py-0.5 rounded bg-white/5 text-[#aaa] border border-white/5">16:9 Card (640×360)</span>
+                        <span className="px-2 py-0.5 rounded bg-white/5 text-[#aaa] border border-white/5">Zero Browser Titlebar</span>
+                        <span className="px-2 py-0.5 rounded bg-white/5 text-[#aaa] border border-white/5">Album Cover Glow</span>
+                        <span className="px-2 py-0.5 rounded bg-white/5 text-[#aaa] border border-white/5">OS Hover Scrubber</span>
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* Dynamic Explanation & Quick Test Action */}
+                  <div className="p-3.5 rounded-xl bg-[#141414] border border-white/5 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-start gap-2.5">
+                      <Sparkles size={15} className="text-brand-500 shrink-0 mt-0.5" />
+                      <p className="text-[#a7a7a7] leading-relaxed">
+                        {pipEngine === 'interactive' ? (
+                          <>
+                            <strong className="text-white">Main Branch PiP: </strong>
+                            Uses Document PiP API. Allows shrinking all the way down to a tiny micro-bar while keeping full in-window interactive control.
+                          </>
+                        ) : (
+                          <>
+                            <strong className="text-white">YouTube Style PiP: </strong>
+                            Uses HTML5 Video PiP API. Composited directly by the OS with zero browser title bar, high-res cover art, and native hover scrub controls.
+                          </>
+                        )}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={togglePiP}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/10 transition shrink-0 flex items-center gap-1.5 self-start sm:self-auto"
+                    >
+                      <PictureInPicture2 size={13} />
+                      <span>{isPiPActive ? 'Close PiP' : 'Launch PiP Preview'}</span>
+                    </button>
                   </div>
                 </div>
 
