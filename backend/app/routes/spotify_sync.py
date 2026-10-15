@@ -173,7 +173,55 @@ def extract_spotify_playlist_id(url_or_id: str) -> str:
     raise ValueError("Invalid Spotify playlist URL. Please provide an open.spotify.com/playlist/... link.")
 
 def fetch_spotify_playlist_data(playlist_id: str) -> Dict[str, Any]:
-    """Scrape playlist metadata and track list from Spotify embed."""
+    """Fetch complete Spotify playlist metadata and track list.
+    Primary (Tier 1): Use spotifyscraper (GraphQL Pathfinder) to paginate and fetch ALL tracks without 100-track limit.
+    Fallback (Tier 2): Scrape public embed page if Pathfinder is unavailable (up to 100 tracks).
+    """
+    # 1. Tier 1: Try spotifyscraper for complete pagination across all tracks (>100 tracks)
+    try:
+        from spotify_scraper import SpotifyClient
+        client = SpotifyClient()
+        pl = client.get_playlist(playlist_id, max_tracks=None)
+        if pl and pl.tracks:
+            tracks = []
+            for idx, item in enumerate(pl.tracks):
+                inner = getattr(item, "track", None) or item
+                t_title = (getattr(inner, "name", "") or "").strip()
+                artists_list = getattr(inner, "artists", []) or []
+                t_artist = ", ".join([a.name for a in artists_list if getattr(a, "name", None)]).strip()
+                if not t_title:
+                    continue
+
+                spotify_track_id = getattr(inner, "id", "") or f"track_{idx}"
+                duration_ms = getattr(inner, "duration_ms", 0) or 0
+                album_obj = getattr(inner, "album", None)
+                album_name = getattr(album_obj, "name", pl.name) if album_obj else pl.name
+
+                tracks.append({
+                    "spotify_track_id": spotify_track_id,
+                    "title": t_title,
+                    "artist": t_artist or "Unknown Artist",
+                    "album": album_name or pl.name,
+                    "duration_ms": duration_ms,
+                    "position": idx,
+                })
+
+            if tracks:
+                cover_url = None
+                if getattr(pl, "images", None) and len(pl.images) > 0:
+                    cover_url = pl.images[0].url
+
+                return {
+                    "spotify_id": playlist_id,
+                    "title": pl.name or "Spotify Playlist",
+                    "description": getattr(pl, "description", "") or "",
+                    "cover_url": cover_url,
+                    "tracks": tracks,
+                }
+    except Exception as e:
+        print(f"[SPOTIFY SYNC] Warning: spotifyscraper tier-1 failed ({e}), falling back to embed scraper...", flush=True)
+
+    # 2. Tier 2: Embed scraper fallback
     embed_url = f"https://open.spotify.com/embed/playlist/{playlist_id}"
     req = urllib.request.Request(
         embed_url,
