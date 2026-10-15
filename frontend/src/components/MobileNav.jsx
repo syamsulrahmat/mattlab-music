@@ -11,7 +11,7 @@ export const MobileNav = ({ activeTab, setActiveTab }) => {
   ];
 
   return (
-    <nav className="md:hidden bg-[#000000] border-t border-[#181818] px-2 py-1 flex items-center justify-around z-40 select-none pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]">
+    <nav className="md:hidden bg-surface-base border-t border-border-subtle px-2 py-1 flex items-center justify-around z-40 select-none pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]">
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.id;
@@ -20,7 +20,7 @@ export const MobileNav = ({ activeTab, setActiveTab }) => {
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-lg transition ${
-              isActive ? 'text-brand-500' : 'text-[#b3b3b3] hover:text-white'
+              isActive ? 'text-brand-500' : 'text-content-secondary hover:text-content-primary'
             }`}
           >
             <Icon size={20} className={isActive ? 'stroke-[2.5]' : ''} />

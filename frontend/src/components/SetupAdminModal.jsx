@@ -49,19 +49,19 @@ export const SetupAdminModal = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 select-none">
-      <div className="w-full max-w-md bg-[#121212] border border-white/10 rounded-2xl p-7 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+      <div className="w-full max-w-md bg-surface-island border border-border-medium rounded-2xl p-7 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex flex-col items-center text-center mb-6">
           <MattLabLogo
             variant="badge"
             bgColor="var(--brand-primary)"
-            color="#000000"
+            color="var(--surface-base)"
             className="w-14 h-14 rounded-full shadow-lg mb-3"
           />
-          <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+          <h1 className="text-2xl font-black tracking-tight text-content-primary flex items-center gap-2">
             Welcome to MattLab Music
           </h1>
-          <p className="text-xs sm:text-sm text-[#a7a7a7] mt-1 max-w-xs">
+          <p className="text-xs sm:text-sm text-content-secondary mt-1 max-w-xs">
             Create your primary <span className="text-brand-500 font-semibold">Admin Account</span> to secure your server.
           </p>
         </div>
@@ -77,11 +77,11 @@ export const SetupAdminModal = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Username */}
           <div>
-            <label className="block text-xs font-semibold text-[#b3b3b3] mb-1.5">
+            <label className="block text-xs font-semibold text-content-secondary mb-1.5">
               Admin Username
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#727272]">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-content-subtle">
                 <User size={16} />
               </div>
               <input
@@ -91,32 +91,32 @@ export const SetupAdminModal = () => {
                 placeholder="e.g. admin or matt"
                 required
                 autoFocus
-                className="w-full bg-[#1e1e1e] border border-white/10 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-white placeholder-[#666] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition"
+                className="w-full bg-surface-elevated border border-border-medium rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-content-primary placeholder:text-content-subtle outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition"
               />
             </div>
           </div>
 
           {/* Display Name */}
           <div>
-            <label className="block text-xs font-semibold text-[#b3b3b3] mb-1.5">
-              Display Name <span className="text-[#666] font-normal">(optional)</span>
+            <label className="block text-xs font-semibold text-content-secondary mb-1.5">
+              Display Name <span className="text-content-subtle font-normal">(optional)</span>
             </label>
             <input
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="e.g. Matt"
-              className="w-full bg-[#1e1e1e] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-[#666] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition"
+              className="w-full bg-surface-elevated border border-border-medium rounded-xl px-3.5 py-2.5 text-sm text-content-primary placeholder:text-content-subtle outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition"
             />
           </div>
 
           {/* Password */}
           <div>
-            <label className="block text-xs font-semibold text-[#b3b3b3] mb-1.5">
+            <label className="block text-xs font-semibold text-content-secondary mb-1.5">
               Password
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#727272]">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-content-subtle">
                 <Lock size={16} />
               </div>
               <input
@@ -125,18 +125,18 @@ export const SetupAdminModal = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                className="w-full bg-[#1e1e1e] border border-white/10 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-white placeholder-[#666] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition"
+                className="w-full bg-surface-elevated border border-border-medium rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-content-primary placeholder:text-content-subtle outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition"
               />
             </div>
           </div>
 
           {/* Confirm Password */}
           <div>
-            <label className="block text-xs font-semibold text-[#b3b3b3] mb-1.5">
+            <label className="block text-xs font-semibold text-content-secondary mb-1.5">
               Confirm Password
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#727272]">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-content-subtle">
                 <Lock size={16} />
               </div>
               <input
@@ -145,7 +145,7 @@ export const SetupAdminModal = () => {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                className="w-full bg-[#1e1e1e] border border-white/10 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-white placeholder-[#666] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition"
+                className="w-full bg-surface-elevated border border-border-medium rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-content-primary placeholder:text-content-subtle outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition"
               />
             </div>
           </div>
@@ -170,7 +170,7 @@ export const SetupAdminModal = () => {
           </button>
         </form>
 
-        <div className="mt-6 text-center text-xs text-[#727272]">
+        <div className="mt-6 text-center text-xs text-content-subtle">
           Your account is stored securely in your self-hosted SQLite database.
         </div>
       </div>

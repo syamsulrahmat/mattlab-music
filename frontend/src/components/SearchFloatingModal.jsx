@@ -52,13 +52,13 @@ export const SearchFloatingModal = ({
 
       {/* Floating Results Card Dropdown: matching search bar width 1:1 */}
       <div
-        className="absolute top-full left-0 right-0 w-full mt-2 max-h-[72vh] bg-[#181818]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col z-50 animate-in fade-in zoom-in-95 duration-150 select-none text-white"
+        className="absolute top-full left-0 right-0 w-full mt-2 max-h-[72vh] bg-surface-panel/95 backdrop-blur-xl border border-border-medium rounded-2xl shadow-2xl overflow-hidden flex flex-col z-50 animate-in fade-in zoom-in-95 duration-150 select-none text-content-primary"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Results Scrollable Body */}
         <div className="flex-1 overflow-y-auto p-3 space-y-4">
           {isLoading && (
-            <div className="flex items-center justify-center py-8 text-[#888] gap-2">
+            <div className="flex items-center justify-center py-8 text-content-muted gap-2">
               <div className="animate-spin rounded-full h-4 w-4 border-2 border-brand-500 border-t-transparent" />
               <span className="text-xs">Searching library...</span>
             </div>
@@ -66,7 +66,7 @@ export const SearchFloatingModal = ({
 
           {/* Corrected Query Banner */}
           {results?.correctedQuery && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-brand-500/10 border border-brand-500/20 rounded-xl text-xs text-white">
+            <div className="flex items-center gap-2 px-3 py-2 bg-brand-500/10 border border-brand-500/20 rounded-xl text-xs text-content-primary">
               <Sparkles size={14} className="text-brand-500 shrink-0" />
               <span>
                 Showing results for <strong className="text-brand-500 font-bold">{results.correctedQuery}</strong>
@@ -76,7 +76,7 @@ export const SearchFloatingModal = ({
 
           {/* Empty Search Results State */}
           {!isLoading && query && totalResults === 0 && (
-            <div className="py-8 text-center text-[#888]">
+            <div className="py-8 text-center text-content-muted">
               <p className="text-sm">No results in your library for "{query}"</p>
               <button
                 id="search-float-item-0"
@@ -97,7 +97,7 @@ export const SearchFloatingModal = ({
           {/* Songs / Tracks Section */}
           {tracks.length > 0 && (
             <div>
-              <p className="text-[11px] font-bold uppercase text-[#888] px-3 mb-1.5 tracking-wider">
+              <p className="text-[11px] font-bold uppercase text-content-muted px-3 mb-1.5 tracking-wider">
                 Songs
               </p>
               <div className="space-y-1">
@@ -121,7 +121,7 @@ export const SearchFloatingModal = ({
                     >
                       <div className="flex items-center gap-3 truncate flex-1 min-w-0">
                         {/* Spotify-style Cover Artwork with Play/Pause overlay */}
-                        <div className="relative w-10 h-10 rounded overflow-hidden bg-[#222] shrink-0 shadow-sm">
+                        <div className="relative w-10 h-10 rounded overflow-hidden bg-surface-elevated2 shrink-0 shadow-sm">
                           <img
                             src={track.cover_url || '/api/covers/0'}
                             alt=""
@@ -156,7 +156,7 @@ export const SearchFloatingModal = ({
                           >
                             {track.title}
                           </p>
-                          <p className="text-xs text-[#b3b3b3] truncate mt-0.5">
+                          <p className="text-xs text-content-secondary truncate mt-0.5">
                             {track.artist_name} • {track.album_title}
                           </p>
                         </div>
@@ -164,7 +164,7 @@ export const SearchFloatingModal = ({
 
                       {/* Track Duration on right */}
                       {track.duration > 0 && (
-                        <span className="text-xs text-[#888] group-hover:text-white shrink-0 ml-3 font-mono">
+                        <span className="text-xs text-content-muted group-hover:text-white shrink-0 ml-3 font-mono">
                           {formatDuration(track.duration)}
                         </span>
                       )}
@@ -178,7 +178,7 @@ export const SearchFloatingModal = ({
           {/* Albums Section */}
           {albums.length > 0 && (
             <div>
-              <p className="text-[11px] font-bold uppercase text-[#888] px-3 mb-1.5 tracking-wider">
+              <p className="text-[11px] font-bold uppercase text-content-muted px-3 mb-1.5 tracking-wider">
                 Albums
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
@@ -200,7 +200,7 @@ export const SearchFloatingModal = ({
                       <img
                         src={album.cover_url || `/api/covers/${album.id}`}
                         alt=""
-                        className="w-10 h-10 rounded object-cover bg-[#222] shrink-0"
+                        className="w-10 h-10 rounded object-cover bg-surface-elevated2 shrink-0"
                       />
                       <div className="truncate flex-1 min-w-0">
                         <p
@@ -210,7 +210,7 @@ export const SearchFloatingModal = ({
                         >
                           {album.title}
                         </p>
-                        <p className="text-[11px] text-[#b3b3b3] truncate">
+                        <p className="text-[11px] text-content-secondary truncate">
                           {album.artist_name}
                         </p>
                       </div>
@@ -224,7 +224,7 @@ export const SearchFloatingModal = ({
           {/* Artists Section */}
           {artists.length > 0 && (
             <div>
-              <p className="text-[11px] font-bold uppercase text-[#888] px-3 mb-1.5 tracking-wider">
+              <p className="text-[11px] font-bold uppercase text-content-muted px-3 mb-1.5 tracking-wider">
                 Artists
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
@@ -243,7 +243,7 @@ export const SearchFloatingModal = ({
                           : 'hover:bg-white/10'
                       }`}
                     >
-                      <div className="w-10 h-10 rounded-full bg-[#242424] flex items-center justify-center text-brand-500 shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-surface-elevated2 flex items-center justify-center text-brand-500 shrink-0">
                         <Mic2 size={18} />
                       </div>
                       <div className="truncate flex-1 min-w-0">
@@ -254,7 +254,7 @@ export const SearchFloatingModal = ({
                         >
                           {artist.name}
                         </p>
-                        <p className="text-[11px] text-[#b3b3b3]">Artist</p>
+                        <p className="text-[11px] text-content-secondary">Artist</p>
                       </div>
                     </div>
                   );
@@ -265,7 +265,7 @@ export const SearchFloatingModal = ({
 
           {/* Quick Request Button at Bottom */}
           {query?.trim().length > 0 && (
-            <div className="pt-2 border-t border-white/5">
+            <div className="pt-2 border-t border-border-subtle">
               {(() => {
                 const requestIndex = tracks.length + albums.length + artists.length;
                 const isSelected = selectedIndex === requestIndex;
@@ -289,12 +289,12 @@ export const SearchFloatingModal = ({
                             <span className="text-brand-500 text-[10px] ml-1.5 font-normal">(corrected)</span>
                           )}
                         </p>
-                        <p className="text-[10px] text-[#888]">
+                        <p className="text-[10px] text-content-muted">
                           Search Lidarr & torrent indexers to download
                         </p>
                       </div>
                     </div>
-                    <span className="text-xs text-[#888] group-hover:text-white">→</span>
+                    <span className="text-xs text-content-muted group-hover:text-white">→</span>
                   </button>
                 );
               })()}
@@ -303,7 +303,7 @@ export const SearchFloatingModal = ({
         </div>
 
         {/* Keyboard Navigation Footer Hints */}
-        <div className="px-3.5 py-2 bg-[#121212] border-t border-white/5 flex items-center justify-between text-[11px] text-[#777]">
+        <div className="px-3.5 py-2 bg-surface-island border-t border-border-subtle flex items-center justify-between text-[11px] text-content-subtle">
           <div className="flex items-center gap-2">
             <span>
               <kbd className="bg-white/10 px-1 py-0.5 rounded text-white/80 font-mono text-[10px]">↑</kbd>{' '}
@@ -318,7 +318,7 @@ export const SearchFloatingModal = ({
               <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-white/80 font-mono text-[10px]">Esc</kbd> Close
             </span>
           </div>
-          <span className="text-[#555] hidden sm:inline">MattLab Search</span>
+          <span className="text-content-subtle hidden sm:inline">MattLab Search</span>
         </div>
       </div>
     </>

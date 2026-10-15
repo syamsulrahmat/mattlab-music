@@ -33,7 +33,7 @@ export const UserAvatar = ({
   if (user?.avatar_url && !imageError) {
     return (
       <div 
-        className={`relative rounded-full overflow-hidden shrink-0 select-none bg-[#1e1e1e] ${sizeClasses} ${
+        className={`relative rounded-full overflow-hidden shrink-0 select-none bg-surface-elevated ${sizeClasses} ${
           ring ? 'ring-1 ring-white/15 shadow-sm' : ''
         } ${className}`}
       >
@@ -52,7 +52,7 @@ export const UserAvatar = ({
       className={`rounded-full shrink-0 flex items-center justify-center font-bold tracking-wider select-none ${sizeClasses} ${
         isAdmin 
           ? 'bg-brand-500/15 text-brand-500 ring-1 ring-brand-500/30' 
-          : 'bg-[#222222] text-[#e0e0e0] ring-1 ring-white/10'
+          : 'bg-surface-elevated2 text-content-primary ring-1 ring-border-medium'
       } ${className}`}
       title={displayName}
     >

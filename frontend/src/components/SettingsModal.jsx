@@ -449,23 +449,23 @@ export const SettingsModal = ({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-4xl bg-[#121212] border border-white/10 rounded-2xl shadow-2xl flex flex-col h-[85vh] max-h-[760px] overflow-hidden"
+        className="w-full max-w-4xl bg-surface-island border border-border-medium rounded-2xl shadow-2xl flex flex-col h-[85vh] max-h-[760px] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Bar */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#181818]/80 backdrop-blur shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border-medium bg-surface-panel/80 backdrop-blur shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-brand-500/10 text-brand-500 border border-brand-500/20 flex items-center justify-center shadow-inner">
               <Sliders size={20} />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+              <h2 className="text-lg font-bold text-content-primary tracking-tight flex items-center gap-2">
                 <span>Settings</span>
-                <span className="text-[10px] font-semibold bg-white/10 text-[#a7a7a7] px-2 py-0.5 rounded-full uppercase tracking-wider">
+                <span className="text-[10px] font-semibold bg-white/10 text-content-secondary px-2 py-0.5 rounded-full uppercase tracking-wider">
                   MattLab Music
                 </span>
               </h2>
-              <p className="text-xs text-[#a7a7a7] mt-0.5">
+              <p className="text-xs text-content-secondary mt-0.5">
                 Keyboard shortcuts, interface preferences, and system telemetry
               </p>
             </div>
@@ -473,7 +473,7 @@ export const SettingsModal = ({
 
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-[#1e1e1e] hover:bg-[#282828] text-[#a7a7a7] hover:text-white flex items-center justify-center transition"
+            className="w-9 h-9 rounded-full bg-surface-elevated hover:bg-surface-hover text-content-secondary hover:text-content-primary flex items-center justify-center transition"
             title="Close Settings (Esc)"
           >
             <X size={18} />
@@ -483,13 +483,13 @@ export const SettingsModal = ({
         {/* Modal Body: Left Tab Rail + Right Content Stage */}
         <div className="flex flex-1 min-h-0 overflow-hidden flex-col md:flex-row">
           {/* Navigation Sidebar / Tabs */}
-          <div className="w-full md:w-56 bg-[#161616] border-b md:border-b-0 md:border-r border-white/10 p-3 flex md:flex-col gap-1.5 shrink-0 overflow-x-auto">
+          <div className="w-full md:w-56 bg-surface-panel border-b md:border-b-0 md:border-r border-border-medium p-3 flex md:flex-col gap-1.5 shrink-0 overflow-x-auto">
             <button
               onClick={() => setActiveTab('account')}
               className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-left shrink-0 md:shrink md:w-full ${
                 activeTab === 'account'
                   ? 'bg-brand-500 text-black shadow-md font-bold'
-                  : 'text-[#b3b3b3] hover:text-white hover:bg-white/5'
+                  : 'text-content-secondary hover:text-content-primary hover:bg-white/5'
               }`}
             >
               <User size={16} />
@@ -501,7 +501,7 @@ export const SettingsModal = ({
               className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-left shrink-0 md:shrink md:w-full ${
                 activeTab === 'shortcuts'
                   ? 'bg-brand-500 text-black shadow-md font-bold'
-                  : 'text-[#b3b3b3] hover:text-white hover:bg-white/5'
+                  : 'text-content-secondary hover:text-content-primary hover:bg-white/5'
               }`}
             >
               <Keyboard size={16} />
@@ -513,7 +513,7 @@ export const SettingsModal = ({
               className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-left shrink-0 md:shrink md:w-full ${
                 activeTab === 'playback'
                   ? 'bg-brand-500 text-black shadow-md font-bold'
-                  : 'text-[#b3b3b3] hover:text-white hover:bg-white/5'
+                  : 'text-content-secondary hover:text-content-primary hover:bg-white/5'
               }`}
             >
               <Volume2 size={16} />
@@ -525,7 +525,7 @@ export const SettingsModal = ({
               className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-left shrink-0 md:shrink md:w-full ${
                 activeTab === 'about'
                   ? 'bg-brand-500 text-black shadow-md font-bold'
-                  : 'text-[#b3b3b3] hover:text-white hover:bg-white/5'
+                  : 'text-content-secondary hover:text-content-primary hover:bg-white/5'
               }`}
             >
               <Info size={16} />
@@ -533,13 +533,13 @@ export const SettingsModal = ({
             </button>
 
             {isAdmin && (
-              <div className="hidden md:block mt-auto pt-3 border-t border-white/10">
+              <div className="hidden md:block mt-auto pt-3 border-t border-border-medium">
                 <button
                   onClick={() => {
                     onClose();
                     onOpenUserManagement?.();
                   }}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-[#a7a7a7] hover:text-white hover:bg-white/5 transition w-full text-left"
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-content-secondary hover:text-content-primary hover:bg-white/5 transition w-full text-left"
                 >
                   <Users size={14} className="text-brand-500" />
                   <span>User Management</span>
@@ -549,11 +549,11 @@ export const SettingsModal = ({
           </div>
 
           {/* Tab Content Stage */}
-          <div className="flex-1 min-h-0 overflow-y-auto bg-[#121212] p-4 sm:p-6">
+          <div className="flex-1 min-h-0 overflow-y-auto bg-surface-island p-4 sm:p-6">
             {activeTab === 'account' && (
               <div className="space-y-6 max-w-2xl">
                 {/* 1. Avatar Photo Section */}
-                <div className="p-5 sm:p-6 rounded-2xl bg-[#181818] border border-white/5 space-y-4">
+                <div className="p-5 sm:p-6 rounded-2xl bg-surface-panel border border-border-subtle space-y-4">
                   <div className="flex items-center gap-2">
                     <Camera size={16} className="text-brand-500" />
                     <h3 className="text-sm font-bold text-white tracking-wide uppercase">
@@ -581,7 +581,7 @@ export const SettingsModal = ({
                         <div className="text-sm font-bold text-white">
                           {user?.display_name || user?.username}
                         </div>
-                        <p className="text-xs text-[#888] mt-1 leading-relaxed">
+                        <p className="text-xs text-content-muted mt-1 leading-relaxed">
                           Personalize your profile with a custom photo. Supports JPG, PNG, and WebP (up to 10MB). Photos are automatically center-cropped to a square and optimized.
                         </p>
                       </div>
@@ -654,7 +654,7 @@ export const SettingsModal = ({
                 </div>
 
                 {/* 2. Account Details Section */}
-                <form onSubmit={handleSaveProfile} className="p-5 sm:p-6 rounded-2xl bg-[#181818] border border-white/5 space-y-4">
+                <form onSubmit={handleSaveProfile} className="p-5 sm:p-6 rounded-2xl bg-surface-panel border border-border-subtle space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <User size={16} className="text-brand-500" />
@@ -664,7 +664,7 @@ export const SettingsModal = ({
                     </div>
 
                     <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-                      isAdmin ? 'bg-brand-500/20 text-brand-500' : 'bg-white/10 text-[#a7a7a7]'
+                      isAdmin ? 'bg-brand-500/20 text-brand-500' : 'bg-white/10 text-content-secondary'
                     }`}>
                       {isAdmin ? 'System Administrator' : 'Standard User'}
                     </span>
@@ -672,7 +672,7 @@ export const SettingsModal = ({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-[#b3b3b3] block">
+                      <label className="text-xs font-semibold text-content-secondary block">
                         Display Name
                       </label>
                       <input
@@ -681,15 +681,15 @@ export const SettingsModal = ({
                         onChange={(e) => setDisplayNameVal(e.target.value)}
                         placeholder="e.g. Matt"
                         maxLength={50}
-                        className="w-full bg-[#121212] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-[#666] outline-none focus:border-brand-500 transition"
+                        className="w-full bg-surface-island border border-border-medium rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-content-subtle outline-none focus:border-brand-500 transition"
                       />
-                      <p className="text-[10px] text-[#777]">
+                      <p className="text-[10px] text-content-muted">
                         Friendly name visible in headers and playlists
                       </p>
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-[#b3b3b3] block">
+                      <label className="text-xs font-semibold text-content-secondary block">
                         Username
                       </label>
                       <input
@@ -701,9 +701,9 @@ export const SettingsModal = ({
                         autoCorrect="off"
                         maxLength={32}
                         required
-                        className="w-full bg-[#121212] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-[#666] outline-none focus:border-brand-500 transition"
+                        className="w-full bg-surface-island border border-border-medium rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-content-subtle outline-none focus:border-brand-500 transition"
                       />
-                      <p className="text-[10px] text-[#777]">
+                      <p className="text-[10px] text-content-muted">
                         Unique handle used to sign in
                       </p>
                     </div>
@@ -745,20 +745,20 @@ export const SettingsModal = ({
                 </form>
 
                 {/* 3. Password & Security Section */}
-                <form onSubmit={handleChangePassword} className="p-5 sm:p-6 rounded-2xl bg-[#181818] border border-white/5 space-y-4">
+                <form onSubmit={handleChangePassword} className="p-5 sm:p-6 rounded-2xl bg-surface-panel border border-border-subtle space-y-4">
                   <div className="flex items-center gap-2">
                     <Key size={16} className="text-brand-500" />
                     <h3 className="text-sm font-bold text-white tracking-wide uppercase">
                       Change Password
                     </h3>
                   </div>
-                  <p className="text-xs text-[#888] leading-relaxed">
+                  <p className="text-xs text-content-muted leading-relaxed">
                     Verify your current password to set a new password. Password must be at least 6 characters long.
                   </p>
 
                   <div className="space-y-3 pt-1">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-[#b3b3b3] block">
+                      <label className="text-xs font-semibold text-content-secondary block">
                         Current Password
                       </label>
                       <div className="relative">
@@ -768,12 +768,12 @@ export const SettingsModal = ({
                           onChange={(e) => setCurrentPassword(e.target.value)}
                           placeholder="Enter your current password"
                           required
-                          className="w-full bg-[#121212] border border-white/10 rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-white placeholder-[#666] outline-none focus:border-brand-500 transition"
+                          className="w-full bg-surface-island border border-border-medium rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-white placeholder-content-subtle outline-none focus:border-brand-500 transition"
                         />
                         <button
                           type="button"
                           onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#777] hover:text-white transition"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-content-muted hover:text-content-primary transition"
                         >
                           {showCurrentPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                         </button>
@@ -782,7 +782,7 @@ export const SettingsModal = ({
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-[#b3b3b3] block">
+                        <label className="text-xs font-semibold text-content-secondary block">
                           New Password
                         </label>
                         <div className="relative">
@@ -793,12 +793,12 @@ export const SettingsModal = ({
                             placeholder="At least 6 characters"
                             required
                             minLength={6}
-                            className="w-full bg-[#121212] border border-white/10 rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-white placeholder-[#666] outline-none focus:border-brand-500 transition"
+                            className="w-full bg-surface-island border border-border-medium rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-white placeholder-content-subtle outline-none focus:border-brand-500 transition"
                           />
                           <button
                             type="button"
                             onClick={() => setShowNewPassword(!showNewPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#777] hover:text-white transition"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-content-muted hover:text-content-primary transition"
                           >
                             {showNewPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                           </button>
@@ -806,7 +806,7 @@ export const SettingsModal = ({
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-[#b3b3b3] block">
+                        <label className="text-xs font-semibold text-content-secondary block">
                           Confirm New Password
                         </label>
                         <div className="relative">
@@ -817,12 +817,12 @@ export const SettingsModal = ({
                             placeholder="Repeat new password"
                             required
                             minLength={6}
-                            className="w-full bg-[#121212] border border-white/10 rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-white placeholder-[#666] outline-none focus:border-brand-500 transition"
+                            className="w-full bg-surface-island border border-border-medium rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-white placeholder-content-subtle outline-none focus:border-brand-500 transition"
                           />
                           <button
                             type="button"
                             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#777] hover:text-white transition"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-content-muted hover:text-content-primary transition"
                           >
                             {showConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                           </button>
@@ -875,19 +875,19 @@ export const SettingsModal = ({
                   <div className="relative">
                     <Search
                       size={16}
-                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#777]"
+                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-content-muted"
                     />
                     <input
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search shortcuts (e.g. volume, seek, reorder, ctrl)..."
-                      className="w-full bg-[#1e1e1e] border border-white/10 rounded-xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-[#777] outline-none focus:border-brand-500/80 transition"
+                      className="w-full bg-surface-elevated border border-border-medium rounded-xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-content-muted outline-none focus:border-brand-500/80 transition"
                     />
                     {searchQuery && (
                       <button
                         onClick={() => setSearchQuery('')}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#777] hover:text-white p-1"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-content-muted hover:text-white p-1"
                       >
                         <X size={14} />
                       </button>
@@ -903,7 +903,7 @@ export const SettingsModal = ({
                         className={`px-3 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap transition ${
                           selectedCategory === cat.id
                             ? 'bg-white text-black shadow'
-                            : 'bg-[#1e1e1e] text-[#a7a7a7] hover:text-white hover:bg-[#282828] border border-white/5'
+                            : 'bg-surface-elevated text-content-secondary hover:text-white hover:bg-surface-hover border border-border-subtle'
                         }`}
                       >
                         {cat.label}
@@ -914,12 +914,12 @@ export const SettingsModal = ({
 
                 {/* Shortcuts List by Group */}
                 {filteredShortcuts.length === 0 ? (
-                  <div className="py-16 text-center text-[#888]">
+                  <div className="py-16 text-center text-content-muted">
                     <Keyboard size={36} className="mx-auto mb-3 opacity-30" />
-                    <p className="text-sm font-semibold text-[#b3b3b3]">
+                    <p className="text-sm font-semibold text-content-secondary">
                       No shortcuts matching "{searchQuery}"
                     </p>
-                    <p className="text-xs text-[#777] mt-1">
+                    <p className="text-xs text-content-muted mt-1">
                       Try searching with words like "space", "play", "seek", or "arrow"
                     </p>
                   </div>
@@ -927,11 +927,11 @@ export const SettingsModal = ({
                   <div className="space-y-6">
                     {filteredShortcuts.map((category) => (
                       <div key={category.category} className="space-y-2.5">
-                        <div className="flex items-center gap-2 pb-1 border-b border-white/5">
+                        <div className="flex items-center gap-2 pb-1 border-b border-border-subtle">
                           <h3 className="text-xs font-bold uppercase tracking-wider text-brand-400">
                             {category.categoryLabel}
                           </h3>
-                          <span className="text-[10px] text-[#666] font-mono">
+                          <span className="text-[10px] text-content-subtle font-mono">
                             ({category.items.length})
                           </span>
                         </div>
@@ -940,13 +940,13 @@ export const SettingsModal = ({
                           {category.items.map((item, idx) => (
                             <div
                               key={idx}
-                              className="flex items-center justify-between p-3 rounded-xl bg-[#181818] hover:bg-[#1f1f1f] border border-white/5 transition group"
+                              className="flex items-center justify-between p-3 rounded-xl bg-surface-panel hover:bg-surface-elevated border border-border-subtle transition group"
                             >
                               <div className="pr-4 min-w-0">
                                 <div className="text-xs font-semibold text-white group-hover:text-brand-300 transition">
                                   {item.title}
                                 </div>
-                                <div className="text-[11px] text-[#888] mt-0.5 line-clamp-1">
+                                <div className="text-[11px] text-content-muted mt-0.5 line-clamp-1">
                                   {item.description}
                                 </div>
                               </div>
@@ -956,19 +956,19 @@ export const SettingsModal = ({
                                 {item.combos.map((combo, comboIdx) => (
                                   <React.Fragment key={comboIdx}>
                                     {comboIdx > 0 && (
-                                      <span className="text-[10px] text-[#666] font-semibold px-0.5">
+                                      <span className="text-[10px] text-content-subtle font-semibold px-0.5">
                                         or
                                       </span>
                                     )}
-                                    <div className="flex items-center gap-1 bg-[#121212] p-1 rounded-lg border border-white/10 shadow-inner">
+                                    <div className="flex items-center gap-1 bg-surface-island p-1 rounded-lg border border-border-medium shadow-inner">
                                       {combo.map((k, kIdx) => (
                                         <React.Fragment key={kIdx}>
                                           {kIdx > 0 && (
-                                            <span className="text-[10px] text-[#666] font-bold">
+                                            <span className="text-[10px] text-content-subtle font-bold">
                                               +
                                             </span>
                                           )}
-                                          <kbd className="px-2 py-0.5 text-[11px] font-mono font-bold bg-[#262626] text-white rounded border border-white/20 shadow-[0_2px_0_rgba(255,255,255,0.06)] min-w-[20px] text-center inline-block">
+                                          <kbd className="px-2 py-0.5 text-[11px] font-mono font-bold bg-surface-elevated2 text-white rounded border border-white/20 shadow-[0_2px_0_rgba(255,255,255,0.06)] min-w-[20px] text-center inline-block">
                                             {k}
                                           </kbd>
                                         </React.Fragment>
@@ -990,8 +990,8 @@ export const SettingsModal = ({
                   <Sparkles size={18} className="text-brand-500 shrink-0 mt-0.5" />
                   <div>
                     <span className="font-bold text-white">Pro Tip: </span>
-                    <span className="text-[#b3b3b3]">
-                      Press <kbd className="px-1.5 py-0.5 text-[10px] font-mono font-bold bg-[#222] border border-white/20 rounded text-white">Ctrl + K</kbd> anywhere in the application to summon the Quick Search Command Palette. Form inputs (login, track name, search) automatically bypass playback hotkeys so you can type freely!
+                    <span className="text-content-secondary">
+                      Press <kbd className="px-1.5 py-0.5 text-[10px] font-mono font-bold bg-surface-elevated border border-white/20 rounded text-white">Ctrl + K</kbd> anywhere in the application to summon the Quick Search Command Palette. Form inputs (login, track name, search) automatically bypass playback hotkeys so you can type freely!
                     </span>
                   </div>
                 </div>
@@ -1001,7 +1001,7 @@ export const SettingsModal = ({
             {activeTab === 'playback' && (
               <div className="space-y-6">
                 {/* Section Header Banner */}
-                <div className="p-5 rounded-2xl bg-[#181818] border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="p-5 rounded-2xl bg-surface-panel border border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-3.5">
                     <div className="w-11 h-11 rounded-xl bg-brand-500/10 text-brand-500 border border-brand-500/20 flex items-center justify-center shrink-0">
                       <Volume2 size={22} />
@@ -1011,37 +1011,37 @@ export const SettingsModal = ({
                         <span>Audio & Playback</span>
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider ${
                           preloadCount === 0 
-                            ? 'bg-white/10 text-[#888]' 
+                            ? 'bg-white/10 text-content-muted' 
                             : 'bg-brand-500/20 text-brand-400 border border-brand-500/30'
                         }`}>
                           {preloadCount === 0 ? 'Direct Streaming' : `${preloadCount} Song Preload`}
                         </span>
                       </h3>
-                      <p className="text-xs text-[#a7a7a7] mt-0.5">
+                      <p className="text-xs text-content-secondary mt-0.5">
                         Configure background track caching, gapless buffering, and memory optimization
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 text-xs self-start sm:self-auto bg-[#121212] px-3 py-1.5 rounded-xl border border-white/5">
+                  <div className="flex items-center gap-2 text-xs self-start sm:self-auto bg-surface-island px-3 py-1.5 rounded-xl border border-border-subtle">
                     <div className={`w-2 h-2 rounded-full ${
-                      preloadCount > 0 ? 'bg-brand-500 animate-pulse' : 'bg-[#555]'
+                      preloadCount > 0 ? 'bg-brand-500 animate-pulse' : 'bg-content-subtle'
                     }`} />
-                    <span className="text-[#bbb] font-medium">
+                    <span className="text-content-secondary font-medium">
                       {preloadedTrackIds?.size || 0} track{preloadedTrackIds?.size === 1 ? '' : 's'} in RAM
                     </span>
                   </div>
                 </div>
 
                 {/* Picture-in-Picture (PiP) Display Engine Card */}
-                <div className="p-5 rounded-2xl bg-[#181818] border border-white/5 space-y-5">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-white/5">
+                <div className="p-5 rounded-2xl bg-surface-panel border border-border-subtle space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border-subtle">
                     <div>
                       <h4 className="text-sm font-bold text-white flex items-center gap-2">
                         <PictureInPicture2 size={16} className="text-brand-500" />
                         <span>Picture-in-Picture (PiP) Display Engine</span>
                       </h4>
-                      <p className="text-xs text-[#888] mt-0.5">
+                      <p className="text-xs text-content-muted mt-0.5">
                         Select your preferred floating player window style when multitasking across desktop apps.
                       </p>
                     </div>
@@ -1066,7 +1066,7 @@ export const SettingsModal = ({
                       className={`p-4 rounded-xl text-left border transition flex flex-col justify-between relative group ${
                         pipEngine === 'interactive'
                           ? 'bg-brand-500/10 border-brand-500 text-white shadow-sm ring-1 ring-brand-500/40'
-                          : 'bg-[#141414] border-white/5 hover:border-white/15 text-[#a7a7a7] hover:text-white'
+                          : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
                       }`}
                     >
                       <div>
@@ -1081,16 +1081,16 @@ export const SettingsModal = ({
                             <Check size={14} className="text-brand-500 shrink-0" />
                           )}
                         </div>
-                        <p className="text-[11px] text-[#888] leading-relaxed mb-3">
+                        <p className="text-[11px] text-content-muted leading-relaxed mb-3">
                           Ultra-compact HTML5 window with live synced lyrics, click-to-play buttons, track scrubber, volume control, and flexible micro-strip resizing (down to 185×65px).
                         </p>
                       </div>
 
-                      <div className="flex flex-wrap gap-1.5 pt-2 border-t border-white/5 text-[10px]">
-                        <span className="px-2 py-0.5 rounded bg-white/5 text-[#aaa] border border-white/5">Ultra-Compact (185×65)</span>
-                        <span className="px-2 py-0.5 rounded bg-white/5 text-[#aaa] border border-white/5">Clickable Controls</span>
-                        <span className="px-2 py-0.5 rounded bg-white/5 text-[#aaa] border border-white/5">Live Lyrics Scroll</span>
-                        <span className="px-2 py-0.5 rounded bg-white/5 text-[#aaa] border border-white/5">Frameless Titlebar</span>
+                      <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border-subtle text-[10px]">
+                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">Ultra-Compact (185×65)</span>
+                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">Clickable Controls</span>
+                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">Live Lyrics Scroll</span>
+                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">Frameless Titlebar</span>
                       </div>
                     </button>
 
@@ -1101,7 +1101,7 @@ export const SettingsModal = ({
                       className={`p-4 rounded-xl text-left border transition flex flex-col justify-between relative group ${
                         pipEngine === 'video'
                           ? 'bg-purple-500/10 border-purple-500 text-white shadow-sm ring-1 ring-purple-500/40'
-                          : 'bg-[#141414] border-white/5 hover:border-white/15 text-[#a7a7a7] hover:text-white'
+                          : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
                       }`}
                     >
                       <div>
@@ -1116,25 +1116,25 @@ export const SettingsModal = ({
                             <Check size={14} className="text-purple-400 shrink-0" />
                           )}
                         </div>
-                        <p className="text-[11px] text-[#888] leading-relaxed mb-3">
+                        <p className="text-[11px] text-content-muted leading-relaxed mb-3">
                           100% borderless floating card with album cover art, ambient glow, 2-line live lyrics, and Chrome's native OS hover controls with draggable timeline scrubber.
                         </p>
                       </div>
 
-                      <div className="flex flex-wrap gap-1.5 pt-2 border-t border-white/5 text-[10px]">
-                        <span className="px-2 py-0.5 rounded bg-white/5 text-[#aaa] border border-white/5">16:9 Card (640×360)</span>
-                        <span className="px-2 py-0.5 rounded bg-white/5 text-[#aaa] border border-white/5">Zero Browser Titlebar</span>
-                        <span className="px-2 py-0.5 rounded bg-white/5 text-[#aaa] border border-white/5">Album Cover Glow</span>
-                        <span className="px-2 py-0.5 rounded bg-white/5 text-[#aaa] border border-white/5">OS Hover Scrubber</span>
+                      <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border-subtle text-[10px]">
+                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">16:9 Card (640×360)</span>
+                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">Zero Browser Titlebar</span>
+                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">Album Cover Glow</span>
+                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">OS Hover Scrubber</span>
                       </div>
                     </button>
                   </div>
 
                   {/* Dynamic Explanation & Quick Test Action */}
-                  <div className="p-3.5 rounded-xl bg-[#141414] border border-white/5 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="p-3.5 rounded-xl bg-surface-island border border-border-subtle text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-start gap-2.5">
                       <Sparkles size={15} className="text-brand-500 shrink-0 mt-0.5" />
-                      <p className="text-[#a7a7a7] leading-relaxed">
+                      <p className="text-content-secondary leading-relaxed">
                         {pipEngine === 'interactive' ? (
                           <>
                             <strong className="text-white">Main Branch PiP: </strong>
@@ -1152,7 +1152,7 @@ export const SettingsModal = ({
                     <button
                       type="button"
                       onClick={togglePiP}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/10 transition shrink-0 flex items-center gap-1.5 self-start sm:self-auto"
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white border border-border-medium transition shrink-0 flex items-center gap-1.5 self-start sm:self-auto"
                     >
                       <PictureInPicture2 size={13} />
                       <span>{isPiPActive ? 'Close PiP' : 'Launch PiP Preview'}</span>
@@ -1161,14 +1161,14 @@ export const SettingsModal = ({
                 </div>
 
                 {/* Preload Configuration Card */}
-                <div className="p-5 rounded-2xl bg-[#181818] border border-white/5 space-y-5">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-white/5">
+                <div className="p-5 rounded-2xl bg-surface-panel border border-border-subtle space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border-subtle">
                     <div>
                       <h4 className="text-sm font-bold text-white flex items-center gap-2">
                         <Zap size={16} className="text-brand-500" />
                         <span>Upcoming Songs Preload Window</span>
                       </h4>
-                      <p className="text-xs text-[#888] mt-0.5">
+                      <p className="text-xs text-content-muted mt-0.5">
                         Pre-buffers upcoming queue tracks in background memory to guarantee zero latency and gapless song transitions.
                       </p>
                     </div>
@@ -1177,7 +1177,7 @@ export const SettingsModal = ({
                       <span className="text-lg font-black text-brand-400 font-mono">
                         {preloadCount === 0 ? '0' : preloadCount}
                       </span>
-                      <span className="text-xs text-[#888] ml-1">
+                      <span className="text-xs text-content-muted ml-1">
                         {preloadCount === 1 ? 'song' : 'songs'}
                       </span>
                     </div>
@@ -1185,7 +1185,7 @@ export const SettingsModal = ({
 
                   {/* Preset Quick-Buttons */}
                   <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wider text-[#777] mb-2.5">
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-content-muted mb-2.5">
                       Quick Presets
                     </label>
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
@@ -1202,7 +1202,7 @@ export const SettingsModal = ({
                           className={`p-2.5 rounded-xl text-left border transition flex flex-col ${
                             preloadCount === preset.value
                               ? 'bg-brand-500/15 border-brand-500 text-white shadow-sm ring-1 ring-brand-500/50'
-                              : 'bg-[#141414] border-white/5 hover:border-white/15 text-[#a7a7a7] hover:text-white'
+                              : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
                           }`}
                         >
                           <div className="text-xs font-bold flex items-center justify-between">
@@ -1211,7 +1211,7 @@ export const SettingsModal = ({
                               <Check size={13} className="text-brand-500" />
                             )}
                           </div>
-                          <span className="text-[10px] text-[#666] mt-1">{preset.desc}</span>
+                          <span className="text-[10px] text-content-subtle mt-1">{preset.desc}</span>
                         </button>
                       ))}
                     </div>
@@ -1220,8 +1220,8 @@ export const SettingsModal = ({
                   {/* Interactive Range Slider */}
                   <div className="space-y-2 pt-2">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-[#888] font-medium">Fine-tune buffer size</span>
-                      <span className="font-mono text-white font-bold bg-[#121212] px-2.5 py-0.5 rounded border border-white/10">
+                      <span className="text-content-muted font-medium">Fine-tune buffer size</span>
+                      <span className="font-mono text-white font-bold bg-surface-island px-2.5 py-0.5 rounded border border-border-medium">
                         {preloadCount === 0 ? 'Disabled (Direct Stream)' : `Preloading next ${preloadCount} song${preloadCount > 1 ? 's' : ''}`}
                       </span>
                     </div>
@@ -1233,10 +1233,10 @@ export const SettingsModal = ({
                       step="1"
                       value={preloadCount}
                       onChange={(e) => setPreloadCount(Number(e.target.value))}
-                      className="w-full h-2 bg-[#252525] rounded-lg appearance-none cursor-pointer accent-brand-500 focus:outline-none"
+                      className="w-full h-2 bg-surface-elevated2 rounded-lg appearance-none cursor-pointer accent-brand-500 focus:outline-none"
                     />
 
-                    <div className="flex justify-between text-[10px] font-mono text-[#666] px-1">
+                    <div className="flex justify-between text-[10px] font-mono text-content-subtle px-1">
                       <span>0 (Off)</span>
                       <span>1</span>
                       <span>2</span>
@@ -1248,23 +1248,23 @@ export const SettingsModal = ({
                   </div>
 
                   {/* Dynamic Recommendation & Insight */}
-                  <div className="p-3.5 rounded-xl bg-[#141414] border border-white/5 text-xs flex items-start gap-3">
+                  <div className="p-3.5 rounded-xl bg-surface-island border border-border-subtle text-xs flex items-start gap-3">
                     <Gauge size={16} className="text-brand-500 shrink-0 mt-0.5" />
                     <div className="leading-relaxed">
                       {preloadCount === 0 && (
-                        <p className="text-[#a7a7a7]">
+                        <p className="text-content-secondary">
                           <strong className="text-white">Data Saver Mode: </strong>
                           Upcoming tracks are not buffered in advance. Audio streams strictly on demand. Ideal for metered network connections or devices with low available memory.
                         </p>
                       )}
                       {preloadCount >= 1 && preloadCount <= 3 && (
-                        <p className="text-[#a7a7a7]">
+                        <p className="text-content-secondary">
                           <strong className="text-white">Recommended Balanced Profile: </strong>
                           Buffers the next {preloadCount} upcoming song{preloadCount > 1 ? 's' : ''} sequentially in the background. Provides instant, gapless song playback with negligible RAM usage.
                         </p>
                       )}
                       {preloadCount > 3 && (
-                        <p className="text-[#a7a7a7]">
+                        <p className="text-content-secondary">
                           <strong className="text-white">High Resilience Buffer: </strong>
                           Buffers up to {preloadCount} upcoming tracks. Ideal for preventing audio pauses if MattLab Unraid mechanical hard drives spin down, or for listening with patchy network connections.
                         </p>
@@ -1274,13 +1274,13 @@ export const SettingsModal = ({
                 </div>
 
                 {/* Memory & Cache Purge Tool */}
-                <div className="p-5 rounded-2xl bg-[#181818] border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="p-5 rounded-2xl bg-surface-panel border border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                      <Trash2 size={16} className="text-[#999]" />
+                      <Trash2 size={16} className="text-content-muted" />
                       <span>Purge Preload Cache & Memory</span>
                     </h4>
-                    <p className="text-xs text-[#888] mt-0.5 max-w-lg">
+                    <p className="text-xs text-content-muted mt-0.5 max-w-lg">
                       Immediately revokes Blob URLs and clears the browser CacheStorage API table to release all allocated memory.
                     </p>
                   </div>
@@ -1291,7 +1291,7 @@ export const SettingsModal = ({
                     className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition shrink-0 ${
                       cacheClearedSuccess
                         ? 'bg-brand-500/20 text-brand-400 border border-brand-500/30'
-                        : 'bg-white/10 hover:bg-white/20 text-white border border-white/10'
+                        : 'bg-white/10 hover:bg-white/20 text-white border border-border-medium'
                     }`}
                   >
                     {cacheClearedSuccess ? (
@@ -1313,15 +1313,15 @@ export const SettingsModal = ({
             {activeTab === 'about' && (
               <div className="space-y-6">
                 {/* Branding Hero Banner */}
-                <div className="p-6 rounded-2xl bg-gradient-to-br from-[#1e1e1e] to-[#151515] border border-white/10 relative overflow-hidden">
+                <div className="p-6 rounded-2xl bg-gradient-to-br from-surface-elevated to-surface-island border border-border-medium relative overflow-hidden">
                   <div className="absolute right-4 -bottom-6 opacity-10 pointer-events-none">
-                    <MattLabLogo variant="badge" bgColor="var(--brand-primary)" color="#000" className="w-40 h-40" />
+                    <MattLabLogo variant="badge" bgColor="var(--brand-primary)" color="var(--surface-base)" className="w-40 h-40" />
                   </div>
                   <div className="flex items-center gap-4 relative z-10">
                     <MattLabLogo
                       variant="badge"
                       bgColor="var(--brand-primary)"
-                      color="#000000"
+                      color="var(--surface-base)"
                       className="w-14 h-14 rounded-2xl shadow-xl shrink-0"
                     />
                     <div>
@@ -1331,7 +1331,7 @@ export const SettingsModal = ({
                           v1.0.0
                         </span>
                       </h3>
-                      <p className="text-xs text-[#a7a7a7] mt-1 max-w-md">
+                      <p className="text-xs text-content-secondary mt-1 max-w-md">
                         Self-hosted streaming ecosystem with lossless local playback, Spotify chart synchronization, and automated media acquisition.
                       </p>
                     </div>
@@ -1340,73 +1340,73 @@ export const SettingsModal = ({
 
                 {/* Library Statistics Grid */}
                 <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#b3b3b3] mb-3 flex items-center gap-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-content-secondary mb-3 flex items-center gap-2">
                     <HardDrive size={14} className="text-brand-500" />
                     <span>Catalog & Media Telemetry</span>
                   </h4>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="p-3.5 rounded-xl bg-[#181818] border border-white/5 text-center">
+                    <div className="p-3.5 rounded-xl bg-surface-panel border border-border-subtle text-center">
                       <div className="text-xl font-black text-brand-400">
                         {stats?.tracks !== undefined ? stats.tracks.toLocaleString() : '—'}
                       </div>
-                      <div className="text-[11px] font-semibold text-[#888] mt-1">Tracks</div>
+                      <div className="text-[11px] font-semibold text-content-muted mt-1">Tracks</div>
                     </div>
-                    <div className="p-3.5 rounded-xl bg-[#181818] border border-white/5 text-center">
+                    <div className="p-3.5 rounded-xl bg-surface-panel border border-border-subtle text-center">
                       <div className="text-xl font-black text-white">
                         {stats?.albums !== undefined ? stats.albums.toLocaleString() : '—'}
                       </div>
-                      <div className="text-[11px] font-semibold text-[#888] mt-1">Albums</div>
+                      <div className="text-[11px] font-semibold text-content-muted mt-1">Albums</div>
                     </div>
-                    <div className="p-3.5 rounded-xl bg-[#181818] border border-white/5 text-center">
+                    <div className="p-3.5 rounded-xl bg-surface-panel border border-border-subtle text-center">
                       <div className="text-xl font-black text-white">
                         {stats?.artists !== undefined ? stats.artists.toLocaleString() : '—'}
                       </div>
-                      <div className="text-[11px] font-semibold text-[#888] mt-1">Artists</div>
+                      <div className="text-[11px] font-semibold text-content-muted mt-1">Artists</div>
                     </div>
-                    <div className="p-3.5 rounded-xl bg-[#181818] border border-white/5 text-center">
+                    <div className="p-3.5 rounded-xl bg-surface-panel border border-border-subtle text-center">
                       <div className="text-xl font-black text-brand-400">
                         {stats?.total_duration_hours !== undefined ? `${stats.total_duration_hours}h` : '—'}
                       </div>
-                      <div className="text-[11px] font-semibold text-[#888] mt-1">Total Playtime</div>
+                      <div className="text-[11px] font-semibold text-content-muted mt-1">Total Playtime</div>
                     </div>
                   </div>
                 </div>
 
                 {/* Ecosystem Architecture Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div className="p-4 rounded-xl bg-[#181818] border border-white/5 space-y-2">
+                  <div className="p-4 rounded-xl bg-surface-panel border border-border-subtle space-y-2">
                     <div className="font-bold text-white flex items-center gap-2">
                       <Music size={15} className="text-brand-500" />
                       <span>Audio Playback Engine</span>
                     </div>
-                    <p className="text-[#888] text-[11px] leading-relaxed">
+                    <p className="text-content-muted text-[11px] leading-relaxed">
                       Native HTML5 Audio pipeline with gapless seek buffers, real-time volume gain staging, and support for FLAC, MP3, AAC, and Opus.
                     </p>
                   </div>
 
-                  <div className="p-4 rounded-xl bg-[#181818] border border-white/5 space-y-2">
+                  <div className="p-4 rounded-xl bg-surface-panel border border-border-subtle space-y-2">
                     <div className="font-bold text-white flex items-center gap-2">
                       <Disc3 size={15} className="text-brand-500" />
                       <span>Spotify & Chart Synchronization</span>
                     </div>
-                    <p className="text-[#888] text-[11px] leading-relaxed">
+                    <p className="text-content-muted text-[11px] leading-relaxed">
                       Unified Spotify sync engine fetching real-time global charts, matching local audio signatures, and keeping playlist tracks synced.
                     </p>
                   </div>
                 </div>
 
                 {/* User Session Info Card */}
-                <div className="p-4 rounded-xl bg-[#181818] border border-white/5 flex items-center justify-between">
+                <div className="p-4 rounded-xl bg-surface-panel border border-border-subtle flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <UserAvatar user={user} size="lg" />
                     <div>
                       <div className="text-sm font-bold text-white">
                         {user?.display_name || user?.username}
                       </div>
-                      <div className="text-[11px] text-[#888] flex items-center gap-2">
+                      <div className="text-[11px] text-content-muted flex items-center gap-2">
                         <span>@{user?.username}</span>
                         <span>•</span>
-                        <span className={isAdmin ? 'text-brand-400 font-semibold' : 'text-[#888]'}>
+                        <span className={isAdmin ? 'text-brand-400 font-semibold' : 'text-content-muted'}>
                           {isAdmin ? 'System Administrator' : 'Standard User'}
                         </span>
                       </div>

@@ -690,14 +690,14 @@ const MainAppContent = () => {
   // Auth Guard Views
   if (isAuthLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen w-screen bg-[#000000] text-white select-none">
+      <div className="flex flex-col items-center justify-center h-screen w-screen bg-surface-base text-content-primary select-none">
         <MattLabLogo
           variant="badge"
           bgColor="var(--brand-primary)"
-          color="#000000"
+          color="var(--surface-base)"
           className="w-16 h-16 rounded-full shadow-2xl mb-4 animate-pulse"
         />
-        <div className="text-sm font-semibold text-[#a7a7a7]">
+        <div className="text-sm font-semibold text-content-secondary">
           Connecting to MattLab Music...
         </div>
       </div>
@@ -713,8 +713,8 @@ const MainAppContent = () => {
   }
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#000000] overflow-hidden select-none text-white font-sans">
-      {/* 1. Top Global Navigation Bar (64px, bg-[#000000]) */}
+    <div className="flex flex-col h-screen w-screen bg-surface-base overflow-hidden select-none text-content-primary font-sans">
+      {/* 1. Top Global Navigation Bar (64px) */}
       <TopBar
         searchQuery={searchQuery}
         setSearchQuery={handleSearchChange}
@@ -736,7 +736,7 @@ const MainAppContent = () => {
       />
 
       {/* 2. Three Floating Islands Body (grid: 280px 1fr 300px, gap: 8px, padding: 8px) */}
-      <div className={`flex-1 min-h-0 grid gap-2 p-2 bg-[#000000] overflow-hidden ${
+      <div className={`flex-1 min-h-0 grid gap-2 p-2 bg-surface-base overflow-hidden ${
         isQueueOpen
           ? 'grid-cols-1 md:grid-cols-[280px_1fr] lg:grid-cols-[280px_1fr_300px]'
           : 'grid-cols-1 md:grid-cols-[280px_1fr]'
@@ -759,7 +759,7 @@ const MainAppContent = () => {
         />
 
         {/* Island 2: Center Panel (Main Stage / Content Area) */}
-        <main className="bg-[#121212] rounded-lg overflow-y-auto flex flex-col h-full border border-white/5 relative">
+        <main className="bg-surface-island rounded-lg overflow-y-auto flex flex-col h-full border border-border-subtle relative">
           {/* Synchronized Lyrics Immersion Mode */}
           {isLyricsOpen ? (
             <LyricsView onClose={() => setIsLyricsOpen(false)} />
@@ -779,8 +779,8 @@ const MainAppContent = () => {
                 <div className="p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-6">
                     <div>
-                      <h2 className="text-2xl font-black text-white tracking-tight">All Albums</h2>
-                      <p className="text-xs text-[#b3b3b3] mt-0.5">Explore your entire deduplicated collection</p>
+                      <h2 className="text-2xl font-black text-content-primary tracking-tight">All Albums</h2>
+                      <p className="text-xs text-content-secondary mt-0.5">Explore your entire deduplicated collection</p>
                     </div>
                   </div>
                   <AlbumGrid
@@ -869,8 +869,8 @@ const MainAppContent = () => {
                       onPromptTakeOwnership={(pl) => setPlaylistToTakeOwnership(pl)}
                     />
                   ) : (
-                    <div className="p-8 text-center text-[#b3b3b3]">
-                      <h3 className="text-lg font-bold text-white mb-2">No playlist selected</h3>
+                    <div className="p-8 text-center text-content-secondary">
+                      <h3 className="text-lg font-bold text-content-primary mb-2">No playlist selected</h3>
                       <button onClick={handleGoHome} className="text-xs text-brand-500 hover:underline font-bold">
                         ← Return Home
                       </button>
@@ -893,7 +893,7 @@ const MainAppContent = () => {
         />
       </div>
 
-      {/* 3. Persistent Bottom Player Bar (80px, bg-[#000000]) */}
+      {/* 3. Persistent Bottom Player Bar (80px, bg-surface-base) */}
       <PlayerBar
         isQueueOpen={isQueueOpen}
         setIsQueueOpen={setIsQueueOpen}
@@ -1045,7 +1045,7 @@ const MainAppContent = () => {
 
       {/* Floating In-App Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-[#1e1e1e]/95 backdrop-blur-md border border-brand-500/40 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-3 duration-200">
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-surface-panel/95 backdrop-blur-md border border-brand-500/40 text-content-primary text-xs font-semibold px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-3 duration-200">
           <span>{toastMessage}</span>
         </div>
       )}

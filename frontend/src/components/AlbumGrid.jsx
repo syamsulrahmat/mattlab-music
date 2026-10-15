@@ -34,10 +34,10 @@ export const AlbumGrid = ({
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
         {[...Array(12)].map((_, i) => (
-          <div key={i} className="bg-[#1f1f1f] p-3.5 rounded-lg animate-pulse">
-            <div className="aspect-square bg-[#242424] rounded-md mb-3" />
-            <div className="h-4 bg-[#242424] rounded w-3/4 mb-2" />
-            <div className="h-3 bg-[#242424] rounded w-1/2" />
+          <div key={i} className="bg-surface-elevated p-3.5 rounded-lg animate-pulse">
+            <div className="aspect-square bg-surface-elevated2 rounded-md mb-3" />
+            <div className="h-4 bg-surface-elevated2 rounded w-3/4 mb-2" />
+            <div className="h-3 bg-surface-elevated2 rounded w-1/2" />
           </div>
         ))}
       </div>
@@ -60,10 +60,10 @@ export const AlbumGrid = ({
                 onContextMenu(e, 'album', album);
               }
             }}
-            className="group bg-[#1f1f1f] hover:bg-[#282828] p-3.5 rounded-lg transition duration-200 cursor-pointer flex flex-col justify-between"
+            className="group bg-surface-elevated hover:bg-surface-hover p-3.5 rounded-lg transition duration-200 cursor-pointer flex flex-col justify-between"
           >
             {/* Cover Container */}
-            <div className="relative aspect-square mb-3 rounded-md overflow-hidden bg-[#242424] shadow-md">
+            <div className="relative aspect-square mb-3 rounded-md overflow-hidden bg-surface-elevated2 shadow-md">
               <img
                 src={album.cover_url}
                 alt={album.title}
@@ -91,11 +91,11 @@ export const AlbumGrid = ({
             {/* Details */}
             <div>
               <h3 className={`font-bold text-xs sm:text-sm truncate transition ${
-                isThisAlbum ? 'text-brand-500' : 'text-white'
+                isThisAlbum ? 'text-brand-500' : 'text-content-primary'
               }`}>
                 {album.title}
               </h3>
-              <p className="text-[11px] text-[#b3b3b3] truncate mt-1">
+              <p className="text-[11px] text-content-secondary truncate mt-1">
                 <span
                   onClick={(e) => {
                     e.stopPropagation();

@@ -18,14 +18,14 @@ export const PlaylistCover = ({
   // 1. Four or more covers: Spotify-style 2x2 grid collage
   if (validCovers.length >= 4) {
     return (
-      <div className={`${size} rounded-md overflow-hidden grid grid-cols-2 grid-rows-2 shrink-0 bg-[#242424] border border-white/5 shadow ${className}`}>
+      <div className={`${size} rounded-md overflow-hidden grid grid-cols-2 grid-rows-2 shrink-0 bg-surface-elevated2 border border-border-subtle shadow ${className}`}>
         {validCovers.slice(0, 4).map((url, i) => (
           <img
             key={i}
             src={url}
             alt=""
             onError={() => handleImageError(i)}
-            className="w-full h-full object-cover bg-[#181818]"
+            className="w-full h-full object-cover bg-surface-panel"
             loading="lazy"
           />
         ))}
@@ -36,12 +36,12 @@ export const PlaylistCover = ({
   // 2. 1 to 3 covers: Single hero artwork
   if (validCovers.length >= 1) {
     return (
-      <div className={`${size} rounded-md overflow-hidden shrink-0 bg-[#242424] border border-white/5 shadow ${className}`}>
+      <div className={`${size} rounded-md overflow-hidden shrink-0 bg-surface-elevated2 border border-border-subtle shadow ${className}`}>
         <img
           src={validCovers[0]}
           alt=""
           onError={() => handleImageError(0)}
-          className="w-full h-full object-cover bg-[#181818]"
+          className="w-full h-full object-cover bg-surface-panel"
           loading="lazy"
         />
       </div>
@@ -50,8 +50,8 @@ export const PlaylistCover = ({
 
   // 3. Fallback: Default music note icon
   return (
-    <div className={`${size} rounded-md flex items-center justify-center shrink-0 bg-gradient-to-br from-[#282828] to-[#161616] border border-white/5 shadow ${className}`}>
-      <Music size={iconSize} className="text-[#888]" />
+    <div className={`${size} rounded-md flex items-center justify-center shrink-0 bg-gradient-to-br from-surface-hover to-surface-panel border border-border-subtle shadow ${className}`}>
+      <Music size={iconSize} className="text-content-muted" />
     </div>
   );
 };

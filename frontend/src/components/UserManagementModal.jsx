@@ -151,25 +151,25 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
       onClick={onClose}
     >
       <div 
-        className="w-full max-w-2xl bg-[#121212] border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-200"
+        className="w-full max-w-2xl bg-surface-island border border-border-medium rounded-2xl shadow-2xl flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-border-medium">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-brand-500/10 text-brand-500 flex items-center justify-center">
               <Users size={20} />
             </div>
             <div>
               <h2 className="text-lg font-bold text-white">User Management</h2>
-              <p className="text-xs text-[#a7a7a7]">
+              <p className="text-xs text-content-secondary">
                 Manage accounts with access to your MattLab Music server
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-[#1e1e1e] hover:bg-[#282828] text-[#a7a7a7] hover:text-white flex items-center justify-center transition"
+            className="w-8 h-8 rounded-full bg-surface-elevated hover:bg-surface-hover text-content-secondary hover:text-white flex items-center justify-center transition"
           >
             <X size={18} />
           </button>
@@ -193,7 +193,7 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
 
           {/* Add User Bar / Toggle */}
           <div className="flex items-center justify-between pb-2">
-            <span className="text-xs font-bold text-[#b3b3b3] uppercase tracking-wider">
+            <span className="text-xs font-bold text-content-secondary uppercase tracking-wider">
               Registered Accounts ({users.length})
             </span>
             <button
@@ -209,7 +209,7 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
           {showAddForm && (
             <form
               onSubmit={handleCreateUser}
-              className="p-4 bg-[#181818] border border-white/10 rounded-xl space-y-3.5 animate-in fade-in duration-150"
+              className="p-4 bg-surface-panel border border-border-medium rounded-xl space-y-3.5 animate-in fade-in duration-150"
             >
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <UserPlus size={16} className="text-brand-500" />
@@ -218,7 +218,7 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-semibold text-[#b3b3b3] mb-1">
+                  <label className="block text-[11px] font-semibold text-content-secondary mb-1">
                     Username *
                   </label>
                   <input
@@ -227,12 +227,12 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
                     onChange={(e) => setNewUsername(e.target.value)}
                     placeholder="e.g. sarah"
                     required
-                    className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-[#666] outline-none focus:border-brand-500"
+                    className="w-full bg-surface-elevated2 border border-border-medium rounded-lg px-3 py-2 text-xs text-white placeholder:text-content-subtle outline-none focus:border-brand-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-[#b3b3b3] mb-1">
+                  <label className="block text-[11px] font-semibold text-content-secondary mb-1">
                     Password *
                   </label>
                   <input
@@ -241,12 +241,12 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="••••••••"
                     required
-                    className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-[#666] outline-none focus:border-brand-500"
+                    className="w-full bg-surface-elevated2 border border-border-medium rounded-lg px-3 py-2 text-xs text-white placeholder:text-content-subtle outline-none focus:border-brand-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-[#b3b3b3] mb-1">
+                  <label className="block text-[11px] font-semibold text-content-secondary mb-1">
                     Display Name
                   </label>
                   <input
@@ -254,18 +254,18 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
                     value={newDisplayName}
                     onChange={(e) => setNewDisplayName(e.target.value)}
                     placeholder="e.g. Sarah Connor"
-                    className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-[#666] outline-none focus:border-brand-500"
+                    className="w-full bg-surface-elevated2 border border-border-medium rounded-lg px-3 py-2 text-xs text-white placeholder:text-content-subtle outline-none focus:border-brand-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-[#b3b3b3] mb-1">
+                  <label className="block text-[11px] font-semibold text-content-secondary mb-1">
                     Role
                   </label>
                   <select
                     value={newRole}
                     onChange={(e) => setNewRole(e.target.value)}
-                    className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-brand-500"
+                    className="w-full bg-surface-elevated2 border border-border-medium rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-brand-500"
                   >
                     <option value="user">User (Stream & Playlists)</option>
                     <option value="admin">Admin (Full Control)</option>
@@ -277,7 +277,7 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
                 <button
                   type="button"
                   onClick={() => setShowAddForm(false)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#a7a7a7] hover:text-white hover:bg-[#282828] transition"
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-content-secondary hover:text-white hover:bg-surface-hover transition"
                 >
                   Cancel
                 </button>
@@ -301,22 +301,22 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
 
           {/* User List Table */}
           {loading ? (
-            <div className="py-12 flex flex-col items-center justify-center text-[#727272]">
+            <div className="py-12 flex flex-col items-center justify-center text-content-subtle">
               <Loader2 size={24} className="animate-spin mb-2 text-brand-500" />
               <span className="text-xs">Loading user list...</span>
             </div>
           ) : users.length === 0 ? (
-            <div className="py-8 text-center text-xs text-[#727272]">
+            <div className="py-8 text-center text-xs text-content-subtle">
               No users registered.
             </div>
           ) : (
-            <div className="divide-y divide-white/5 border border-white/5 rounded-xl overflow-hidden bg-[#161616]">
+            <div className="divide-y divide-white/5 border border-white/5 rounded-xl overflow-hidden bg-surface-panel">
               {users.map((u) => {
                 const isCurrent = u.id === currentUser?.id;
                 const isAdmin = u.role === 'admin';
 
                 return (
-                  <div key={u.id} className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[#1c1c1c] transition">
+                  <div key={u.id} className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-surface-hover transition">
                     <div className="flex items-center gap-3">
                       <UserAvatar user={u} size="md" />
                       <div>
@@ -324,16 +324,16 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
                           <span className="text-sm font-semibold text-white">
                             {u.display_name || u.username}
                           </span>
-                          <span className="text-xs text-[#727272]">
+                          <span className="text-xs text-content-subtle">
                             @{u.username}
                           </span>
                           {isCurrent && (
-                            <span className="text-[10px] bg-white/10 text-[#a7a7a7] px-1.5 py-0.5 rounded font-medium">
+                            <span className="text-[10px] bg-white/10 text-content-secondary px-1.5 py-0.5 rounded font-medium">
                               You
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 text-[11px] text-[#727272] mt-0.5">
+                        <div className="flex items-center gap-2 text-[11px] text-content-subtle mt-0.5">
                           <span>
                             Last login: {u.last_login ? new Date(u.last_login).toLocaleDateString() : 'Never'}
                           </span>
@@ -346,7 +346,7 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
                       <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1 ${
                         isAdmin 
                           ? 'bg-brand-500/15 text-brand-500 border border-brand-500/30' 
-                          : 'bg-white/5 text-[#a7a7a7] border border-white/10'
+                          : 'bg-white/5 text-content-secondary border border-white/10'
                       }`}>
                         {isAdmin ? <Shield size={11} /> : <User size={11} />}
                         <span>{isAdmin ? 'Admin' : 'User'}</span>
@@ -360,7 +360,7 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
                             placeholder="New pass"
                             value={resetPasswordVal}
                             onChange={(e) => setResetPasswordVal(e.target.value)}
-                            className="w-24 bg-[#242424] border border-white/20 rounded px-2 py-0.5 text-xs text-white"
+                            className="w-24 bg-surface-elevated2 border border-white/20 rounded px-2 py-0.5 text-xs text-white"
                           />
                           <button
                             onClick={() => handleResetPassword(u.id)}
@@ -370,7 +370,7 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
                           </button>
                           <button
                             onClick={() => { setResettingUserId(null); setResetPasswordVal(''); }}
-                            className="text-[#a7a7a7] text-xs px-1"
+                            className="text-content-secondary text-xs px-1"
                           >
                             ✕
                           </button>
@@ -379,7 +379,7 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
                         <button
                           onClick={() => { setResettingUserId(u.id); setResetPasswordVal(''); }}
                           title="Reset Password"
-                          className="p-1.5 rounded-lg text-[#727272] hover:text-white hover:bg-white/5 transition"
+                          className="p-1.5 rounded-lg text-content-subtle hover:text-white hover:bg-white/5 transition"
                         >
                           <Key size={14} />
                         </button>

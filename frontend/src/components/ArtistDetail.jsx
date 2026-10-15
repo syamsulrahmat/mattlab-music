@@ -238,7 +238,7 @@ export const ArtistDetail = ({
 
   if (isLoading || !artist) {
     return (
-      <div className="flex items-center justify-center h-64 text-[#b3b3b3]">
+      <div className="flex items-center justify-center h-64 text-content-secondary">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-brand-500" />
       </div>
     );
@@ -247,7 +247,7 @@ export const ArtistDetail = ({
   return (
     <div className="pb-16 select-none relative w-full">
       {/* Full-bleed Header Banner taking all the area without back button */}
-      <div className="bg-gradient-to-b from-emerald-950/45 via-[#181818]/75 to-[#121212] px-6 sm:px-8 pt-8 sm:pt-10 pb-8 sm:pb-10 w-full border-b border-white/5">
+      <div className="bg-gradient-to-b from-emerald-950/45 via-surface-panel/75 to-surface-island px-6 sm:px-8 pt-8 sm:pt-10 pb-8 sm:pb-10 w-full border-b border-border-subtle">
         <div className="flex flex-col md:flex-row gap-6 md:gap-7 items-start md:items-end">
           <div className="relative group shrink-0">
             <img
@@ -257,7 +257,7 @@ export const ArtistDetail = ({
                 e.target.onerror = null;
                 e.target.src = '/api/covers/0';
               }}
-              className="w-44 h-44 sm:w-52 sm:h-52 rounded-full shadow-2xl object-cover bg-[#242424] border-2 border-white/10 group-hover:scale-105 transition duration-300"
+              className="w-44 h-44 sm:w-52 sm:h-52 rounded-full shadow-2xl object-cover bg-surface-elevated2 border-2 border-border-medium group-hover:scale-105 transition duration-300"
             />
           </div>
 
@@ -266,11 +266,11 @@ export const ArtistDetail = ({
               <CheckCircle2 size={16} className="fill-brand-500 text-black" />
               <span>Verified Artist</span>
             </div>
-            <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-white mt-1 mb-3 tracking-tight truncate">
+            <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-content-primary mt-1 mb-3 tracking-tight truncate">
               {artist.name}
             </h1>
-            <div className="flex items-center gap-2 text-xs sm:text-sm text-[#b3b3b3] font-medium flex-wrap">
-              <span className="text-white font-semibold">{tracks.length} songs</span>
+            <div className="flex items-center gap-2 text-xs sm:text-sm text-content-secondary font-medium flex-wrap">
+              <span className="text-content-primary font-semibold">{tracks.length} songs</span>
               <span>•</span>
               <span>{artist.albums?.length || 0} albums</span>
             </div>
@@ -279,7 +279,7 @@ export const ArtistDetail = ({
       </div>
 
       {/* Action Bar */}
-      <div className="px-6 sm:px-8 py-3.5 border-b border-white/5 flex flex-wrap items-center justify-between gap-4">
+      <div className="px-6 sm:px-8 py-3.5 border-b border-border-subtle flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <button
             onClick={handlePlayAll}
@@ -298,7 +298,7 @@ export const ArtistDetail = ({
             onClick={handleToggleShuffle}
             disabled={tracks.length === 0}
             className={`p-3 rounded-full hover:bg-white/10 transition disabled:opacity-40 ${
-              isShuffle ? 'text-brand-500' : 'text-[#b3b3b3] hover:text-white'
+              isShuffle ? 'text-brand-500' : 'text-content-secondary hover:text-white'
             }`}
             title={isShuffle ? "Disable shuffle" : "Enable shuffle"}
           >
@@ -309,9 +309,9 @@ export const ArtistDetail = ({
 
       {/* Popular Tracks Section */}
       <div className="px-6 sm:px-8 mt-6 mb-12">
-        <h2 className="text-xl font-bold text-white mb-4 tracking-tight">Popular Songs</h2>
+        <h2 className="text-xl font-bold text-content-primary mb-4 tracking-tight">Popular Songs</h2>
         <div>
-          <div className="sticky top-0 z-20 bg-[#121212]/95 backdrop-blur-md rounded-lg grid grid-cols-[36px_1fr_36px_50px] md:grid-cols-[40px_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-[#b3b3b3] border-b border-white/10 items-center tracking-wider shadow-md">
+          <div className="sticky top-0 z-20 bg-surface-island/95 backdrop-blur-md rounded-lg grid grid-cols-[36px_1fr_36px_50px] md:grid-cols-[40px_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-content-secondary border-b border-border-medium items-center tracking-wider shadow-md">
             <span className="text-center">#</span>
             <span>Title</span>
             <span className="hidden md:block">Album</span>
@@ -356,8 +356,8 @@ export const ArtistDetail = ({
                   }}
                   className={`grid grid-cols-[36px_1fr_36px_50px] md:grid-cols-[40px_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center cursor-default select-none ${
                     isSelected
-                      ? 'bg-[#2a2a2a] ring-1 ring-white/20 text-white'
-                      : 'hover:bg-[#1f1f1f] text-white'
+                      ? 'bg-surface-hover ring-1 ring-white/20 text-content-primary'
+                      : 'hover:bg-surface-elevated text-content-primary'
                   }`}
                 >
                   {/* Column 1: Index / Play-Pause / Animated Equalizer / Loading Spinner */}
@@ -388,7 +388,7 @@ export const ArtistDetail = ({
                             </div>
                           ) : (
                             /* Normal track number (green if current track paused, gray otherwise) */
-                            <span className={`text-sm font-medium ${isThisTrack ? 'text-brand-500' : 'text-[#b3b3b3]'}`}>
+                            <span className={`text-sm font-medium ${isThisTrack ? 'text-brand-500' : 'text-content-secondary'}`}>
                               {idx + 1}
                             </span>
                           )}
@@ -423,13 +423,13 @@ export const ArtistDetail = ({
                     <img
                       src={track.cover_url || '/api/covers/0'}
                       alt={track.title}
-                      className="w-10 h-10 rounded object-cover bg-[#1f1f1f] shrink-0"
+                      className="w-10 h-10 rounded object-cover bg-surface-elevated shrink-0"
                     />
                     <div className="truncate">
-                      <p className={`text-sm font-medium truncate ${isThisTrack ? 'text-brand-500 font-bold' : 'text-white'}`}>
+                      <p className={`text-sm font-medium truncate ${isThisTrack ? 'text-brand-500 font-bold' : 'text-content-primary'}`}>
                         {track.title}
                       </p>
-                      <p className="text-xs text-[#b3b3b3] truncate md:hidden">
+                      <p className="text-xs text-content-secondary truncate md:hidden">
                         {track.album_title}
                       </p>
                     </div>
@@ -442,7 +442,7 @@ export const ArtistDetail = ({
                         e.stopPropagation();
                         if (onSelectAlbum) onSelectAlbum(track.album_id);
                       }}
-                      className="text-xs text-[#b3b3b3] hover:text-white hover:underline truncate cursor-pointer inline"
+                      className="text-xs text-content-secondary hover:text-white hover:underline truncate cursor-pointer inline"
                     >
                       {track.album_title}
                     </span>
@@ -456,7 +456,7 @@ export const ArtistDetail = ({
                         toggleFavorite(track.id);
                       }}
                       className={`p-1.5 transition ${
-                        isFav ? 'text-brand-500' : 'opacity-0 group-hover:opacity-100 text-[#888] hover:text-white'
+                        isFav ? 'text-brand-500' : 'opacity-0 group-hover:opacity-100 text-content-muted hover:text-white'
                       }`}
                       title={isFav ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
                     >
@@ -468,7 +468,7 @@ export const ArtistDetail = ({
                           e.stopPropagation();
                           onAddToPlaylist(track);
                         }}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 text-[#888] hover:text-white transition"
+                        className="opacity-0 group-hover:opacity-100 p-1.5 text-content-muted hover:text-white transition"
                         title="Add to playlist"
                       >
                         <Plus size={15} />
@@ -477,7 +477,7 @@ export const ArtistDetail = ({
                   </div>
 
                   {/* Column 5: Duration */}
-                  <span className="text-right text-xs font-mono text-[#b3b3b3]">
+                  <span className="text-right text-xs font-mono text-content-secondary">
                     {formatDuration(track.duration_seconds)}
                   </span>
                 </div>
@@ -490,7 +490,7 @@ export const ArtistDetail = ({
       {/* Discography / Albums Shelf */}
       {artist.albums && artist.albums.length > 0 && (
         <section className="px-6 sm:px-8">
-          <h2 className="text-xl font-bold text-white mb-4 tracking-tight">Discography</h2>
+          <h2 className="text-xl font-bold text-content-primary mb-4 tracking-tight">Discography</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {artist.albums.map((album) => (
               <div
@@ -502,9 +502,9 @@ export const ArtistDetail = ({
                     onContextMenu(e, 'album', { ...album, artist_id: artist.id });
                   }
                 }}
-                className="group bg-[#181818] hover:bg-[#242424] p-3 rounded-xl transition duration-200 cursor-pointer flex flex-col justify-between border border-white/5"
+                className="group bg-surface-panel hover:bg-surface-elevated2 p-3 rounded-xl transition duration-200 cursor-pointer flex flex-col justify-between border border-border-subtle"
               >
-                <div className="relative aspect-square mb-3 rounded-lg overflow-hidden bg-[#1f1f1f] shadow-md">
+                <div className="relative aspect-square mb-3 rounded-lg overflow-hidden bg-surface-elevated shadow-md">
                   <img
                     src={album.cover_url}
                     alt={album.title}
@@ -513,10 +513,10 @@ export const ArtistDetail = ({
                   />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-xs sm:text-sm text-white truncate group-hover:text-brand-400 transition">
+                  <h3 className="font-semibold text-xs sm:text-sm text-content-primary truncate group-hover:text-brand-400 transition">
                     {album.title}
                   </h3>
-                  <p className="text-[11px] text-[#b3b3b3] truncate mt-0.5">
+                  <p className="text-[11px] text-content-secondary truncate mt-0.5">
                     {album.year ? `Album • ${album.year}` : 'Album'}
                   </p>
                 </div>

@@ -7,10 +7,28 @@
     --brand-primary: theme('colors.brand.DEFAULT');
     --brand-hover: theme('colors.brand.hover');
     --brand-dark: theme('colors.brand.dark');
+    --brand-light: theme('colors.brand.light');
+
+    --surface-base: theme('colors.surface.base');
+    --surface-island: theme('colors.surface.island');
+    --surface-panel: theme('colors.surface.panel');
+    --surface-elevated: theme('colors.surface.elevated');
+    --surface-elevated2: theme('colors.surface.elevated2');
+    --surface-hover: theme('colors.surface.hover');
+
+    --content-primary: theme('colors.content.primary');
+    --content-secondary: theme('colors.content.secondary');
+    --content-muted: theme('colors.content.muted');
+    --content-subtle: theme('colors.content.subtle');
+    --content-accent: theme('colors.content.accent');
+
+    --border-subtle: theme('colors.border.subtle');
+    --border-medium: theme('colors.border.medium');
+    --border-strong: theme('colors.border.strong');
   }
 
   body {
-    @apply bg-[#000000] text-white font-sans antialiased;
+    @apply bg-surface-base text-content-primary font-sans antialiased;
   }
 }
 

@@ -813,7 +813,7 @@ export const PlaylistDetail = ({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64 text-[#b3b3b3]">
+      <div className="flex items-center justify-center h-64 text-content-secondary">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-brand-500" />
       </div>
     );
@@ -821,9 +821,9 @@ export const PlaylistDetail = ({
 
   if (!playlist || !playlist.id) {
     return (
-      <div className="p-8 text-center text-[#b3b3b3]">
-        <h3 className="text-lg font-bold text-white mb-2">Playlist not found</h3>
-        <p className="text-xs text-[#777] mb-4">This playlist may have been deleted or moved.</p>
+      <div className="p-8 text-center text-content-secondary">
+        <h3 className="text-lg font-bold text-content-primary mb-2">Playlist not found</h3>
+        <p className="text-xs text-content-muted mb-4">This playlist may have been deleted or moved.</p>
       </div>
     );
   }
@@ -833,7 +833,7 @@ export const PlaylistDetail = ({
       {/* 4. Full-bleed Header Banner taking all the area without back button */}
       <div 
         onContextMenu={(e) => onContextMenu?.(e, 'playlist', playlist)}
-        className="bg-gradient-to-b from-emerald-950/45 via-[#181818]/75 to-[#121212] px-6 sm:px-8 pt-8 sm:pt-10 pb-8 sm:pb-10 w-full border-b border-white/5"
+        className="bg-gradient-to-b from-emerald-950/45 via-surface-panel/75 to-surface-island px-6 sm:px-8 pt-8 sm:pt-10 pb-8 sm:pb-10 w-full border-b border-border-subtle"
       >
         <div className="flex flex-col md:flex-row gap-6 md:gap-7 items-start md:items-end">
           <div 
@@ -847,7 +847,7 @@ export const PlaylistDetail = ({
               iconSize={64} 
               className="rounded-lg transition duration-300 group-hover:scale-105" 
             />
-            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center gap-1.5 text-white">
+            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center gap-1.5 text-content-primary">
               <Pencil size={24} />
               <span className="text-xs font-bold">Edit details</span>
             </div>
@@ -861,14 +861,14 @@ export const PlaylistDetail = ({
             <div className="group flex items-center gap-2.5 mt-1 mb-2">
               <h1 
                 onClick={() => setIsEditingDetails(true)}
-                className="text-2xl sm:text-4xl md:text-5xl font-black text-white tracking-tight cursor-pointer hover:underline truncate"
+                className="text-2xl sm:text-4xl md:text-5xl font-black text-content-primary tracking-tight cursor-pointer hover:underline truncate"
                 title="Click to rename"
               >
                 {playlist.name}
               </h1>
               <button
                 onClick={() => setIsEditingDetails(true)}
-                className="opacity-0 group-hover:opacity-100 p-1.5 text-[#888] hover:text-white transition rounded-full hover:bg-white/10"
+                className="opacity-0 group-hover:opacity-100 p-1.5 text-content-muted hover:text-content-primary transition rounded-full hover:bg-white/10"
                 title="Edit details"
               >
                 <Pencil size={18} />
@@ -878,21 +878,21 @@ export const PlaylistDetail = ({
             {playlist.description ? (
               <p 
                 onClick={() => setIsEditingDetails(true)}
-                className="text-xs sm:text-sm text-[#b3b3b3] mb-3 line-clamp-2 cursor-pointer hover:text-white transition"
+                className="text-xs sm:text-sm text-content-secondary mb-3 line-clamp-2 cursor-pointer hover:text-content-primary transition"
               >
                 {playlist.description}
               </p>
             ) : (
               <p 
                 onClick={() => setIsEditingDetails(true)}
-                className="text-xs text-[#666] hover:text-[#999] cursor-pointer mb-3 italic"
+                className="text-xs text-content-subtle hover:text-content-secondary cursor-pointer mb-3 italic"
               >
                 + Add description
               </p>
             )}
 
-            <div className="flex items-center gap-2 text-xs sm:text-sm text-[#b3b3b3] font-medium flex-wrap">
-              <span className="text-white font-semibold">{rawTracks.length} songs</span>
+            <div className="flex items-center gap-2 text-xs sm:text-sm text-content-secondary font-medium flex-wrap">
+              <span className="text-content-primary font-semibold">{rawTracks.length} songs</span>
               {totalSeconds > 0 && (
                 <>
                   <span>•</span>
@@ -910,9 +910,9 @@ export const PlaylistDetail = ({
       <div
         id="spotify-locked-drag-ghost"
         style={{ position: 'fixed', top: '-9999px', left: '-9999px', pointerEvents: 'none', zIndex: -100 }}
-        className="flex items-center gap-2 px-3.5 py-2 bg-[#181818] text-white text-xs font-semibold rounded-full border border-white/20 shadow-2xl"
+        className="flex items-center gap-2 px-3.5 py-2 bg-surface-panel text-content-primary text-xs font-semibold rounded-full border border-border-strong shadow-2xl"
       >
-        <Lock size={14} className="text-[#1DB954]" />
+        <Lock size={14} className="text-brand-500" />
         <span>Spotify Chart • Order Locked</span>
       </div>
 
@@ -937,7 +937,7 @@ export const PlaylistDetail = ({
             onClick={handleToggleShuffle}
             disabled={allTracks.length === 0}
             className={`relative p-3 rounded-full hover:scale-105 active:scale-95 transition flex items-center justify-center disabled:opacity-40 ${
-              isShuffle ? 'text-brand-500 hover:text-brand-400' : 'text-[#b3b3b3] hover:text-white'
+              isShuffle ? 'text-brand-500 hover:text-brand-400' : 'text-content-secondary hover:text-content-primary'
             }`}
             title={isShuffle ? 'Disable Shuffle' : 'Shuffle playlist queue'}
           >
@@ -949,7 +949,7 @@ export const PlaylistDetail = ({
 
           <button
             onClick={() => setIsEditingDetails(true)}
-            className="p-2.5 rounded-full text-[#b3b3b3] hover:text-white hover:bg-white/5 transition"
+            className="p-2.5 rounded-full text-content-secondary hover:text-content-primary hover:bg-white/5 transition"
             title="Edit playlist name & description"
           >
             <Pencil size={18} />
@@ -958,7 +958,7 @@ export const PlaylistDetail = ({
           {playlist?.spotify_id && (
             <button
               onClick={() => onPromptTakeOwnership?.(playlist)}
-              className="px-3.5 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-xs font-semibold text-[#b3b3b3] hover:text-white transition flex items-center gap-1.5 border border-white/5"
+              className="px-3.5 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-xs font-semibold text-content-secondary hover:text-content-primary transition flex items-center gap-1.5 border border-white/5"
               title="Unlink from Spotify and take full local ownership"
             >
               <UserCheck size={14} className="text-brand-400" />
@@ -971,7 +971,7 @@ export const PlaylistDetail = ({
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           {/* In-playlist search */}
           <div className="relative flex-1 sm:w-52">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#888]" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-muted" />
             <input
               ref={filterInputRef}
               type="text"
@@ -979,7 +979,7 @@ export const PlaylistDetail = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleFilterKeyDown}
-              className="w-full bg-[#242424] hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-white text-xs pl-8 pr-7 py-2 rounded-full border border-white/5 focus:border-white/20 outline-none transition placeholder:text-[#666]"
+              className="w-full bg-surface-elevated2 hover:bg-surface-hover focus:bg-surface-hover text-content-primary text-xs pl-8 pr-7 py-2 rounded-full border border-border-subtle focus:border-border-strong outline-none transition placeholder:text-content-subtle"
             />
             {searchQuery && (
               <button
@@ -987,7 +987,7 @@ export const PlaylistDetail = ({
                   setSearchQuery('');
                   setFocusedTrackIdx(-1);
                 }}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#888] hover:text-white p-0.5"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-content-muted hover:text-content-primary p-0.5"
               >
                 <X size={12} />
               </button>
@@ -995,10 +995,10 @@ export const PlaylistDetail = ({
           </div>
 
           {/* Sort dropdown with icons */}
-          <div className="relative shrink-0 flex items-center gap-1 bg-[#242424] hover:bg-[#2a2a2a] border border-white/5 rounded-full px-2.5 py-1.5 transition" ref={sortMenuRef}>
+          <div className="relative shrink-0 flex items-center gap-1 bg-surface-elevated2 hover:bg-surface-hover border border-border-subtle rounded-full px-2.5 py-1.5 transition" ref={sortMenuRef}>
             <button
               onClick={() => setIsSortMenuOpen((prev) => !prev)}
-              className="flex items-center gap-1.5 text-xs text-[#b3b3b3] hover:text-white transition outline-none"
+              className="flex items-center gap-1.5 text-xs text-content-secondary hover:text-content-primary transition outline-none"
               title={`Sorted by: ${
                 sortBy === 'custom'
                   ? (playlist?.spotify_id ? 'Spotify Chart Order' : 'Custom Order')
@@ -1014,7 +1014,7 @@ export const PlaylistDetail = ({
               }`}
             >
               {sortBy === 'custom' ? (
-                playlist?.spotify_id ? <Lock size={14} className="text-[#1DB954]" /> : <ListOrdered size={14} className="text-[#888]" />
+                playlist?.spotify_id ? <Lock size={14} className="text-brand-500" /> : <ListOrdered size={14} className="text-content-muted" />
               ) : sortBy === 'title' ? (
                 <Type size={14} className="text-brand-400" />
               ) : sortBy === 'artist' ? (
@@ -1026,7 +1026,7 @@ export const PlaylistDetail = ({
               ) : (
                 <Clock size={14} className="text-brand-400" />
               )}
-              <ChevronDown size={11} className="text-[#777]" />
+              <ChevronDown size={11} className="text-content-muted" />
             </button>
 
             {sortBy !== 'custom' && (
@@ -1040,8 +1040,8 @@ export const PlaylistDetail = ({
             )}
 
             {isSortMenuOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-48 bg-[#1f1f1f] border border-white/10 rounded-lg shadow-2xl py-1 z-50 text-xs">
-                <div className="px-3 py-1 text-[10px] uppercase font-bold text-[#666] tracking-wider">
+              <div className="absolute right-0 top-full mt-1.5 w-48 bg-surface-panel border border-border-medium rounded-lg shadow-2xl py-1 z-50 text-xs">
+                <div className="px-3 py-1 text-[10px] uppercase font-bold text-content-subtle tracking-wider">
                   Sort By
                 </div>
                 <button
@@ -1051,11 +1051,11 @@ export const PlaylistDetail = ({
                     setIsSortMenuOpen(false);
                   }}
                   className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-white/10 transition ${
-                    sortBy === 'custom' ? 'text-brand-500 font-bold' : 'text-white'
+                    sortBy === 'custom' ? 'text-brand-500 font-bold' : 'text-content-primary'
                   }`}
                 >
                   <span className="flex items-center gap-2">
-                    {playlist?.spotify_id ? <Lock size={14} className="text-[#1DB954]" /> : <ListOrdered size={14} />}
+                    {playlist?.spotify_id ? <Lock size={14} className="text-brand-500" /> : <ListOrdered size={14} />}
                     <span>{playlist?.spotify_id ? 'Spotify chart order' : 'Custom order'}</span>
                   </span>
                   {sortBy === 'custom' && <Check size={13} />}
@@ -1066,7 +1066,7 @@ export const PlaylistDetail = ({
                     setIsSortMenuOpen(false);
                   }}
                   className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-white/10 transition ${
-                    sortBy === 'title' ? 'text-brand-500 font-bold' : 'text-white'
+                    sortBy === 'title' ? 'text-brand-500 font-bold' : 'text-content-primary'
                   }`}
                 >
                   <span className="flex items-center gap-2">
@@ -1081,7 +1081,7 @@ export const PlaylistDetail = ({
                     setIsSortMenuOpen(false);
                   }}
                   className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-white/10 transition ${
-                    sortBy === 'artist' ? 'text-brand-500 font-bold' : 'text-white'
+                    sortBy === 'artist' ? 'text-brand-500 font-bold' : 'text-content-primary'
                   }`}
                 >
                   <span className="flex items-center gap-2">
@@ -1096,7 +1096,7 @@ export const PlaylistDetail = ({
                     setIsSortMenuOpen(false);
                   }}
                   className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-white/10 transition ${
-                    sortBy === 'album' ? 'text-brand-500 font-bold' : 'text-white'
+                    sortBy === 'album' ? 'text-brand-500 font-bold' : 'text-content-primary'
                   }`}
                 >
                   <span className="flex items-center gap-2">
@@ -1111,7 +1111,7 @@ export const PlaylistDetail = ({
                     setIsSortMenuOpen(false);
                   }}
                   className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-white/10 transition ${
-                    sortBy === 'added_at' ? 'text-brand-500 font-bold' : 'text-white'
+                    sortBy === 'added_at' ? 'text-brand-500 font-bold' : 'text-content-primary'
                   }`}
                 >
                   <span className="flex items-center gap-2">
@@ -1126,7 +1126,7 @@ export const PlaylistDetail = ({
                     setIsSortMenuOpen(false);
                   }}
                   className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-white/10 transition ${
-                    sortBy === 'duration' ? 'text-brand-500 font-bold' : 'text-white'
+                    sortBy === 'duration' ? 'text-brand-500 font-bold' : 'text-content-primary'
                   }`}
                 >
                   <span className="flex items-center gap-2">
@@ -1144,10 +1144,10 @@ export const PlaylistDetail = ({
             <button
               onClick={handleSyncNow}
               disabled={isSyncingNow}
-              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-[#b3b3b3] hover:text-[#1DB954] transition flex items-center justify-center disabled:opacity-50 shrink-0"
+              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-content-secondary hover:text-brand-500 transition flex items-center justify-center disabled:opacity-50 shrink-0"
               title={isSyncingNow ? 'Syncing...' : 'Sync Now with Spotify'}
             >
-              <RefreshCw size={15} className={isSyncingNow ? 'animate-spin text-[#1DB954]' : ''} />
+              <RefreshCw size={15} className={isSyncingNow ? 'animate-spin text-brand-500' : ''} />
             </button>
           )}
 
@@ -1157,7 +1157,7 @@ export const PlaylistDetail = ({
               href={playlist.spotify_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-[#b3b3b3] hover:text-[#1DB954] transition flex items-center justify-center shrink-0"
+              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-content-secondary hover:text-brand-500 transition flex items-center justify-center shrink-0"
               title="Open on Spotify"
             >
               <SpotifyIcon size={16} />
@@ -1167,7 +1167,7 @@ export const PlaylistDetail = ({
           {/* Delete playlist icon button */}
           <button
             onClick={() => setIsConfirmDeleteOpen(true)}
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-[#888] hover:text-red-400 transition flex items-center justify-center shrink-0"
+            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-content-muted hover:text-red-400 transition flex items-center justify-center shrink-0"
             title="Delete playlist"
           >
             <Trash2 size={16} />
@@ -1178,7 +1178,7 @@ export const PlaylistDetail = ({
       {/* Reorder notice if sorted differently */}
       {!playlist?.spotify_id && !isDragEnabled && rawTracks.length > 1 && (
         <div className="px-6 sm:px-8 pb-3">
-          <div className="text-[11px] text-[#777] flex items-center gap-1.5">
+          <div className="text-[11px] text-content-muted flex items-center gap-1.5">
             <span>💡 Track reordering is active when sorted by <strong>Custom order</strong> with search cleared.</span>
           </div>
         </div>
@@ -1186,14 +1186,14 @@ export const PlaylistDetail = ({
 
       {/* Tracklist Table */}
       {rawTracks.length === 0 ? (
-        <div className="mx-6 sm:px-8 text-center py-20 text-[#666] border border-white/5 rounded-xl bg-[#181818]/40">
-          <Music size={40} className="mx-auto text-[#444] mb-3" />
-          <p className="text-sm font-semibold text-[#888]">This playlist is currently empty.</p>
-          <p className="text-xs text-[#555] mt-1">Add songs from albums, artists, or search to build this playlist.</p>
+        <div className="mx-6 sm:px-8 text-center py-20 text-content-subtle border border-border-subtle rounded-xl bg-surface-panel/40">
+          <Music size={40} className="mx-auto text-content-subtle mb-3" />
+          <p className="text-sm font-semibold text-content-muted">This playlist is currently empty.</p>
+          <p className="text-xs text-content-subtle mt-1">Add songs from albums, artists, or search to build this playlist.</p>
         </div>
       ) : tracks.length === 0 ? (
-        <div className="mx-6 sm:px-8 text-center py-16 text-[#666] border border-white/5 rounded-xl bg-[#181818]/40">
-          <p className="text-xs text-[#888]">No songs match "{searchQuery}"</p>
+        <div className="mx-6 sm:px-8 text-center py-16 text-content-subtle border border-border-subtle rounded-xl bg-surface-panel/40">
+          <p className="text-xs text-content-muted">No songs match "{searchQuery}"</p>
           <button
             onClick={() => setSearchQuery('')}
             className="text-xs text-brand-500 font-bold hover:underline mt-2"
@@ -1204,8 +1204,8 @@ export const PlaylistDetail = ({
       ) : (
         <div className="px-6 sm:px-8">
           {/* Sticky Tracklist Column Header Row */}
-          <div className="sticky top-0 z-30 bg-[#121212]/95 backdrop-blur-md mb-2">
-            <div className="grid grid-cols-[36px_1fr_56px_50px] md:grid-cols-[40px_3fr_2fr_56px_60px] lg:grid-cols-[40px_4fr_3fr_2fr_56px_60px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-[#b3b3b3] border-b border-white/10 items-center">
+          <div className="sticky top-0 z-30 bg-surface-island/95 backdrop-blur-md mb-2">
+            <div className="grid grid-cols-[36px_1fr_56px_50px] md:grid-cols-[40px_3fr_2fr_56px_60px] lg:grid-cols-[40px_4fr_3fr_2fr_56px_60px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-content-secondary border-b border-border-medium items-center">
               <span className="text-center">#</span>
               <div className="flex items-center gap-3 truncate pr-3">
                 <span className="w-10 shrink-0" />
@@ -1315,12 +1315,12 @@ export const PlaylistDetail = ({
                         : isDragOver
                         ? 'border-t-2 border-brand-500 bg-brand-500/10 shadow-lg'
                         : isFocused
-                        ? 'bg-[#2a2a2a] ring-1 ring-brand-500/60 shadow-md text-white'
+                        ? 'bg-surface-hover ring-1 ring-brand-500/60 shadow-md text-content-primary'
                         : isSelected
-                        ? 'bg-[#2a2a2a] ring-1 ring-white/20 text-white'
+                        ? 'bg-surface-hover ring-1 ring-white/20 text-content-primary'
                         : track.isSyncPending
-                        ? 'hover:bg-[#1a1a1a] opacity-85 text-white'
-                        : 'hover:bg-[#1f1f1f] text-white'
+                        ? 'hover:bg-surface-island opacity-85 text-content-primary'
+                        : 'hover:bg-surface-elevated text-content-primary'
                     }`}
                   >
                     {/* Column 1: Index / Play-Pause / Live Download Spinner */}
@@ -1328,14 +1328,14 @@ export const PlaylistDetail = ({
                       {track.isSyncPending ? (
                         track.syncStatus === 'downloading' ? (
                           <div className="flex items-center justify-center w-7 h-7" title={`Downloading: ${Math.round(track.liveProgress || 0)}%`}>
-                            <div className="w-3.5 h-3.5 border-2 border-[#1DB954] border-t-transparent rounded-full animate-spin" />
+                            <div className="w-3.5 h-3.5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
                           </div>
                         ) : track.syncStatus === 'failed' ? (
                           <div className="flex items-center justify-center w-7 h-7 text-red-400" title={track.errorMessage || 'Download failed'}>
                             <AlertTriangle size={15} />
                           </div>
                         ) : (
-                          <div className="flex items-center justify-center w-7 h-7 text-[#666]" title="Queued for download">
+                          <div className="flex items-center justify-center w-7 h-7 text-content-subtle" title="Queued for download">
                             <Clock size={15} />
                           </div>
                         )
@@ -1361,7 +1361,7 @@ export const PlaylistDetail = ({
                                 <span className="w-[3px] bg-brand-500 rounded-full animate-eq-4" />
                               </div>
                             ) : (
-                              <span className={`text-sm font-medium ${isThisTrack ? 'text-brand-500' : 'text-[#b3b3b3]'}`}>
+                              <span className={`text-sm font-medium ${isThisTrack ? 'text-brand-500' : 'text-content-secondary'}`}>
                                 {idx + 1}
                               </span>
                             )}
@@ -1377,7 +1377,7 @@ export const PlaylistDetail = ({
                                 handleTrackPlay(track);
                               }
                             }}
-                            className="hidden group-hover:flex items-center justify-center w-7 h-7 text-white hover:text-brand-400 transition"
+                            className="hidden group-hover:flex items-center justify-center w-7 h-7 text-content-primary hover:text-brand-400 transition"
                             title={isThisPlaying ? "Pause" : "Play"}
                           >
                             {isThisPlaying ? (
@@ -1396,10 +1396,10 @@ export const PlaylistDetail = ({
                         <img
                           src={track.cover_url}
                           alt={track.title}
-                          className="w-10 h-10 rounded object-cover bg-[#1f1f1f] shrink-0 shadow-sm"
+                          className="w-10 h-10 rounded object-cover bg-surface-elevated shrink-0 shadow-sm"
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded bg-[#1c1c1c] border border-white/5 flex items-center justify-center text-[#666] shrink-0 shadow-sm">
+                        <div className="w-10 h-10 rounded bg-surface-panel border border-border-subtle flex items-center justify-center text-content-subtle shrink-0 shadow-sm">
                           <Music size={18} />
                         </div>
                       )}
@@ -1407,23 +1407,23 @@ export const PlaylistDetail = ({
                         <div className="flex items-center gap-2 truncate">
                           <p className={`text-sm font-medium truncate ${
                             track.isSyncPending 
-                              ? 'text-[#e0e0e0]' 
+                              ? 'text-content-primary' 
                               : isThisTrack 
                               ? 'text-brand-500 font-bold' 
                               : isFocused 
                               ? 'text-brand-300 font-bold' 
-                              : 'text-white'
+                              : 'text-content-primary'
                           }`}>
                             {track.title}
                           </p>
                           {track.syncStatus === 'downloading' && (
-                            <span className="shrink-0 text-[10px] font-bold text-[#1DB954] bg-[#1DB954]/15 border border-[#1DB954]/25 px-1.5 py-0.5 rounded flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#1DB954] animate-ping" />
+                            <span className="shrink-0 text-[10px] font-bold text-brand-500 bg-brand-500/15 border border-brand-500/25 px-1.5 py-0.5 rounded flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-ping" />
                               Downloading {Math.round(track.liveProgress || 0)}%
                             </span>
                           )}
                           {track.syncStatus === 'pending' && (
-                            <span className="shrink-0 text-[10px] font-medium text-[#888] bg-white/5 border border-white/10 px-1.5 py-0.5 rounded">
+                            <span className="shrink-0 text-[10px] font-medium text-content-muted bg-white/5 border border-white/10 px-1.5 py-0.5 rounded">
                               Queued
                             </span>
                           )}
@@ -1437,24 +1437,24 @@ export const PlaylistDetail = ({
                         {track.syncStatus === 'downloading' && (
                           <div className="h-1 w-28 bg-white/10 rounded-full overflow-hidden mt-1">
                             <div 
-                              className="h-full bg-[#1DB954] rounded-full transition-all duration-300"
+                              className="h-full bg-brand-500 rounded-full transition-all duration-300"
                               style={{ width: `${Math.max(6, track.liveProgress || 0)}%` }}
                             />
                           </div>
                         )}
 
-                        <p className="text-xs text-[#b3b3b3] truncate mt-0.5">
+                        <p className="text-xs text-content-secondary truncate mt-0.5">
                           <span
                             onClick={(e) => {
                               if (track.isSyncPending) return;
                               e.stopPropagation();
                               if (onSelectArtist) onSelectArtist(track.artist_id);
                             }}
-                            className={track.isSyncPending ? '' : 'hover:underline hover:text-white cursor-pointer'}
+                            className={track.isSyncPending ? '' : 'hover:underline hover:text-content-primary cursor-pointer'}
                           >
                             {track.artist_name}
                           </span>
-                          <span className="md:hidden text-[#777]"> • {track.album_title}</span>
+                          <span className="md:hidden text-content-muted"> • {track.album_title}</span>
                         </p>
                       </div>
                     </div>
@@ -1467,14 +1467,14 @@ export const PlaylistDetail = ({
                           e.stopPropagation();
                           if (onSelectAlbum) onSelectAlbum(track.album_id);
                         }}
-                        className={`text-xs truncate inline ${track.isSyncPending ? 'text-[#777]' : 'text-[#b3b3b3] hover:text-white hover:underline cursor-pointer'}`}
+                        className={`text-xs truncate inline ${track.isSyncPending ? 'text-content-muted' : 'text-content-secondary hover:text-content-primary hover:underline cursor-pointer'}`}
                       >
                         {track.album_title}
                       </span>
                     </div>
 
                     {/* Column 4: Date added (hidden < lg) */}
-                    <span className="hidden lg:block text-xs text-[#888] truncate pr-3">
+                    <span className="hidden lg:block text-xs text-content-muted truncate pr-3">
                       {track.isSyncPending ? (track.syncStatus === 'downloading' ? 'Downloading...' : 'Queued') : formatAddedAt(track.added_at)}
                     </span>
 
@@ -1511,7 +1511,7 @@ export const PlaylistDetail = ({
                       {!track.isSyncPending && (
                         <button
                           onClick={(e) => handleRemoveTrack(e, track.id)}
-                          className="opacity-0 group-hover:opacity-100 p-1 text-[#888] hover:text-red-400 transition rounded hover:bg-white/10"
+                          className="opacity-0 group-hover:opacity-100 p-1 text-content-muted hover:text-red-400 transition rounded hover:bg-white/10"
                           title="Remove from playlist"
                         >
                           <Trash2 size={15} />
@@ -1520,7 +1520,7 @@ export const PlaylistDetail = ({
                     </div>
 
                     {/* Column 6: Duration */}
-                    <span className="text-right text-xs font-mono text-[#b3b3b3]">
+                    <span className="text-right text-xs font-mono text-content-secondary">
                       {formatDuration(track.duration_seconds)}
                     </span>
                   </div>
@@ -1532,7 +1532,7 @@ export const PlaylistDetail = ({
 
         {/* Floating Multi-Select Action Banner */}
       {selectedTrackIds.size > 1 && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 bg-[#242424] border border-white/20 shadow-2xl rounded-2xl px-5 py-3 flex items-center gap-4 text-xs font-medium text-white backdrop-blur-md animate-in fade-in slide-in-from-bottom-3 duration-200">
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 bg-surface-elevated2 border border-border-strong shadow-2xl rounded-2xl px-5 py-3 flex items-center gap-4 text-xs font-medium text-content-primary backdrop-blur-md animate-in fade-in slide-in-from-bottom-3 duration-200">
           <div className="flex items-center gap-2 text-brand-500 font-bold">
             <CheckSquare size={16} />
             <span>{selectedTrackIds.size} songs selected</span>
@@ -1542,7 +1542,7 @@ export const PlaylistDetail = ({
 
           <button
             onClick={handlePlaySelected}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-semibold transition"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-content-primary font-semibold transition"
           >
             <Play size={13} className="fill-current" />
             <span>Play Selection</span>
@@ -1558,7 +1558,7 @@ export const PlaylistDetail = ({
 
           <button
             onClick={() => setSelectedTrackIds(new Set())}
-            className="p-1 text-[#888] hover:text-white transition"
+            className="p-1 text-content-muted hover:text-content-primary transition"
             title="Deselect all (Esc)"
           >
             <X size={15} />
@@ -1569,12 +1569,12 @@ export const PlaylistDetail = ({
       {/* Edit Playlist Details Modal */}
       {isEditingDetails && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-[#242424] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
+          <div className="bg-surface-elevated2 border border-border-medium rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-white">Edit Playlist Details</h3>
+              <h3 className="text-lg font-bold text-content-primary">Edit Playlist Details</h3>
               <button
                 onClick={() => setIsEditingDetails(false)}
-                className="text-[#888] hover:text-white p-1"
+                className="text-content-muted hover:text-content-primary p-1"
               >
                 <X size={18} />
               </button>
@@ -1582,7 +1582,7 @@ export const PlaylistDetail = ({
 
             <form onSubmit={handleSaveDetails} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[#b3b3b3] mb-1.5">
+                <label className="block text-xs font-semibold text-content-secondary mb-1.5">
                   Name
                 </label>
                 <input
@@ -1592,12 +1592,12 @@ export const PlaylistDetail = ({
                   placeholder="Playlist name"
                   required
                   maxLength={100}
-                  className="w-full bg-[#181818] border border-white/10 focus:border-brand-500 rounded-xl px-3.5 py-2.5 text-sm text-white outline-none transition"
+                  className="w-full bg-surface-panel border border-border-medium focus:border-brand-500 rounded-xl px-3.5 py-2.5 text-sm text-content-primary outline-none transition"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#b3b3b3] mb-1.5">
+                <label className="block text-xs font-semibold text-content-secondary mb-1.5">
                   Description
                 </label>
                 <textarea
@@ -1606,7 +1606,7 @@ export const PlaylistDetail = ({
                   placeholder="Add an optional description..."
                   rows={3}
                   maxLength={300}
-                  className="w-full bg-[#181818] border border-white/10 focus:border-brand-500 rounded-xl p-3 text-sm text-white outline-none transition resize-none"
+                  className="w-full bg-surface-panel border border-border-medium focus:border-brand-500 rounded-xl p-3 text-sm text-content-primary outline-none transition resize-none"
                 />
               </div>
 
@@ -1614,7 +1614,7 @@ export const PlaylistDetail = ({
                 <button
                   type="button"
                   onClick={() => setIsEditingDetails(false)}
-                  className="px-4 py-2 rounded-full text-xs font-semibold text-[#b3b3b3] hover:text-white hover:bg-white/5 transition"
+                  className="px-4 py-2 rounded-full text-xs font-semibold text-content-secondary hover:text-content-primary hover:bg-white/5 transition"
                 >
                   Cancel
                 </button>

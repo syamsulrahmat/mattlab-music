@@ -73,7 +73,7 @@ export const FavoritesView = ({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64 text-[#b3b3b3]">
+      <div className="flex items-center justify-center h-64 text-content-secondary">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-brand-500" />
       </div>
     );
@@ -85,7 +85,7 @@ export const FavoritesView = ({
   return (
     <div className="pb-12 select-none">
       {/* Hero Header */}
-      <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-start md:items-end mb-8 -mx-4 sm:-mx-6 -mt-4 sm:-mt-6 p-6 sm:p-8 bg-gradient-to-b from-indigo-900/80 via-indigo-950/40 to-[#121212] rounded-t-lg">
+      <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-start md:items-end mb-8 -mx-4 sm:-mx-6 -mt-4 sm:-mt-6 p-6 sm:p-8 bg-gradient-to-b from-indigo-900/80 via-indigo-950/40 to-surface-island rounded-t-lg">
         <div className="w-44 h-44 sm:w-52 sm:h-52 rounded-lg shadow-2xl bg-gradient-to-br from-indigo-600 via-indigo-800 to-purple-900 flex items-center justify-center shrink-0">
           <Heart size={72} className="fill-white text-white drop-shadow-md" />
         </div>
@@ -94,7 +94,7 @@ export const FavoritesView = ({
           <h1 className="text-3xl sm:text-5xl font-black text-white mt-1 mb-2 tracking-tight">
             Liked Songs
           </h1>
-          <p className="text-xs sm:text-sm text-[#b3b3b3] font-medium">
+          <p className="text-xs sm:text-sm text-content-secondary font-medium">
             <span className="text-white font-semibold">{tracks.length} songs</span> • {totalMins} minutes
           </p>
         </div>
@@ -119,14 +119,14 @@ export const FavoritesView = ({
 
       {/* Tracklist */}
       {tracks.length === 0 ? (
-        <div className="text-center py-20 text-[#666]">
-          <Heart size={44} className="mx-auto mb-3 text-[#444]" />
-          <h3 className="text-base font-bold text-[#ccc]">Songs you like will appear here</h3>
-          <p className="text-xs text-[#777] mt-1">Tap the heart icon on any song to add it to Liked Songs.</p>
+        <div className="text-center py-20 text-content-subtle">
+          <Heart size={44} className="mx-auto mb-3 text-content-subtle" />
+          <h3 className="text-base font-bold text-content-secondary">Songs you like will appear here</h3>
+          <p className="text-xs text-content-muted mt-1">Tap the heart icon on any song to add it to Liked Songs.</p>
         </div>
       ) : (
-        <div className="bg-[#181818]/70 rounded-lg p-2 border border-white/5">
-          <div className="sticky top-0 z-20 bg-[#181818] backdrop-blur-md rounded-lg grid grid-cols-[40px_1fr_1fr_40px_70px] px-4 py-2.5 text-xs font-semibold uppercase text-[#b3b3b3] border-b border-white/10 items-center shadow-md">
+        <div className="bg-surface-panel/70 rounded-lg p-2 border border-border-subtle">
+          <div className="sticky top-0 z-20 bg-surface-panel backdrop-blur-md rounded-lg grid grid-cols-[40px_1fr_1fr_40px_70px] px-4 py-2.5 text-xs font-semibold uppercase text-content-secondary border-b border-border-medium items-center shadow-md">
             <span>#</span>
             <span>Title</span>
             <span className="hidden md:block">Album</span>
@@ -172,8 +172,8 @@ export const FavoritesView = ({
                   }}
                   className={`grid grid-cols-[40px_1fr_1fr_40px_70px] px-4 py-2.5 rounded-lg group transition items-center cursor-default select-none ${
                     isSelected
-                      ? 'bg-[#2a2a2a] ring-1 ring-white/20 text-white'
-                      : 'hover:bg-[#1f1f1f] text-white'
+                      ? 'bg-surface-hover ring-1 ring-white/20 text-content-primary'
+                      : 'hover:bg-surface-elevated text-content-primary'
                   }`}
                 >
                   {/* Column 1: Index / Play-Pause / Animated Equalizer / Loading Spinner */}
@@ -204,7 +204,7 @@ export const FavoritesView = ({
                             </div>
                           ) : (
                             /* Normal track number (green if current track paused, gray otherwise) */
-                            <span className={`text-sm font-medium ${isThisTrack ? 'text-brand-500' : 'text-[#b3b3b3]'}`}>
+                            <span className={`text-sm font-medium ${isThisTrack ? 'text-brand-500' : 'text-content-secondary'}`}>
                               {idx + 1}
                             </span>
                           )}
@@ -239,13 +239,13 @@ export const FavoritesView = ({
                     <img
                       src={track.cover_url}
                       alt={track.title}
-                      className="w-10 h-10 rounded object-cover bg-[#1f1f1f] shrink-0"
+                      className="w-10 h-10 rounded object-cover bg-surface-elevated shrink-0"
                     />
                     <div className="truncate">
-                      <p className={`text-sm font-medium truncate ${isThisTrack ? 'text-brand-500' : 'text-white'}`}>
+                      <p className={`text-sm font-medium truncate ${isThisTrack ? 'text-brand-500' : 'text-content-primary'}`}>
                         {track.title}
                       </p>
-                      <p className="text-xs text-[#b3b3b3] truncate mt-0.5">
+                      <p className="text-xs text-content-secondary truncate mt-0.5">
                         <span
                           onClick={(e) => {
                             e.stopPropagation();
@@ -265,7 +265,7 @@ export const FavoritesView = ({
                         e.stopPropagation();
                         if (onSelectAlbum) onSelectAlbum(track.album_id);
                       }}
-                      className="text-xs text-[#b3b3b3] hover:text-white hover:underline truncate cursor-pointer inline"
+                      className="text-xs text-content-secondary hover:text-white hover:underline truncate cursor-pointer inline"
                     >
                       {track.album_title}
                     </span>
@@ -279,7 +279,7 @@ export const FavoritesView = ({
                     <Heart size={16} className="fill-brand-500" />
                   </button>
 
-                  <span className="text-right text-xs font-mono text-[#b3b3b3]">
+                  <span className="text-right text-xs font-mono text-content-secondary">
                     {formatDuration(track.duration_seconds)}
                   </span>
                 </div>

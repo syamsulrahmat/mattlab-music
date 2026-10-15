@@ -6,13 +6,13 @@ import React from 'react';
  * 
  * @param {'badge' | 'icon'} variant - 'badge' includes circular background wrapper; 'icon' is pure vector logo
  * @param {string} color - Fill & stroke color for the headphones/equalizer (default 'currentColor')
- * @param {string} bgColor - Background color for the circular badge (default '#1ed760')
+ * @param {string} bgColor - Background color for the circular badge (default 'var(--brand-primary)')
  * @param {string} className - Tailwind or CSS class string
  */
 export const MattLabLogo = ({
   variant = 'badge',
   color = 'currentColor',
-  bgColor = 'var(--brand-primary, #1ed760)',
+  bgColor = 'var(--brand-primary)',
   className = 'w-8 h-8',
   ...props
 }) => {

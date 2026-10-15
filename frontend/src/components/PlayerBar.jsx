@@ -125,9 +125,9 @@ export const PlayerBar = ({
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <footer className="relative bg-[#000000] border-t border-[#181818] z-40 select-none shrink-0">
+    <footer className="relative bg-surface-base border-t border-border-subtle z-40 select-none shrink-0">
       {/* Mobile Thin Progress Line */}
-      <div className="md:hidden absolute top-0 left-0 right-0 h-1 bg-[#1f1f1f] overflow-hidden">
+      <div className="md:hidden absolute top-0 left-0 right-0 h-1 bg-surface-elevated overflow-hidden">
         <div 
           className="h-full bg-brand-500 transition-all duration-150"
           style={{ width: `${progressPercent}%` }}
@@ -151,13 +151,13 @@ export const PlayerBar = ({
                 src={currentTrack.cover_url || '/api/covers/0'}
                 alt=""
                 onClick={() => onSelectAlbum && onSelectAlbum(currentTrack.album_id)}
-                className="w-11 h-11 rounded-md object-cover bg-[#1f1f1f] shrink-0 shadow cursor-pointer active:scale-95 transition"
+                className="w-11 h-11 rounded-md object-cover bg-surface-elevated shrink-0 shadow cursor-pointer active:scale-95 transition"
               />
               <div className="truncate">
                 <div className="flex items-center gap-1.5">
                   <h4 
                     onClick={() => onSelectAlbum && onSelectAlbum(currentTrack.album_id)}
-                    className="text-xs font-bold text-white truncate cursor-pointer hover:underline"
+                    className="text-xs font-bold text-content-primary truncate cursor-pointer hover:underline"
                   >
                     {currentTrack.title}
                   </h4>
@@ -170,7 +170,7 @@ export const PlayerBar = ({
                 </div>
                 <p 
                   onClick={() => onSelectArtist && onSelectArtist(currentTrack.artist_id)}
-                  className="text-[11px] text-[#b3b3b3] truncate mt-0.5 cursor-pointer hover:text-white hover:underline"
+                  className="text-[11px] text-content-secondary truncate mt-0.5 cursor-pointer hover:text-content-primary hover:underline"
                 >
                   {currentTrack.artist_name}
                 </p>
@@ -181,7 +181,7 @@ export const PlayerBar = ({
               <button
                 onClick={handleToggleKaraoke}
                 className={`p-1.5 transition rounded-md ${
-                  isKaraokeMode ? 'text-brand-500 bg-brand-500/15' : 'text-[#b3b3b3]'
+                  isKaraokeMode ? 'text-brand-500 bg-brand-500/15' : 'text-content-secondary hover:text-content-primary'
                 }`}
                 title={isKaraokeMode ? 'Karaoke Mode Active (Tap to restore vocals)' : 'Turn Karaoke Mode ON'}
               >
@@ -190,7 +190,7 @@ export const PlayerBar = ({
 
               <button
                 onClick={() => setIsLyricsOpen && setIsLyricsOpen(!isLyricsOpen)}
-                className={`p-1.5 transition ${isLyricsOpen ? 'text-brand-500' : 'text-[#b3b3b3]'}`}
+                className={`p-1.5 transition ${isLyricsOpen ? 'text-brand-500' : 'text-content-secondary hover:text-content-primary'}`}
                 title="Lyrics"
               >
                 <Mic2 size={17} />
@@ -198,7 +198,7 @@ export const PlayerBar = ({
 
               <button
                 onClick={() => toggleFavorite(currentTrack.id)}
-                className={`p-1.5 transition ${isFav ? 'text-brand-500' : 'text-[#b3b3b3]'}`}
+                className={`p-1.5 transition ${isFav ? 'text-brand-500' : 'text-content-secondary hover:text-content-primary'}`}
               >
                 <Heart size={18} className={isFav ? 'fill-brand-500' : ''} />
               </button>
@@ -216,14 +216,14 @@ export const PlayerBar = ({
 
               <button
                 onClick={nextTrack}
-                className="p-1.5 text-[#b3b3b3] hover:text-white"
+                className="p-1.5 text-content-secondary hover:text-content-primary"
               >
                 <SkipForward size={18} />
               </button>
             </div>
           </>
         ) : (
-          <div className="flex items-center gap-2 text-xs text-[#666]">
+          <div className="flex items-center gap-2 text-xs text-content-subtle">
             <span>No track selected</span>
           </div>
         )}
@@ -247,14 +247,14 @@ export const PlayerBar = ({
                 src={currentTrack.cover_url || '/api/covers/0'}
                 alt={currentTrack.album_title || 'Cover'}
                 onClick={() => onSelectAlbum && onSelectAlbum(currentTrack.album_id)}
-                className="w-14 h-14 rounded-md object-cover shadow-lg bg-[#1f1f1f] shrink-0 cursor-pointer hover:opacity-90 hover:scale-[1.02] transition"
+                className="w-14 h-14 rounded-md object-cover shadow-lg bg-surface-elevated shrink-0 cursor-pointer hover:opacity-90 hover:scale-[1.02] transition"
                 title={currentTrack.album_title || 'Go to album'}
               />
               <div className="truncate max-w-[140px] lg:max-w-[180px]">
                 <div className="flex items-center gap-1.5">
                   <h4 
                     onClick={() => onSelectAlbum && onSelectAlbum(currentTrack.album_id)}
-                    className="text-sm font-bold text-white truncate hover:underline cursor-pointer"
+                    className="text-sm font-bold text-content-primary truncate hover:underline cursor-pointer"
                     title={currentTrack.title}
                   >
                     {currentTrack.title}
@@ -268,7 +268,7 @@ export const PlayerBar = ({
                 </div>
                 <p 
                   onClick={() => onSelectArtist && onSelectArtist(currentTrack.artist_id)}
-                  className="text-xs text-[#b3b3b3] truncate hover:text-white hover:underline cursor-pointer mt-0.5"
+                  className="text-xs text-content-secondary truncate hover:text-content-primary hover:underline cursor-pointer mt-0.5"
                   title={currentTrack.artist_name}
                 >
                   {currentTrack.artist_name}
@@ -277,7 +277,7 @@ export const PlayerBar = ({
               <button
                 onClick={() => toggleFavorite(currentTrack.id)}
                 className={`p-1.5 transition ml-1 shrink-0 ${
-                  isFav ? 'text-brand-500' : 'text-[#b3b3b3] hover:text-white'
+                  isFav ? 'text-brand-500' : 'text-content-secondary hover:text-content-primary'
                 }`}
                 title={isFav ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
               >
@@ -285,8 +285,8 @@ export const PlayerBar = ({
               </button>
             </>
           ) : (
-            <div className="flex items-center gap-3 text-xs text-[#666]">
-              <div className="w-12 h-12 rounded-md bg-[#1f1f1f] flex items-center justify-center">
+            <div className="flex items-center gap-3 text-xs text-content-subtle">
+              <div className="w-12 h-12 rounded-md bg-surface-elevated flex items-center justify-center">
                 🎵
               </div>
               <span>No track selected</span>
@@ -299,7 +299,7 @@ export const PlayerBar = ({
           <div className="flex items-center gap-5">
             <button
               onClick={toggleShuffle}
-              className={`transition ${isShuffle ? 'text-brand-500' : 'text-[#b3b3b3] hover:text-white'}`}
+              className={`transition ${isShuffle ? 'text-brand-500' : 'text-content-secondary hover:text-content-primary'}`}
               title="Shuffle"
             >
               <Shuffle size={16} />
@@ -307,7 +307,7 @@ export const PlayerBar = ({
 
             <button
               onClick={prevTrack}
-              className="text-[#b3b3b3] hover:text-white transition"
+              className="text-content-secondary hover:text-content-primary transition"
               title="Previous"
             >
               <SkipBack size={18} />
@@ -328,7 +328,7 @@ export const PlayerBar = ({
 
             <button
               onClick={nextTrack}
-              className="text-[#b3b3b3] hover:text-white transition"
+              className="text-content-secondary hover:text-content-primary transition"
               title="Next"
             >
               <SkipForward size={18} />
@@ -336,7 +336,7 @@ export const PlayerBar = ({
 
             <button
               onClick={toggleRepeat}
-              className={`transition ${repeatMode !== 'off' ? 'text-brand-500' : 'text-[#b3b3b3] hover:text-white'}`}
+              className={`transition ${repeatMode !== 'off' ? 'text-brand-500' : 'text-content-secondary hover:text-content-primary'}`}
               title={`Repeat: ${repeatMode}`}
             >
               {repeatMode === 'one' ? <Repeat1 size={16} /> : <Repeat size={16} />}
@@ -344,7 +344,7 @@ export const PlayerBar = ({
           </div>
 
           {/* Scrub Bar */}
-          <div className="w-full flex items-center gap-3 text-xs font-mono text-[#b3b3b3]">
+          <div className="w-full flex items-center gap-3 text-xs font-mono text-content-secondary">
             <span className="w-10 text-right text-[11px]">{formatTime(currentTime)}</span>
             <div className="relative flex-1 group flex items-center">
               <input
@@ -355,7 +355,7 @@ export const PlayerBar = ({
                 value={currentTime}
                 onChange={handleSeekChange}
                 disabled={!currentTrack}
-                className="w-full h-1 bg-[#4d4d4d] group-hover:bg-[#5e5e5e] rounded-lg appearance-none cursor-pointer accent-brand-500 transition disabled:opacity-30"
+                className="w-full h-1 bg-surface-hover group-hover:bg-content-subtle rounded-lg appearance-none cursor-pointer accent-brand-500 transition disabled:opacity-30"
               />
             </div>
             <span className="w-10 text-[11px]">{formatTime(duration)}</span>
@@ -368,7 +368,7 @@ export const PlayerBar = ({
           <button
             onClick={togglePiP}
             className={`p-2 rounded-lg transition ${
-              isPiPActive ? 'text-brand-500 bg-[#1f1f1f]' : 'text-[#b3b3b3] hover:text-white'
+              isPiPActive ? 'text-brand-500 bg-surface-elevated' : 'text-content-secondary hover:text-content-primary'
             }`}
             title={isPiPActive ? 'Close Picture-in-Picture' : 'Picture-in-Picture (Floating lyrics & music controls across apps)'}
           >
@@ -382,8 +382,8 @@ export const PlayerBar = ({
               disabled={!currentTrack}
               className={`p-2 rounded-lg transition relative disabled:opacity-40 ${
                 isKaraokeMode 
-                  ? 'text-brand-500 bg-[#1f1f1f] ring-1 ring-brand-500/30 shadow-sm' 
-                  : 'text-[#b3b3b3] hover:text-white'
+                  ? 'text-brand-500 bg-surface-elevated ring-1 ring-brand-500/30 shadow-sm' 
+                  : 'text-content-secondary hover:text-content-primary'
               }`}
               title={
                 isKaraokeMode 
@@ -406,7 +406,7 @@ export const PlayerBar = ({
             {/* Transient Missing-Stems Hint Card */}
             {missingStemHint.visible && currentTrack && !karaokeStemStatus[currentTrack.id]?.exists && (
               <div 
-                className={`absolute bottom-full mb-3 right-0 w-64 bg-[#181818]/95 backdrop-blur-md border border-brand-500/30 rounded-xl p-3 shadow-2xl z-50 text-left select-none transition-all duration-300 transform ${
+                className={`absolute bottom-full mb-3 right-0 w-64 bg-surface-panel/95 backdrop-blur-md border border-brand-500/30 rounded-xl p-3 shadow-2xl z-50 text-left select-none transition-all duration-300 transform ${
                   missingStemHint.isExiting
                     ? 'opacity-0 translate-y-2 scale-95 pointer-events-none'
                     : 'opacity-100 translate-y-0 scale-100'
@@ -422,14 +422,14 @@ export const PlayerBar = ({
                   </div>
                   <button 
                     onClick={dismissHint}
-                    className="text-[#888] hover:text-white p-0.5 rounded transition"
+                    className="text-content-muted hover:text-content-primary p-0.5 rounded transition"
                     title="Dismiss"
                   >
                     <X size={12} />
                   </button>
                 </div>
 
-                <p className="text-[11px] text-[#aaa] leading-relaxed mb-2.5">
+                <p className="text-[11px] text-content-secondary leading-relaxed mb-2.5">
                   Playing original version with vocals.
                 </p>
 
@@ -455,7 +455,7 @@ export const PlayerBar = ({
           <button
             onClick={() => setIsLyricsOpen && setIsLyricsOpen(!isLyricsOpen)}
             className={`p-2 rounded-lg transition ${
-              isLyricsOpen ? 'text-brand-500 bg-[#1f1f1f]' : 'text-[#b3b3b3] hover:text-white'
+              isLyricsOpen ? 'text-brand-500 bg-surface-elevated' : 'text-content-secondary hover:text-content-primary'
             }`}
             title="Lyrics"
           >
@@ -465,7 +465,7 @@ export const PlayerBar = ({
           <button
             onClick={() => setIsQueueOpen(!isQueueOpen)}
             className={`p-2 rounded-lg transition ${
-              isQueueOpen ? 'text-brand-500 bg-[#1f1f1f]' : 'text-[#b3b3b3] hover:text-white'
+              isQueueOpen ? 'text-brand-500 bg-surface-elevated' : 'text-content-secondary hover:text-content-primary'
             }`}
             title="Play Queue"
           >
@@ -474,7 +474,7 @@ export const PlayerBar = ({
 
           <button
             onClick={toggleMute}
-            className="text-[#b3b3b3] hover:text-white transition"
+            className="text-content-secondary hover:text-content-primary transition"
             title={isMuted ? 'Unmute' : 'Mute'}
           >
             {isMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
@@ -487,7 +487,7 @@ export const PlayerBar = ({
             step={0.01}
             value={isMuted ? 0 : volume}
             onChange={handleVolumeChange}
-            className="w-24 h-1 bg-[#4d4d4d] hover:bg-[#5e5e5e] rounded-lg appearance-none cursor-pointer accent-brand-500"
+            className="w-24 h-1 bg-surface-hover hover:bg-content-subtle rounded-lg appearance-none cursor-pointer accent-brand-500"
           />
         </div>
       </div>

@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { Mic2, Music, RefreshCw, X, ArrowDownCircle, MicOff, Mic, Loader2 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { parseLrc, formatPlainLyrics } from '../utils/lyrics';
+import { LYRICS_CONFIG } from '../config/lyricsConfig';
+import { DESIGN_TOKENS } from '../config/designTokens';
 
 export const LyricsView = ({ onClose }) => {
   const { 
@@ -104,7 +106,7 @@ export const LyricsView = ({ onClose }) => {
 
     let foundIdx = -1;
     for (let i = 0; i < parsedLines.length; i++) {
-      if (currentTime >= parsedLines[i].time - 0.25) {
+      if (currentTime >= parsedLines[i].time - LYRICS_CONFIG.timing.leadInOffsetSec) {
         foundIdx = i;
       } else {
         break;
@@ -116,7 +118,7 @@ export const LyricsView = ({ onClose }) => {
   const animFrameRef = useRef(null);
 
   // Smooth cubic easing scroll animation (60fps / 120fps vsync)
-  const smoothScrollTo = useCallback((targetY, durationMs = 650) => {
+  const smoothScrollTo = useCallback((targetY, durationMs = LYRICS_CONFIG.animation.scrollDurationMs) => {
     const container = containerRef.current;
     if (!container) return;
 
@@ -166,7 +168,7 @@ export const LyricsView = ({ onClose }) => {
     const activeEl = lineRefs.current[activeLineIdx];
     if (container && activeEl) {
       const targetScroll = activeEl.offsetTop - (container.clientHeight / 2) + (activeEl.clientHeight / 2);
-      smoothScrollTo(Math.max(0, targetScroll), 700);
+      smoothScrollTo(Math.max(0, targetScroll), LYRICS_CONFIG.animation.scrollDurationMs);
     }
   }, [activeLineIdx, isUserScrolled, smoothScrollTo]);
 
@@ -218,37 +220,37 @@ export const LyricsView = ({ onClose }) => {
 
   if (!currentTrack) {
     return (
-      <div className="h-full flex flex-col items-center justify-center p-8 text-center text-[#b3b3b3]">
-        <Mic2 size={48} className="mb-4 text-[#444]" />
-        <h3 className="text-lg font-bold text-white mb-1">No track playing</h3>
-        <p className="text-xs text-[#777]">Play a song to view live lyrics.</p>
+      <div className="h-full flex flex-col items-center justify-center p-8 text-center text-content-secondary">
+        <Mic2 size={48} className="mb-4 text-content-subtle" />
+        <h3 className="text-lg font-bold text-content-primary mb-1">No track playing</h3>
+        <p className="text-xs text-content-muted">Play a song to view live lyrics.</p>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-b from-[#1e1e1e] to-[#121212] overflow-hidden select-none relative">
+    <div className="h-full flex flex-col bg-gradient-to-b from-surface-elevated to-surface-island overflow-hidden select-none relative">
       {/* Top Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-[#121212]/50 backdrop-blur-md shrink-0">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle bg-surface-island/50 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-3.5 truncate">
           <img
             src={currentTrack.cover_url || '/api/covers/0'}
             alt=""
-            className="w-11 h-11 rounded-md object-cover shadow bg-[#222] shrink-0"
+            className="w-11 h-11 rounded-md object-cover shadow bg-surface-elevated shrink-0"
           />
           <div className="truncate">
-            <h3 className="text-sm font-bold text-white truncate">{currentTrack.title}</h3>
-            <p className="text-xs text-[#b3b3b3] truncate">{currentTrack.artist_name}</p>
+            <h3 className="text-sm font-bold text-content-primary truncate">{currentTrack.title}</h3>
+            <p className="text-xs text-content-secondary truncate">{currentTrack.artist_name}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
           {/* Karaoke Mode Pill */}
-          <div className="flex items-center gap-2 bg-[#1f1f1f]/90 border border-white/10 rounded-full px-2.5 py-1 text-xs text-white">
+          <div className="flex items-center gap-2 bg-surface-elevated/90 border border-border-medium rounded-full px-2.5 py-1 text-xs text-content-primary">
             <button
               onClick={toggleKaraoke}
               className={`flex items-center gap-1.5 transition font-semibold ${
-                isKaraokeMode ? 'text-brand-500' : 'text-[#aaa] hover:text-white'
+                isKaraokeMode ? 'text-brand-500' : 'text-content-secondary hover:text-content-primary'
               }`}
               title={
                 isKaraokeMode 
@@ -292,7 +294,7 @@ export const LyricsView = ({ onClose }) => {
           <button
             onClick={() => fetchLyrics(currentTrack.id, true)}
             disabled={isLoading}
-            className="p-2 rounded-full hover:bg-white/10 text-[#b3b3b3] hover:text-white transition"
+            className="p-2 rounded-full hover:bg-white/10 text-content-secondary hover:text-content-primary transition"
             title="Refresh Lyrics"
           >
             <RefreshCw size={16} className={isLoading ? 'animate-spin text-brand-500' : ''} />
@@ -300,7 +302,7 @@ export const LyricsView = ({ onClose }) => {
           {onClose && (
             <button
               onClick={onClose}
-              className="p-2 rounded-full hover:bg-white/10 text-[#b3b3b3] hover:text-white transition"
+              className="p-2 rounded-full hover:bg-white/10 text-content-secondary hover:text-content-primary transition"
               title="Close Lyrics"
             >
               <X size={18} />
@@ -317,7 +319,7 @@ export const LyricsView = ({ onClose }) => {
         className="flex-1 overflow-y-auto px-6 sm:px-12 md:px-20 py-16 space-y-6 text-center md:text-left relative"
       >
         {isLoading && !lyricsData ? (
-          <div className="flex flex-col items-center justify-center h-full py-24 text-[#b3b3b3] gap-3">
+          <div className="flex flex-col items-center justify-center h-full py-24 text-content-secondary gap-3">
             <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand-500 border-t-transparent" />
             <p className="text-xs font-medium">Fetching synchronized lyrics...</p>
           </div>
@@ -332,12 +334,12 @@ export const LyricsView = ({ onClose }) => {
                   key={`${line.time}-${idx}`}
                   ref={(el) => (lineRefs.current[idx] = el)}
                   onClick={() => seek(line.time)}
-                  className={`transition-all duration-300 font-normal cursor-pointer leading-relaxed ${
+                  className={`transition-all duration-300 cursor-pointer leading-relaxed ${
                     isActive
-                      ? 'text-white text-2xl sm:text-3xl md:text-4xl scale-105 origin-left drop-shadow-md text-brand-500'
+                      ? `${LYRICS_CONFIG.colors.activeClass} ${LYRICS_CONFIG.typography.activeWeightClass} text-2xl sm:text-3xl md:text-4xl scale-105 origin-left drop-shadow-md`
                       : isPast
-                      ? 'text-white/60 text-lg sm:text-xl md:text-2xl hover:text-white'
-                      : 'text-white/30 text-lg sm:text-xl md:text-2xl hover:text-white/70'
+                      ? `${LYRICS_CONFIG.colors.pastClass} ${LYRICS_CONFIG.typography.pastWeightClass} text-lg sm:text-xl md:text-2xl hover:text-content-primary`
+                      : `${LYRICS_CONFIG.colors.idleClass} ${LYRICS_CONFIG.typography.upcomingWeightClass} text-lg sm:text-xl md:text-2xl hover:text-content-primary/70`
                   }`}
                 >
                   {line.text}
@@ -347,22 +349,22 @@ export const LyricsView = ({ onClose }) => {
           </div>
         ) : lyricsData?.plainLyrics ? (
           /* Plain Unsynced Lyrics */
-          <div className="max-w-2xl mx-auto py-12 whitespace-pre-line text-white/80 font-normal text-base sm:text-lg leading-loose text-center">
+          <div className="max-w-2xl mx-auto py-12 whitespace-pre-line text-content-primary/80 font-normal text-base sm:text-lg leading-loose text-center">
             {formatPlainLyrics(lyricsData.plainLyrics)}
           </div>
         ) : (
           /* Empty / Not Found State */
           <div className="flex flex-col items-center justify-center h-full py-24 text-center">
-            <div className="w-16 h-16 rounded-full bg-[#1f1f1f] flex items-center justify-center text-[#666] mb-4">
+            <div className="w-16 h-16 rounded-full bg-surface-elevated flex items-center justify-center text-content-subtle mb-4">
               <Music size={28} />
             </div>
-            <h4 className="text-lg font-bold text-white mb-1.5">No lyrics available</h4>
-            <p className="text-xs text-[#888] max-w-sm mb-6">
+            <h4 className="text-lg font-bold text-content-primary mb-1.5">No lyrics available</h4>
+            <p className="text-xs text-content-muted max-w-sm mb-6">
               We couldn't find lyrics for "{currentTrack.title}" by {currentTrack.artist_name} on LRCLIB or locally as a .lrc file.
             </p>
             <button
               onClick={() => fetchLyrics(currentTrack.id, true)}
-              className="bg-[#1f1f1f] hover:bg-[#282828] text-white font-semibold text-xs px-4 py-2 rounded-full border border-white/10 transition flex items-center gap-2"
+              className="bg-surface-elevated hover:bg-surface-hover text-content-primary font-semibold text-xs px-4 py-2 rounded-full border border-border-medium transition flex items-center gap-2"
             >
               <RefreshCw size={13} />
               Try Searching Again

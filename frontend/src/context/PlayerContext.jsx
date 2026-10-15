@@ -3,6 +3,8 @@ import { audioPreloader } from '../utils/audioPreloader';
 import { shuffleArray } from '../utils/shuffle';
 import { parseLrc, findActiveLyricIndex } from '../utils/lyrics';
 import { useAuth } from './AuthContext';
+import { LYRICS_CONFIG } from '../config/lyricsConfig';
+import { DESIGN_TOKENS } from '../config/designTokens';
 
 const PlayerContext = createContext(null);
 
@@ -975,7 +977,7 @@ export const PlayerProvider = ({ children }) => {
       coverImageCacheRef.current[coverUrl] = cachedImg;
     }
 
-    const brandColor = (typeof window !== 'undefined' && getComputedStyle(document.documentElement).getPropertyValue('--brand-primary').trim()) || '#1ed760';
+    const brandColor = LYRICS_CONFIG.colors.canvasActiveColor;
 
     // 1. Ambient blurred background or gradient (16:9 aspect ratio: 640x360)
     ctx.clearRect(0, 0, 640, 360);
@@ -986,13 +988,13 @@ export const PlayerProvider = ({ children }) => {
         ctx.drawImage(cachedImg, -40, -40, 720, 440);
         ctx.restore();
       } catch (_) {
-        ctx.fillStyle = '#121212';
+        ctx.fillStyle = DESIGN_TOKENS.getCssVar('--surface-island', 'rgb(18, 18, 18)');
         ctx.fillRect(0, 0, 640, 360);
       }
     } else {
       const grad = ctx.createLinearGradient(0, 0, 640, 360);
-      grad.addColorStop(0, '#1c1c1c');
-      grad.addColorStop(1, '#0c0c0c');
+      grad.addColorStop(0, DESIGN_TOKENS.getCssVar('--surface-elevated', 'rgb(31, 31, 31)'));
+      grad.addColorStop(1, DESIGN_TOKENS.getCssVar('--surface-base', 'rgb(0, 0, 0)'));
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, 640, 360);
     }
@@ -1017,11 +1019,11 @@ export const PlayerProvider = ({ children }) => {
         ctx.drawImage(cachedImg, coverX, coverY, coverSize, coverSize);
         ctx.restore();
       } catch (_) {
-        ctx.fillStyle = '#242424';
+        ctx.fillStyle = DESIGN_TOKENS.getCssVar('--surface-elevated2', 'rgb(36, 36, 36)');
         ctx.fillRect(coverX, coverY, coverSize, coverSize);
       }
     } else {
-      ctx.fillStyle = '#1e1e1e';
+      ctx.fillStyle = DESIGN_TOKENS.getCssVar('--surface-elevated', 'rgb(31, 31, 31)');
       ctx.beginPath();
       safeRoundRect(ctx, coverX, coverY, coverSize, coverSize, 14);
       ctx.fill();
@@ -1037,39 +1039,40 @@ export const PlayerProvider = ({ children }) => {
 
     // Small Brand Tag
     ctx.fillStyle = brandColor;
-    ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.font = `bold 11px ${LYRICS_CONFIG.typography.fontFamily}`;
     ctx.fillText('● MATTLAB MUSIC', textX, 75);
 
     // Track Title
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = DESIGN_TOKENS.getCssVar('--content-primary', 'rgb(255, 255, 255)');
+    ctx.font = `bold 24px ${LYRICS_CONFIG.typography.fontFamily}`;
     const rawTitle = track?.title || 'No Track Selected';
     const truncatedTitle = rawTitle.length > 22 ? rawTitle.substring(0, 20) + '...' : rawTitle;
     ctx.fillText(truncatedTitle, textX, 110);
 
     // Artist Name
-    ctx.fillStyle = '#a7a7a7';
-    ctx.font = '600 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = DESIGN_TOKENS.getCssVar('--content-secondary', 'rgb(179, 179, 179)');
+    ctx.font = `600 16px ${LYRICS_CONFIG.typography.fontFamily}`;
     const rawArtist = track?.artist_name || 'MattLab';
     const truncatedArtist = rawArtist.length > 26 ? rawArtist.substring(0, 24) + '...' : rawArtist;
     ctx.fillText(truncatedArtist, textX, 138);
 
     // Separator line
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.fillStyle = DESIGN_TOKENS.getCssVar('--border-medium', 'rgba(255, 255, 255, 0.1)');
     ctx.fillRect(textX, 156, 320, 1);
 
     // Live Synced Lyrics (Current + Next)
     if (lyricLine) {
       // Active line
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'normal 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.fillStyle = DESIGN_TOKENS.getCssVar('--content-primary', 'rgb(255, 255, 255)');
+      ctx.font = `${LYRICS_CONFIG.typography.canvasWeight} 18px ${LYRICS_CONFIG.typography.fontFamily}`;
       const truncatedCurr = lyricLine.length > 30 ? lyricLine.substring(0, 28) + '...' : lyricLine;
-      ctx.fillText(`“${truncatedCurr}”`, textX, 192);
+      const displayCurr = LYRICS_CONFIG.timing.showQuotesInPiP ? `“${truncatedCurr}”` : truncatedCurr;
+      ctx.fillText(displayCurr, textX, 192);
 
       // Upcoming line
-      if (upcomingLyric) {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-        ctx.font = 'normal 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      if (upcomingLyric && LYRICS_CONFIG.timing.showUpcomingLine) {
+        ctx.fillStyle = LYRICS_CONFIG.colors.canvasUpcomingColor;
+        ctx.font = `${LYRICS_CONFIG.typography.canvasWeight} 14px ${LYRICS_CONFIG.typography.fontFamily}`;
         const truncatedNext = upcomingLyric.length > 36 ? upcomingLyric.substring(0, 34) + '...' : upcomingLyric;
         ctx.fillText(truncatedNext, textX, 222);
       }
@@ -1077,13 +1080,13 @@ export const PlayerProvider = ({ children }) => {
       // If no lyrics available, show album or clean hint
       const rawAlbum = track?.album_title;
       if (rawAlbum) {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.font = 'normal 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = DESIGN_TOKENS.getCssVar('--content-secondary', 'rgba(255, 255, 255, 0.5)');
+        ctx.font = `${LYRICS_CONFIG.typography.canvasWeight} 14px ${LYRICS_CONFIG.typography.fontFamily}`;
         const truncatedAlbum = rawAlbum.length > 32 ? rawAlbum.substring(0, 30) + '...' : rawAlbum;
         ctx.fillText(`Album: ${truncatedAlbum}`, textX, 192);
       } else {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-        ctx.font = 'italic 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = DESIGN_TOKENS.getCssVar('--content-muted', 'rgba(255, 255, 255, 0.3)');
+        ctx.font = `italic 14px ${LYRICS_CONFIG.typography.fontFamily}`;
         ctx.fillText('Streaming in high fidelity', textX, 192);
       }
     }
@@ -1265,11 +1268,11 @@ export const PlayerProvider = ({ children }) => {
         pip.document.documentElement.style.height = '100%';
         pip.document.body.style.width = '100%';
         pip.document.body.style.height = '100%';
-        pip.document.body.style.backgroundColor = '#121212';
+        pip.document.body.style.backgroundColor = DESIGN_TOKENS.getCssVar('--surface-island', 'rgb(18, 18, 18)');
         pip.document.body.style.margin = '0';
         pip.document.body.style.padding = '0';
         pip.document.body.style.overflow = 'hidden';
-        pip.document.body.style.color = '#ffffff';
+        pip.document.body.style.color = DESIGN_TOKENS.getCssVar('--content-primary', 'rgb(255, 255, 255)');
         pip.document.body.style.userSelect = 'none';
         pip.document.body.style.fontFamily = 'system-ui, -apple-system, sans-serif';
 

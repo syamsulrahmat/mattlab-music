@@ -10,13 +10,13 @@ export const FloatingHeader = ({
   onToggleMobileMenu
 }) => {
   return (
-    <header className="sticky top-0 z-30 px-4 md:px-8 py-3 bg-[#121212]/80 backdrop-blur-lg border-b border-white/5 flex items-center justify-between gap-3 select-none">
+    <header className="sticky top-0 z-30 px-4 md:px-8 py-3 bg-surface-island/80 backdrop-blur-lg border-b border-border-subtle flex items-center justify-between gap-3 select-none">
       {/* Left: Navigation Buttons / Mobile Menu */}
       <div className="flex items-center gap-2">
         {onToggleMobileMenu && (
           <button
             onClick={onToggleMobileMenu}
-            className="md:hidden p-2 text-[#B3B3B3] hover:text-white rounded-full bg-[#1e1e1e] transition"
+            className="md:hidden p-2 text-content-secondary hover:text-content-primary rounded-full bg-surface-elevated transition"
             title="Open Menu"
           >
             <Menu size={18} />
@@ -37,7 +37,7 @@ export const FloatingHeader = ({
       {/* Center: Search Bar with "What do you want to play?" */}
       <div className="flex-1 max-w-lg mx-auto">
         <div className="relative flex items-center">
-          <div className="absolute left-4 pointer-events-none text-[#B3B3B3] flex items-center">
+          <div className="absolute left-4 pointer-events-none text-content-secondary flex items-center">
             <Search size={18} />
           </div>
           <input
@@ -46,12 +46,12 @@ export const FloatingHeader = ({
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={onFocusSearch}
             placeholder="What do you want to play?"
-            className="w-full bg-[#242424] hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-white pl-11 pr-10 py-2.5 rounded-full text-xs sm:text-sm font-medium outline-none border border-transparent focus:border-white/20 transition placeholder-[#757575] shadow-inner"
+            className="w-full bg-surface-elevated2 hover:bg-surface-hover focus:bg-surface-hover text-content-primary pl-11 pr-10 py-2.5 rounded-full text-xs sm:text-sm font-medium outline-none border border-transparent focus:border-border-strong transition placeholder-content-subtle shadow-inner"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3.5 text-[#B3B3B3] hover:text-white p-0.5 rounded-full"
+              className="absolute right-3.5 text-content-secondary hover:text-content-primary p-0.5 rounded-full"
               title="Clear Search"
             >
               <X size={16} />

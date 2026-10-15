@@ -302,43 +302,43 @@ export const RequestMusicModal = ({
       onClick={onClose}
     >
       <div 
-        className="w-full max-w-2xl bg-[#181818] border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden cursor-default"
+        className="w-full max-w-2xl bg-surface-panel border border-border-medium rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden cursor-default"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="p-4 sm:p-5 border-b border-white/5 flex items-center justify-between bg-[#121212]">
+        <div className="p-4 sm:p-5 border-b border-border-subtle flex items-center justify-between bg-surface-island">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-full bg-brand-500/10 flex items-center justify-center text-brand-500">
               <DownloadCloud size={20} />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-bold text-content-primary tracking-tight flex items-center gap-2">
                 <span>Request & Download Music</span>
                 <span className="text-[10px] font-semibold text-brand-500 bg-brand-500/10 px-2 py-0.5 rounded-full border border-brand-500/20">
                   Torrent + Direct HQ
                 </span>
               </h2>
-              <p className="text-xs text-[#b3b3b3]">
+              <p className="text-xs text-content-secondary">
                 Search albums or paste Spotify tracks & playlists to grab via torrent or 320k direct stream
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full hover:bg-white/10 text-[#b3b3b3] hover:text-white flex items-center justify-center transition"
+            className="w-8 h-8 rounded-full hover:bg-white/10 text-content-secondary hover:text-content-primary flex items-center justify-center transition"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* Tab Switcher: Search vs Live Torrent Activity */}
-        <div className="px-4 pt-3 flex items-center gap-2 border-b border-white/5 bg-[#121212]">
+        <div className="px-4 pt-3 flex items-center gap-2 border-b border-border-subtle bg-surface-island">
           <button
             onClick={() => setActiveTab('search')}
             className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 ${
               activeTab === 'search'
-                ? 'border-brand-500 text-white'
-                : 'border-transparent text-[#b3b3b3] hover:text-white'
+                ? 'border-brand-500 text-content-primary'
+                : 'border-transparent text-content-secondary hover:text-content-primary'
             }`}
           >
             <Search size={14} />
@@ -349,8 +349,8 @@ export const RequestMusicModal = ({
             onClick={() => setActiveTab('activity')}
             className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 ${
               activeTab === 'activity'
-                ? 'border-brand-500 text-white'
-                : 'border-transparent text-[#b3b3b3] hover:text-white'
+                ? 'border-brand-500 text-content-primary'
+                : 'border-transparent text-content-secondary hover:text-content-primary'
             }`}
           >
             <Activity size={14} className={activities.length > 0 ? 'text-brand-500 animate-pulse' : ''} />
@@ -376,7 +376,7 @@ export const RequestMusicModal = ({
                   }}
                   className="relative flex items-center"
                 >
-                  <div className="absolute left-3.5 text-[#b3b3b3] pointer-events-none">
+                  <div className="absolute left-3.5 text-content-secondary pointer-events-none">
                     {query.includes('spotify.com') ? (
                       <Link2 size={18} className="text-brand-500" />
                     ) : (
@@ -388,14 +388,14 @@ export const RequestMusicModal = ({
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="Search artist/album or paste Spotify link..."
-                    className="w-full bg-[#242424] hover:bg-[#282828] focus:bg-[#282828] text-white pl-10 pr-24 py-3 rounded-xl text-xs sm:text-sm font-medium outline-none border border-white/10 focus:border-brand-500 transition placeholder-[#777]"
+                    className="w-full bg-surface-elevated2 hover:bg-surface-hover focus:bg-surface-hover text-content-primary pl-10 pr-24 py-3 rounded-xl text-xs sm:text-sm font-medium outline-none border border-border-medium focus:border-brand-500 transition placeholder-content-muted"
                   />
                   <div className="absolute right-2 flex items-center gap-1">
                     {query ? (
                       <button
                         type="button"
                         onClick={() => setQuery('')}
-                        className="p-1 text-[#b3b3b3] hover:text-white rounded-full hover:bg-white/10"
+                        className="p-1 text-content-secondary hover:text-content-primary rounded-full hover:bg-white/10"
                       >
                         <X size={15} />
                       </button>
@@ -403,7 +403,7 @@ export const RequestMusicModal = ({
                       <button
                         type="button"
                         onClick={handlePasteClipboard}
-                        className="text-[11px] font-semibold text-[#b3b3b3] hover:text-white bg-white/5 hover:bg-white/10 px-2 py-1 rounded-md transition"
+                        className="text-[11px] font-semibold text-content-secondary hover:text-content-primary bg-white/5 hover:bg-white/10 px-2 py-1 rounded-md transition"
                         title="Paste from clipboard"
                       >
                         Paste
@@ -420,7 +420,7 @@ export const RequestMusicModal = ({
                 </form>
 
                 {/* Quality Preferences Selector */}
-                <div className="flex items-center justify-between text-[11px] text-[#b3b3b3] px-1">
+                <div className="flex items-center justify-between text-[11px] text-content-secondary px-1">
                   <span>Quality Preference:</span>
                   <div className="flex items-center gap-1.5">
                     <button
@@ -428,8 +428,8 @@ export const RequestMusicModal = ({
                       onClick={() => setQualityProfileId(1)}
                       className={`px-2 py-0.5 rounded-md font-medium transition ${
                         qualityProfileId === 1
-                          ? 'bg-brand-500/20 text-brand-500 font-bold border border-brand-500/30'
-                          : 'bg-white/5 text-[#888] hover:text-white'
+                           ? 'bg-brand-500/20 text-brand-500 font-bold border border-brand-500/30'
+                          : 'bg-white/5 text-content-muted hover:text-content-primary'
                       }`}
                     >
                       Any Quality (FLAC or 320k)
@@ -440,7 +440,7 @@ export const RequestMusicModal = ({
                       className={`px-2 py-0.5 rounded-md font-medium transition ${
                         qualityProfileId === 2
                           ? 'bg-brand-500/20 text-brand-500 font-bold border border-brand-500/30'
-                          : 'bg-white/5 text-[#888] hover:text-white'
+                          : 'bg-white/5 text-content-muted hover:text-content-primary'
                       }`}
                     >
                       Lossless Only (FLAC)
@@ -467,7 +467,7 @@ export const RequestMusicModal = ({
               {isResolving && (
                 <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
                   <Loader2 size={32} className="text-brand-500 animate-spin" />
-                  <p className="text-xs text-[#b3b3b3]">
+                  <p className="text-xs text-content-secondary">
                     {query.includes('spotify.com')
                       ? 'Resolving Spotify metadata & querying MusicBrainz...'
                       : 'Searching releases in Lidarr...'}
@@ -484,7 +484,7 @@ export const RequestMusicModal = ({
                       <span>
                         Showing results for <strong className="text-brand-500 font-bold">{result.corrected_query}</strong>
                         {result.query && result.query.toLowerCase() !== result.corrected_query.toLowerCase() && (
-                          <span className="text-[#888] ml-1.5">(auto-corrected from "{result.query}")</span>
+                          <span className="text-content-muted ml-1.5">(auto-corrected from "{result.query}")</span>
                         )}
                       </span>
                     </div>
@@ -492,12 +492,12 @@ export const RequestMusicModal = ({
 
                   {/* Dedicated Song Result Card */}
                   {result.song_result && (
-                    <div className="p-4 bg-gradient-to-r from-brand-500/20 via-[#242424] to-[#1c1c1c] border border-brand-500/40 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
+                    <div className="p-4 bg-gradient-to-r from-brand-500/20 via-surface-elevated2 to-surface-elevated border border-brand-500/40 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
                       <div className="flex items-center gap-3.5 min-w-0 flex-1">
                         <img
                           src={result.song_result.cover_url || result.items?.[0]?.cover_url || '/api/covers/0'}
                           alt=""
-                          className="w-16 h-16 rounded-xl object-cover bg-[#242424] shadow-md shrink-0 border border-white/10"
+                          className="w-16 h-16 rounded-xl object-cover bg-surface-elevated2 shadow-md shrink-0 border border-border-medium"
                         />
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
@@ -513,7 +513,7 @@ export const RequestMusicModal = ({
                           <h3 className="text-base font-bold text-white truncate mt-1">
                             {result.song_result.title}
                           </h3>
-                          <p className="text-xs text-[#b3b3b3] truncate mt-0.5">
+                          <p className="text-xs text-content-secondary truncate mt-0.5">
                             {result.song_result.artist_name} {result.song_result.album_title ? `• ${result.song_result.album_title}` : ''}
                           </p>
                         </div>
@@ -579,7 +579,7 @@ export const RequestMusicModal = ({
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between text-xs text-[#b3b3b3] pt-2">
+                  <div className="flex items-center justify-between text-xs text-content-secondary pt-2">
                     <span className="font-semibold text-white">
                       {result.type === 'spotify_playlist' && (
                         <span>Playlist: {result.playlist_name} ({result.total_tracks} tracks)</span>
@@ -608,18 +608,18 @@ export const RequestMusicModal = ({
                         return (
                           <div
                             key={`${albumKey}-${idx}`}
-                            className="flex items-center gap-3.5 p-3 bg-[#202020] hover:bg-[#242424] border border-white/5 rounded-xl transition"
+                            className="flex items-center gap-3.5 p-3 bg-surface-elevated hover:bg-surface-elevated2 border border-border-subtle rounded-xl transition"
                           >
                             <img
                               src={album.cover_url || '/api/covers/0'}
                               alt=""
-                              className="w-14 h-14 rounded-lg object-cover bg-[#282828] shrink-0 shadow-sm"
+                              className="w-14 h-14 rounded-lg object-cover bg-surface-hover shrink-0 shadow-sm"
                             />
                             <div className="flex-1 min-w-0">
                               <h4 className="text-sm font-bold text-white truncate">
                                 {album.title}
                               </h4>
-                              <p className="text-xs text-[#b3b3b3] truncate mt-0.5">
+                              <p className="text-xs text-content-secondary truncate mt-0.5">
                                 {album.artist_name} {album.year ? `• ${album.year}` : ''}
                               </p>
                               {album.source_track && (
@@ -724,7 +724,7 @@ export const RequestMusicModal = ({
                       })}
                     </div>
                   ) : (
-                    <div className="py-8 text-center text-xs text-[#888]">
+                    <div className="py-8 text-center text-xs text-content-muted">
                       No releases found matching this request. Try adjusting your search query.
                     </div>
                   )}
@@ -734,7 +734,7 @@ export const RequestMusicModal = ({
           ) : (
             /* Live Torrent & Lidarr Activity Tab */
             <div className="space-y-3">
-              <div className="flex items-center justify-between text-xs text-[#b3b3b3]">
+              <div className="flex items-center justify-between text-xs text-content-secondary">
                 <span>Active Download Activity (Torrents & Direct HQ)</span>
                 <span className="text-[10px] text-brand-500">Auto-refreshing live</span>
               </div>
@@ -749,7 +749,7 @@ export const RequestMusicModal = ({
                     return (
                       <div
                         key={item.id}
-                        className="p-3.5 bg-[#202020] border border-white/5 rounded-xl space-y-2"
+                        className="p-3.5 bg-surface-elevated border border-border-subtle rounded-xl space-y-2"
                       >
                         <div className="flex items-center justify-between text-xs">
                           <span className="font-bold text-white truncate max-w-[340px]" title={item.name}>
@@ -761,7 +761,7 @@ export const RequestMusicModal = ({
                         </div>
 
                         {/* Progress Bar */}
-                        <div className="h-1.5 w-full bg-[#141414] rounded-full overflow-hidden">
+                        <div className="h-1.5 w-full bg-surface-island rounded-full overflow-hidden">
                           <div
                             className="h-full bg-brand-500 transition-all duration-300"
                             style={{ width: `${Math.min(100, Math.max(0, item.progress))}%` }}
@@ -769,7 +769,7 @@ export const RequestMusicModal = ({
                         </div>
 
                         {/* Meta info */}
-                        <div className="flex items-center justify-between text-[10px] text-[#888] font-mono">
+                        <div className="flex items-center justify-between text-[10px] text-content-muted font-mono">
                           <div className="flex items-center gap-2">
                             <span>
                               {item.state === 'completed' || item.progress >= 100 ? (
@@ -803,11 +803,11 @@ export const RequestMusicModal = ({
                 </div>
               ) : (
                 <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
-                  <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center text-[#666]">
+                  <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center text-content-subtle">
                     <Activity size={24} />
                   </div>
                   <h4 className="text-sm font-bold text-white">No Active Downloads</h4>
-                  <p className="text-xs text-[#888] max-w-xs">
+                  <p className="text-xs text-content-muted max-w-xs">
                     When you request an album, qBittorrent and Lidarr download progress will appear here in real-time.
                   </p>
                 </div>

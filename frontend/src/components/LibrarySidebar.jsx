@@ -139,19 +139,19 @@ export const LibrarySidebar = ({
   const isCustomOrder = playlistSort === 'custom' && !librarySearchQuery.trim();
 
   const content = (
-    <div className="flex flex-col h-full min-h-0 bg-[#121212] rounded-lg overflow-hidden select-none">
+    <div className="flex flex-col h-full min-h-0 bg-surface-island rounded-lg overflow-hidden select-none">
       {/* Island Header */}
-      <div className="px-4 py-3.5 flex items-center justify-between border-b border-white/5 shrink-0">
-        <div className="flex items-center gap-2.5 text-[#b3b3b3]">
+      <div className="px-4 py-3.5 flex items-center justify-between border-b border-border-subtle shrink-0">
+        <div className="flex items-center gap-2.5 text-content-secondary">
           <Library size={22} className="stroke-[2.2]" />
-          <span className="font-bold text-sm text-[#b3b3b3] tracking-tight">Your Library</span>
+          <span className="font-bold text-sm text-content-secondary tracking-tight">Your Library</span>
         </div>
 
         <div className="flex items-center gap-1">
           {onImportSpotifyPrompt && (
             <button
               onClick={onImportSpotifyPrompt}
-              className="w-8 h-8 rounded-full hover:bg-[#1f1f1f] text-[#b3b3b3] hover:text-[#1DB954] flex items-center justify-center transition"
+              className="w-8 h-8 rounded-full hover:bg-surface-elevated text-content-secondary hover:text-brand-500 flex items-center justify-center transition"
               title="Import Spotify playlist"
             >
               <SpotifyIcon size={16} />
@@ -159,7 +159,7 @@ export const LibrarySidebar = ({
           )}
           <button
             onClick={onCreatePlaylistPrompt}
-            className="w-8 h-8 rounded-full hover:bg-[#1f1f1f] text-[#b3b3b3] hover:text-white flex items-center justify-center transition"
+            className="w-8 h-8 rounded-full hover:bg-surface-elevated text-content-secondary hover:text-content-primary flex items-center justify-center transition"
             title="Create playlist"
           >
             <Plus size={18} />
@@ -167,7 +167,7 @@ export const LibrarySidebar = ({
           {onCloseMobile && (
             <button
               onClick={onCloseMobile}
-              className="md:hidden w-8 h-8 rounded-full hover:bg-[#1f1f1f] text-[#b3b3b3] hover:text-white flex items-center justify-center"
+              className="md:hidden w-8 h-8 rounded-full hover:bg-surface-elevated text-content-secondary hover:text-content-primary flex items-center justify-center"
             >
               <X size={18} />
             </button>
@@ -176,7 +176,7 @@ export const LibrarySidebar = ({
       </div>
 
       {/* Filter / Category Pills */}
-      <div className="px-4 py-2 flex items-center gap-2 border-b border-white/5 shrink-0">
+      <div className="px-4 py-2 flex items-center gap-2 border-b border-border-subtle shrink-0">
         <button
           onClick={() => {
             setActiveTab('albums');
@@ -185,7 +185,7 @@ export const LibrarySidebar = ({
           className={`px-3 py-1 rounded-full text-xs font-semibold transition ${
             activeTab === 'albums'
               ? 'bg-white text-black'
-              : 'bg-[#1f1f1f] text-white hover:bg-[#282828]'
+              : 'bg-surface-elevated text-content-primary hover:bg-surface-hover'
           }`}
         >
           Albums
@@ -198,7 +198,7 @@ export const LibrarySidebar = ({
           className={`px-3 py-1 rounded-full text-xs font-semibold transition ${
             activeTab === 'artists'
               ? 'bg-white text-black'
-              : 'bg-[#1f1f1f] text-white hover:bg-[#282828]'
+              : 'bg-surface-elevated text-content-primary hover:bg-surface-hover'
           }`}
         >
           Artists
@@ -206,22 +206,22 @@ export const LibrarySidebar = ({
       </div>
 
       {/* Sub-bar: Search in library (left) & Playlist reordering (right) */}
-      <div className="px-3 py-2 flex items-center justify-between gap-2 border-b border-white/5 shrink-0">
+      <div className="px-3 py-2 flex items-center justify-between gap-2 border-b border-border-subtle shrink-0">
         {/* Left: Search input to filter playlists */}
         <div className="relative flex-1">
-          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#777]" />
+          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-content-muted" />
           <input
             type="text"
             placeholder="Search in library..."
             value={librarySearchQuery}
             onChange={(e) => setLibrarySearchQuery(e.target.value)}
             onKeyDown={handleSearchKeyDown}
-            className="w-full bg-[#181818] hover:bg-[#202020] focus:bg-[#202020] text-xs text-white pl-7 pr-6 py-1.5 rounded-full border border-white/5 focus:border-white/20 outline-none transition placeholder:text-[#666]"
+            className="w-full bg-surface-panel hover:bg-surface-elevated focus:bg-surface-elevated text-xs text-content-primary pl-7 pr-6 py-1.5 rounded-full border border-border-subtle focus:border-border-strong outline-none transition placeholder:text-content-subtle"
           />
           {librarySearchQuery && (
             <button
               onClick={() => setLibrarySearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-[#777] hover:text-white"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-content-muted hover:text-content-primary"
             >
               <X size={12} />
             </button>
@@ -232,8 +232,8 @@ export const LibrarySidebar = ({
         <div className="relative shrink-0" ref={sortMenuRef}>
           <button
             onClick={() => setIsSortMenuOpen((prev) => !prev)}
-            className={`p-1.5 rounded-md hover:bg-[#202020] text-xs flex items-center gap-1 transition ${
-              playlistSort !== 'custom' ? 'text-brand-400 bg-brand-500/10' : 'text-[#888] hover:text-white'
+            className={`p-1.5 rounded-md hover:bg-surface-hover text-xs flex items-center gap-1 transition ${
+              playlistSort !== 'custom' ? 'text-brand-400 bg-brand-500/10' : 'text-content-muted hover:text-content-primary'
             }`}
             title="Sort playlists"
           >
@@ -252,8 +252,8 @@ export const LibrarySidebar = ({
           </button>
 
           {isSortMenuOpen && (
-            <div className="absolute right-0 top-full mt-1 w-44 bg-[#1f1f1f] border border-white/10 rounded-lg shadow-2xl py-1 z-50 text-xs">
-              <div className="px-3 py-1 text-[10px] uppercase font-bold text-[#666] tracking-wider">
+            <div className="absolute right-0 top-full mt-1 w-44 bg-surface-panel border border-border-medium rounded-lg shadow-2xl py-1 z-50 text-xs">
+              <div className="px-3 py-1 text-[10px] uppercase font-bold text-content-subtle tracking-wider">
                 Sort Playlists
               </div>
               <button
@@ -378,10 +378,10 @@ export const LibrarySidebar = ({
                 dragOverId === 'favorites'
                   ? 'bg-brand-500/20 border-brand-500 scale-[1.02] shadow-lg'
                   : isFavoritesFocused
-                  ? 'bg-[#2a2a2a] border-brand-500/60 ring-1 ring-brand-500/40 shadow-md'
+                  ? 'bg-surface-hover border-brand-500/60 ring-1 ring-brand-500/40 shadow-md'
                   : isFavoritesSelected
-                  ? 'bg-[#282828] border-brand-500/40 shadow-sm'
-                  : 'hover:bg-[#1f1f1f] border-transparent'
+                  ? 'bg-surface-elevated2 border-brand-500/40 shadow-sm'
+                  : 'hover:bg-surface-elevated border-transparent'
               }`}
             >
               {(isFavoritesSelected || isFavoritesFocused) && (
@@ -402,7 +402,7 @@ export const LibrarySidebar = ({
                         ? 'text-brand-400 font-bold'
                         : isPlayingFavorites
                         ? 'text-brand-500 font-bold'
-                        : 'text-white'
+                        : 'text-content-primary'
                     }`}>
                       Liked Songs
                     </p>
@@ -426,7 +426,7 @@ export const LibrarySidebar = ({
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-[#b3b3b3] truncate mt-0.5">
+                <p className="text-xs text-content-secondary truncate mt-0.5">
                   Playlist • Auto-collected
                 </p>
               </div>
@@ -545,10 +545,10 @@ export const LibrarySidebar = ({
                     : isDragOverTrack
                     ? 'bg-brand-500/20 border-brand-500 scale-[1.02] shadow-lg'
                     : isItemFocused
-                    ? 'bg-[#2a2a2a] border-brand-500/60 ring-1 ring-brand-500/40 shadow-md'
+                    ? 'bg-surface-hover border-brand-500/60 ring-1 ring-brand-500/40 shadow-md'
                     : isSelected
-                    ? 'bg-[#282828] border-brand-500/40 shadow-sm'
-                    : 'hover:bg-[#1f1f1f] border-transparent'
+                    ? 'bg-surface-elevated2 border-brand-500/40 shadow-sm'
+                    : 'hover:bg-surface-elevated border-transparent'
                 }`}
               >
                 {(isSelected || isItemFocused) && (
@@ -574,7 +574,7 @@ export const LibrarySidebar = ({
                           ? 'text-brand-500 font-bold'
                           : isDragOverTrack
                           ? 'text-brand-400'
-                          : 'text-white'
+                          : 'text-content-primary'
                       }`}>
                         {pl.name}
                       </p>
@@ -600,9 +600,9 @@ export const LibrarySidebar = ({
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-[#b3b3b3] truncate mt-0.5 flex items-center gap-1.5">
+                  <p className="text-xs text-content-secondary truncate mt-0.5 flex items-center gap-1.5">
                     {pl.spotify_id && (
-                      <span className="text-[#1DB954] shrink-0" title="Synced with Spotify">
+                      <span className="text-brand-500 shrink-0" title="Synced with Spotify">
                         <SpotifyIcon size={12} />
                       </span>
                     )}
@@ -639,7 +639,7 @@ export const LibrarySidebar = ({
         })}
 
         {displayPlaylists.length === 0 && (
-          <div className="px-3 py-6 text-center text-xs text-[#666]">
+          <div className="px-3 py-6 text-center text-xs text-content-subtle">
             {librarySearchQuery.trim()
               ? 'No matching playlists found.'
               : 'No custom playlists yet. Tap + to create one!'}
@@ -649,11 +649,11 @@ export const LibrarySidebar = ({
 
       {/* Subtle Library Counter Widget at the Bottom */}
       {stats && (
-        <div className="px-4 py-3 bg-[#121212] border-t border-white/5 text-[11px] text-[#b3b3b3] flex items-center justify-between shrink-0">
+        <div className="px-4 py-3 bg-surface-island border-t border-border-subtle text-[11px] text-content-secondary flex items-center justify-between shrink-0">
           <span>{stats.tracks.toLocaleString()} songs</span>
-          <span className="text-[#555]">•</span>
+          <span className="text-content-subtle">•</span>
           <span>{stats.albums.toLocaleString()} albums</span>
-          <span className="text-[#555]">•</span>
+          <span className="text-content-subtle">•</span>
           <span>{stats.artists.toLocaleString()} artists</span>
         </div>
       )}

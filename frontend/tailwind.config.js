@@ -35,6 +35,34 @@ export default {
           light: ACTIVE_THEME[300],
         },
 
+        // Semantic surface background hierarchy (pure black -> island -> panel -> elevated -> hover)
+        surface: {
+          base: '#000000',
+          island: '#121212',
+          panel: '#181818',
+          elevated: '#1f1f1f',
+          elevated2: '#242424',
+          hover: '#282828',
+          active: '#333333',
+        },
+
+        // Semantic text and content hierarchy (primary white -> secondary gray -> muted -> subtle)
+        content: {
+          primary: '#ffffff',
+          secondary: '#b3b3b3',
+          muted: '#888888',
+          subtle: '#666666',
+          accent: ACTIVE_THEME[400],
+        },
+
+        // Semantic borders & dividers
+        border: {
+          subtle: 'rgba(255, 255, 255, 0.05)',
+          medium: 'rgba(255, 255, 255, 0.10)',
+          strong: 'rgba(255, 255, 255, 0.20)',
+          brand: ACTIVE_THEME[500],
+        },
+
         // Legacy & Spotify aliases linked directly to the active brand theme
         spotify: {
           green: ACTIVE_THEME[500],
@@ -46,6 +74,9 @@ export default {
           textPrimary: "#ffffff",
           textSecondary: "#b3b3b3",
         },
+      },
+      fontFamily: {
+        sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
       },
       borderRadius: {
         'island': '8px',

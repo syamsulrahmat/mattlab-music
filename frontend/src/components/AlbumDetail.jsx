@@ -258,7 +258,7 @@ export const AlbumDetail = ({
 
   if (isLoading || !album) {
     return (
-      <div className="flex items-center justify-center h-64 text-[#b3b3b3]">
+      <div className="flex items-center justify-center h-64 text-content-secondary">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-brand-500" />
       </div>
     );
@@ -270,24 +270,24 @@ export const AlbumDetail = ({
   return (
     <div className="pb-16 select-none relative w-full">
       {/* Full-bleed Header Banner taking all the area without back button */}
-      <div className="bg-gradient-to-b from-purple-950/45 via-[#181818]/75 to-[#121212] px-6 sm:px-8 pt-8 sm:pt-10 pb-8 sm:pb-10 w-full border-b border-white/5">
+      <div className="bg-gradient-to-b from-purple-950/45 via-surface-panel/75 to-surface-island px-6 sm:px-8 pt-8 sm:pt-10 pb-8 sm:pb-10 w-full border-b border-border-subtle">
         <div className="flex flex-col md:flex-row gap-6 md:gap-7 items-start md:items-end">
           <img
             src={album.cover_url}
             alt={album.title}
-            className="w-44 h-44 sm:w-52 sm:h-52 rounded-xl shadow-2xl object-cover bg-[#1f1f1f] shrink-0 border border-white/10"
+            className="w-44 h-44 sm:w-52 sm:h-52 rounded-xl shadow-2xl object-cover bg-surface-elevated shrink-0 border border-border-medium"
           />
           <div className="flex flex-col justify-end min-w-0">
-            <span className="text-xs uppercase font-bold tracking-widest text-[#b3b3b3]">
+            <span className="text-xs uppercase font-bold tracking-widest text-content-secondary">
               Album
             </span>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white mt-1 mb-3 tracking-tight truncate">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-content-primary mt-1 mb-3 tracking-tight truncate">
               {album.title}
             </h1>
-            <div className="flex items-center gap-2 text-xs sm:text-sm text-[#b3b3b3] font-medium flex-wrap">
+            <div className="flex items-center gap-2 text-xs sm:text-sm text-content-secondary font-medium flex-wrap">
               <span
                 onClick={() => onSelectArtist && onSelectArtist(album.artist_id)}
-                className="text-white font-semibold hover:underline cursor-pointer"
+                className="text-content-primary font-semibold hover:underline cursor-pointer"
               >
                 {album.artist_name}
               </span>
@@ -317,7 +317,7 @@ export const AlbumDetail = ({
           <button
             onClick={handleToggleShuffle}
             className={`p-3 rounded-full hover:bg-white/10 transition ${
-              isShuffle ? 'text-brand-500' : 'text-[#b3b3b3] hover:text-white'
+              isShuffle ? 'text-brand-500' : 'text-content-secondary hover:text-content-primary'
             }`}
             title={isShuffle ? "Disable shuffle" : "Enable shuffle"}
           >
@@ -327,7 +327,7 @@ export const AlbumDetail = ({
           <button
             onClick={handleAddToLibrary}
             disabled={isAddingToLibrary}
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#242424] hover:bg-[#2f2f2f] text-white text-xs font-bold transition border border-white/10 active:scale-95"
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-surface-elevated2 hover:bg-surface-hover text-content-primary text-xs font-bold transition border border-border-medium active:scale-95"
             title="Add album to library as playlist"
           >
             {addedToLibrary ? (
@@ -348,8 +348,8 @@ export const AlbumDetail = ({
       {/* Tracklist Table */}
       <div className="px-6 sm:px-8 pb-12">
         {tracks.length > 0 && (
-          <div className="sticky top-0 z-30 bg-[#121212]/95 backdrop-blur-md mb-2">
-            <div className="grid grid-cols-[36px_1fr_36px_36px_60px] md:grid-cols-[40px_1fr_40px_40px_70px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-[#b3b3b3] border-b border-white/10 items-center tracking-wider">
+          <div className="sticky top-0 z-30 bg-surface-island/95 backdrop-blur-md mb-2">
+            <div className="grid grid-cols-[36px_1fr_36px_36px_60px] md:grid-cols-[40px_1fr_40px_40px_70px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-content-secondary border-b border-border-medium items-center tracking-wider">
               <span className="text-center">#</span>
               <span className="truncate pr-4">Title</span>
               <span />
@@ -401,8 +401,8 @@ export const AlbumDetail = ({
                 }}
                 className={`grid grid-cols-[36px_1fr_36px_36px_60px] md:grid-cols-[40px_1fr_40px_40px_70px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center cursor-default select-none ${
                   isSelected
-                    ? 'bg-[#2a2a2a] ring-1 ring-white/20 text-white'
-                    : 'hover:bg-[#1f1f1f] text-white'
+                    ? 'bg-surface-hover ring-1 ring-white/20 text-content-primary'
+                    : 'hover:bg-surface-elevated text-content-primary'
                 }`}
               >
                 {/* Column 1: Index / Play-Pause / Animated Equalizer / Loading Spinner */}
@@ -433,7 +433,7 @@ export const AlbumDetail = ({
                           </div>
                         ) : (
                           /* Normal track number (green if current track paused, gray otherwise) */
-                          <span className={`text-sm font-medium ${isThisTrack ? 'text-brand-500' : 'text-[#b3b3b3]'}`}>
+                          <span className={`text-sm font-medium ${isThisTrack ? 'text-brand-500' : 'text-content-secondary'}`}>
                             {idx + 1}
                           </span>
                         )}
@@ -450,7 +450,7 @@ export const AlbumDetail = ({
                             handleTrackPlay(track);
                           }
                         }}
-                        className="hidden group-hover:flex items-center justify-center w-7 h-7 text-white hover:text-brand-400 transition"
+                        className="hidden group-hover:flex items-center justify-center w-7 h-7 text-content-primary hover:text-brand-400 transition"
                         title={isThisPlaying ? "Pause" : "Play"}
                       >
                         {isThisPlaying ? (
@@ -465,21 +465,21 @@ export const AlbumDetail = ({
 
                 {/* Column 2: Title & Artist info */}
                 <div className="truncate pr-4">
-                  <p className={`text-sm font-medium truncate ${isThisTrack ? 'text-brand-500' : 'text-white'}`}>
+                  <p className={`text-sm font-medium truncate ${isThisTrack ? 'text-brand-500' : 'text-content-primary'}`}>
                     {track.title}
                   </p>
-                  <p className="text-xs text-[#b3b3b3] truncate mt-0.5">
+                  <p className="text-xs text-content-secondary truncate mt-0.5">
                     <span
                       onClick={(e) => {
                         e.stopPropagation();
                         if (onSelectArtist) onSelectArtist(track.artist_id || album.artist_id);
                       }}
-                      className="hover:underline hover:text-white cursor-pointer"
+                      className="hover:underline hover:text-content-primary cursor-pointer"
                     >
                       {track.artist_name || album.artist_name}
                     </span>
                     {track.file_format && (
-                      <span className="text-[#666]"> • <span className="uppercase text-[10px]">{track.file_format}</span></span>
+                      <span className="text-content-subtle"> • <span className="uppercase text-[10px]">{track.file_format}</span></span>
                     )}
                   </p>
                 </div>
@@ -491,7 +491,7 @@ export const AlbumDetail = ({
                       e.stopPropagation();
                       if (onAddToPlaylist) onAddToPlaylist(track);
                     }}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-[#888] hover:text-white transition"
+                    className="opacity-0 group-hover:opacity-100 p-1 text-content-muted hover:text-content-primary transition"
                     title="Add to playlist"
                   >
                     <Plus size={16} />
@@ -506,7 +506,7 @@ export const AlbumDetail = ({
                       toggleFavorite(track.id);
                     }}
                     className={`p-1 transition ${
-                      isFav ? 'text-brand-500' : 'opacity-0 group-hover:opacity-100 text-[#888] hover:text-white'
+                      isFav ? 'text-brand-500' : 'opacity-0 group-hover:opacity-100 text-content-muted hover:text-content-primary'
                     }`}
                     title={isFav ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
                   >
@@ -515,7 +515,7 @@ export const AlbumDetail = ({
                 </div>
 
                 {/* Column 5: Duration */}
-                <span className="text-right text-xs font-mono text-[#b3b3b3]">
+                <span className="text-right text-xs font-mono text-content-secondary">
                   {formatDuration(track.duration_seconds)}
                 </span>
               </div>

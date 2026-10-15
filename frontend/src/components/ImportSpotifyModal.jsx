@@ -82,23 +82,23 @@ export const ImportSpotifyModal = ({ isOpen, onClose, onImportSpotify }) => {
       onKeyDown={handleKeyDown}
     >
       <div 
-        className="bg-[#1a1a1a] border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in zoom-in-95 duration-150 text-white select-none"
+        className="bg-surface-elevated border border-border-medium rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in zoom-in-95 duration-150 text-white select-none"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-[#121212] flex items-center justify-center text-[#1DB954] border border-white/5 shadow-inner">
+            <div className="w-9 h-9 rounded-full bg-surface-island flex items-center justify-center text-brand-500 border border-border-subtle shadow-inner">
               <SpotifyIcon size={20} />
             </div>
             <div>
-              <h3 className="font-bold text-white text-base">Import Spotify Playlist</h3>
-              <p className="text-[11px] text-[#888]">Auto-match local tracks & download missing songs</p>
+              <h3 className="font-bold text-content-primary text-base">Import Spotify Playlist</h3>
+              <p className="text-[11px] text-content-muted">Auto-match local tracks & download missing songs</p>
             </div>
           </div>
           <button 
             onClick={onClose} 
-            className="w-8 h-8 rounded-full hover:bg-[#282828] text-[#b3b3b3] hover:text-white flex items-center justify-center transition"
+            className="w-8 h-8 rounded-full hover:bg-surface-hover text-content-secondary hover:text-white flex items-center justify-center transition"
             title="Close"
           >
             <X size={18} />
@@ -114,7 +114,7 @@ export const ImportSpotifyModal = ({ isOpen, onClose, onImportSpotify }) => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-[#b3b3b3] mb-1.5">
+            <label className="block text-xs font-semibold text-content-secondary mb-1.5">
               Spotify Playlist Link
             </label>
             <input
@@ -126,53 +126,53 @@ export const ImportSpotifyModal = ({ isOpen, onClose, onImportSpotify }) => {
                 if (error) setError('');
               }}
               placeholder="https://open.spotify.com/playlist/..."
-              className="w-full bg-[#121212] border border-white/10 focus:border-[#1DB954] text-white text-sm px-3.5 py-2.5 rounded-lg outline-none transition placeholder-[#555]"
+              className="w-full bg-surface-island border border-border-medium focus:border-brand-500 text-content-primary text-sm px-3.5 py-2.5 rounded-lg outline-none transition placeholder:text-content-subtle"
             />
-            <p className="text-[11px] text-[#777] mt-1">
+            <p className="text-[11px] text-content-subtle mt-1">
               Paste any public Spotify playlist URL or Spotify URI
             </p>
           </div>
 
-          <div className="bg-[#141414] border border-white/5 rounded-xl p-3 space-y-3">
+          <div className="bg-surface-island border border-border-subtle rounded-xl p-3 space-y-3">
             <label className="flex items-start gap-3 cursor-pointer group">
               <input
                 type="checkbox"
                 checked={autoDownload}
                 onChange={(e) => setAutoDownload(e.target.checked)}
-                className="mt-0.5 accent-[#1DB954] rounded cursor-pointer"
+                className="mt-0.5 accent-brand-500 rounded cursor-pointer"
               />
               <div className="text-xs">
-                <span className="font-semibold text-white group-hover:text-[#1DB954] transition flex items-center gap-1.5">
-                  <Download size={13} className="text-[#1DB954]" />
+                <span className="font-semibold text-content-primary group-hover:text-brand-400 transition flex items-center gap-1.5">
+                  <Download size={13} className="text-brand-500" />
                   Auto-download missing songs
                 </span>
-                <p className="text-[11px] text-[#888] mt-0.5">
+                <p className="text-[11px] text-content-muted mt-0.5">
                   Downloads high-quality 320kbps MP3s with full tags & cover art into your library.
                 </p>
               </div>
             </label>
 
-            <label className="flex items-start gap-3 cursor-pointer group pt-1 border-t border-white/5">
+            <label className="flex items-start gap-3 cursor-pointer group pt-1 border-t border-border-subtle">
               <input
                 type="checkbox"
                 checked={autoSync}
                 onChange={(e) => setAutoSync(e.target.checked)}
-                className="mt-0.5 accent-[#1DB954] rounded cursor-pointer"
+                className="mt-0.5 accent-brand-500 rounded cursor-pointer"
               />
               <div className="text-xs">
-                <span className="font-semibold text-white group-hover:text-[#1DB954] transition flex items-center gap-1.5">
-                  <RefreshCw size={13} className="text-[#1DB954]" />
+                <span className="font-semibold text-content-primary group-hover:text-brand-400 transition flex items-center gap-1.5">
+                  <RefreshCw size={13} className="text-brand-500" />
                   Keep in sync with Spotify
                 </span>
-                <p className="text-[11px] text-[#888] mt-0.5">
+                <p className="text-[11px] text-content-muted mt-0.5">
                   Watches the playlist every 6 hours and automatically downloads newly added songs.
                 </p>
               </div>
             </label>
           </div>
 
-          <div className="flex items-center gap-2 p-2.5 rounded-lg bg-emerald-950/20 border border-emerald-900/30 text-[11px] text-[#9be4b3]">
-            <Sparkles size={14} className="shrink-0 text-[#1DB954]" />
+          <div className="flex items-center gap-2 p-2.5 rounded-lg bg-emerald-950/20 border border-emerald-900/30 text-[11px] text-brand-300">
+            <Sparkles size={14} className="shrink-0 text-brand-500" />
             <span>Downloaded tracks are monitored for silent lossless FLAC upgrades.</span>
           </div>
 
@@ -181,14 +181,14 @@ export const ImportSpotifyModal = ({ isOpen, onClose, onImportSpotify }) => {
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-4 py-2 text-xs font-semibold text-[#b3b3b3] hover:text-white rounded-full hover:bg-[#282828] transition disabled:opacity-50"
+              className="px-4 py-2 text-xs font-semibold text-content-secondary hover:text-white rounded-full hover:bg-surface-hover transition disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!spotifyUrl.trim() || isSubmitting}
-              className="px-5 py-2 text-xs font-bold bg-[#1DB954] hover:bg-[#1ed760] text-black rounded-full hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed transition shadow flex items-center gap-1.5"
+              className="px-5 py-2 text-xs font-bold bg-brand-500 hover:bg-brand-400 text-black rounded-full hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed transition shadow flex items-center gap-1.5"
             >
               {isSubmitting ? (
                 <>

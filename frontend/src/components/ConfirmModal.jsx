@@ -35,7 +35,7 @@ export const ConfirmModal = ({
       }}
     >
       <div 
-        className="bg-[#242424] border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4 text-center select-none"
+        className="bg-surface-elevated2 border border-border-medium rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4 text-center select-none"
         onClick={(e) => e.stopPropagation()}
       >
         <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto border ${
@@ -49,7 +49,7 @@ export const ConfirmModal = ({
         <div>
           <h3 className="text-base font-bold text-white tracking-tight">{title}</h3>
           {message && (
-            <p className="text-xs text-[#888] mt-1.5 leading-relaxed">
+            <p className="text-xs text-content-muted mt-1.5 leading-relaxed">
               {message}
             </p>
           )}
@@ -60,7 +60,7 @@ export const ConfirmModal = ({
             type="button"
             onClick={onClose}
             disabled={isLoading}
-            className="px-4 py-2 rounded-full text-xs font-semibold text-[#b3b3b3] hover:text-white hover:bg-white/5 transition disabled:opacity-50"
+            className="px-4 py-2 rounded-full text-xs font-semibold text-content-secondary hover:text-white hover:bg-white/5 transition disabled:opacity-50"
           >
             {cancelText}
           </button>

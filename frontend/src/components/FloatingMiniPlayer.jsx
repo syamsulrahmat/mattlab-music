@@ -5,6 +5,8 @@ import {
   ExternalLink, PictureInPicture2, MicOff, Mic2, Music 
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
+import { LYRICS_CONFIG } from '../config/lyricsConfig';
+import { DESIGN_TOKENS } from '../config/designTokens';
 
 const formatTime = (secs) => {
   if (isNaN(secs) || secs < 0) return '0:00';
@@ -283,7 +285,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
     return (
       <div
         ref={smallLyricsRef}
-        className={`w-full h-full flex flex-col justify-between bg-[#121212] text-white font-sans select-none box-border overflow-hidden ${containerPadding}`}
+        className={`w-full h-full flex flex-col justify-between bg-surface-island text-content-primary font-sans select-none box-border overflow-hidden ${containerPadding}`}
       >
         {/* Top row: Track Info (hidden in minimal) & in-app utility icons */}
         {(!isMinimalLayout || (!isPiP && onClose)) && (
@@ -294,18 +296,18 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                   src={currentTrack?.cover_url || '/api/covers/0'}
                   alt=""
                   style={{ width: `${coverSize}px`, height: `${coverSize}px` }}
-                  className="rounded object-cover bg-[#222] shrink-0 shadow-sm"
+                  className="rounded object-cover bg-surface-elevated shrink-0 shadow-sm"
                 />
                 <div className="flex-1 min-w-0 truncate">
                   <p
                     style={{ fontSize: `${titleFontSize}px` }}
-                    className="font-bold text-white truncate leading-tight"
+                    className="font-bold text-content-primary truncate leading-tight"
                   >
                     {currentTrack?.title || 'No Track'}
                   </p>
                   <p
                     style={{ fontSize: `${artistFontSize}px` }}
-                    className="text-[#b3b3b3] truncate leading-tight"
+                    className="text-content-secondary truncate leading-tight"
                   >
                     {currentTrack?.artist_name || ''}
                   </p>
@@ -320,7 +322,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                   <button
                     type="button"
                     onClick={togglePiP}
-                    className="p-1 text-[#888] hover:text-brand-400 rounded transition hover:bg-white/10"
+                    className="p-1 text-content-muted hover:text-brand-400 rounded transition hover:bg-white/10"
                     title="Pop out Picture-in-Picture window"
                   >
                     <PictureInPicture2 size={headerIconSize} />
@@ -329,7 +331,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                 <button
                   type="button"
                   onClick={onClose}
-                  className="p-1 text-[#888] hover:text-white rounded transition hover:bg-white/10"
+                  className="p-1 text-content-muted hover:text-content-primary rounded transition hover:bg-white/10"
                   title="Close"
                 >
                   <X size={headerIconSize} />
@@ -348,8 +350,8 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
           <p
             onClick={() => currentLineObj && seek(currentLineObj.time)}
             style={{ fontSize: `${currentLyricFontSize}px` }}
-            className={`font-normal truncate leading-tight cursor-pointer transition-all duration-150 ${
-              currentLineObj ? 'text-brand-400 drop-shadow-sm hover:underline' : 'text-white/80'
+            className={`${LYRICS_CONFIG.typography.activeWeightClass} truncate leading-tight cursor-pointer transition-all duration-150 ${
+              currentLineObj ? `${LYRICS_CONFIG.colors.activeClass} drop-shadow-sm hover:underline` : 'text-content-primary/80'
             }`}
             title={currentLineObj ? `Current lyric: "${currentSentence}" (Click to rewind)` : currentSentence}
           >
@@ -360,8 +362,8 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
           <p
             onClick={() => nextLineObj && seek(nextLineObj.time)}
             style={{ fontSize: `${upcomingLyricFontSize}px` }}
-            className={`font-normal text-white/50 truncate leading-tight transition-all duration-150 ${
-              nextLineObj ? 'hover:text-white/80 cursor-pointer hover:underline' : ''
+            className={`${LYRICS_CONFIG.typography.upcomingWeightClass} ${LYRICS_CONFIG.colors.upcomingClass} truncate leading-tight transition-all duration-150 ${
+              nextLineObj ? 'hover:text-content-primary cursor-pointer hover:underline' : ''
             }`}
             title={nextLineObj ? `Next lyric: "${upcomingSentence}" (Click to seek)` : upcomingSentence}
           >
@@ -376,7 +378,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
             <div className="flex items-center gap-1 flex-1 min-w-0">
               <span
                 style={{ fontSize: `${timeFontSize}px`, minWidth: `${Math.round(24 * scale)}px` }}
-                className="text-[#888] font-mono text-right shrink-0"
+                className="text-content-muted font-mono text-right shrink-0"
               >
                 {formatTime(currentTime)}
               </span>
@@ -393,7 +395,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
               </div>
               <span
                 style={{ fontSize: `${timeFontSize}px`, minWidth: `${Math.round(24 * scale)}px` }}
-                className="text-[#888] font-mono shrink-0"
+                className="text-content-muted font-mono shrink-0"
               >
                 {formatTime(duration)}
               </span>
@@ -405,7 +407,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
             <button
               type="button"
               onClick={prevTrack}
-              className="p-1 text-[#b3b3b3] hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
+              className="p-1 text-content-secondary hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
               title="Previous"
             >
               <SkipBack size={transportIconSize} />
@@ -426,7 +428,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
             <button
               type="button"
               onClick={nextTrack}
-              className="p-1 text-[#b3b3b3] hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
+              className="p-1 text-content-secondary hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
               title="Next"
             >
               <SkipForward size={transportIconSize} />
@@ -460,27 +462,27 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
     return (
       <div
         ref={fullLyricsRef}
-        className="w-full h-full flex flex-col justify-between bg-[#121212] text-white font-sans select-none box-border overflow-hidden"
+        className="w-full h-full flex flex-col justify-between bg-surface-island text-content-primary font-sans select-none box-border overflow-hidden"
       >
         {/* Header Bar */}
-        <div className="flex items-center justify-between px-3.5 py-2.5 bg-[#181818]/80 backdrop-blur-md border-b border-white/5 shrink-0">
+        <div className="flex items-center justify-between px-3.5 py-2.5 bg-surface-panel/80 backdrop-blur-md border-b border-white/5 shrink-0">
           <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
             <img
               src={currentTrack?.cover_url || '/api/covers/0'}
               alt=""
               style={{ width: `${headerThumbSize}px`, height: `${headerThumbSize}px` }}
-              className="rounded-md object-cover bg-[#222] shrink-0 shadow"
+              className="rounded-md object-cover bg-surface-elevated shrink-0 shadow"
             />
             <div className="flex-1 min-w-0">
               <p
                 style={{ fontSize: `${headerTitleSize}px` }}
-                className="font-bold text-white truncate leading-tight"
+                className="font-bold text-content-primary truncate leading-tight"
               >
                 {currentTrack?.title || 'No Track'}
               </p>
               <p
                 style={{ fontSize: `${headerArtistSize}px` }}
-                className="text-[#b3b3b3] truncate mt-0.5 leading-tight"
+                className="text-content-secondary truncate mt-0.5 leading-tight"
               >
                 {currentTrack?.artist_name || ''}
               </p>
@@ -493,7 +495,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
               <button
                 type="button"
                 onClick={() => handleSetSizeMode('lyrics-small')}
-                className="p-1.5 text-[#888] hover:text-white rounded-md transition hover:bg-white/10"
+                className="p-1.5 text-content-muted hover:text-content-primary rounded-md transition hover:bg-white/10"
                 title="Shrink to 2-Line Lyrics Mode"
               >
                 <Minimize2 size={headerIconSize} />
@@ -501,7 +503,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1.5 text-[#888] hover:text-white rounded-md transition hover:bg-white/10"
+                className="p-1.5 text-content-muted hover:text-content-primary rounded-md transition hover:bg-white/10"
                 title="Close"
               >
                 <X size={headerIconSize} />
@@ -518,7 +520,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
           className="flex-1 overflow-y-auto px-4 py-5 space-y-3 text-center select-none scrollbar-thin scrollbar-thumb-white/10"
         >
           {lyricsState?.isLoading ? (
-            <div className="flex flex-col items-center justify-center h-full text-[#888] gap-2 py-10">
+            <div className="flex flex-col items-center justify-center h-full text-content-muted gap-2 py-10">
               <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
               <span className="text-xs">Loading lyrics...</span>
             </div>
@@ -532,12 +534,12 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                   ref={(el) => (lineRefs.current[idx] = el)}
                   onClick={() => seek(line.time)}
                   style={{ fontSize: `${isActive ? activeFontSize : inactiveFontSize}px` }}
-                  className={`transition-all duration-300 font-normal cursor-pointer px-2.5 py-1 rounded-lg ${
+                  className={`transition-all duration-300 cursor-pointer px-2.5 py-1 rounded-lg ${
                     isActive
-                      ? 'text-brand-400 font-normal bg-brand-500/15 scale-[1.03] shadow-sm'
+                      ? `${LYRICS_CONFIG.colors.activeClass} ${LYRICS_CONFIG.typography.activeWeightClass} ${LYRICS_CONFIG.colors.activeBgClass} scale-[1.03] shadow-sm`
                       : isPast
-                      ? 'text-white/60 hover:text-white'
-                      : 'text-white/30 hover:text-white/70'
+                      ? `${LYRICS_CONFIG.colors.pastClass} ${LYRICS_CONFIG.typography.pastWeightClass} hover:text-content-primary`
+                      : `${LYRICS_CONFIG.colors.idleClass} ${LYRICS_CONFIG.typography.upcomingWeightClass} hover:text-content-primary/70`
                   }`}
                 >
                   {line.text}
@@ -547,15 +549,15 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
           ) : lyricsState?.plainLyrics ? (
             <div
               style={{ fontSize: `${inactiveFontSize}px` }}
-              className="text-white/80 font-normal leading-relaxed whitespace-pre-line py-4"
+              className={`text-content-primary/80 ${LYRICS_CONFIG.typography.activeWeightClass} leading-relaxed whitespace-pre-line py-4`}
             >
               {lyricsState.plainLyrics}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-full text-[#666] gap-2 py-10">
-              <Music size={24} className="text-[#555]" />
-              <p className="text-xs font-semibold text-[#888]">No lyrics available</p>
-              <p className="text-[10px] text-[#666] max-w-[200px]">
+            <div className="flex flex-col items-center justify-center h-full text-content-subtle gap-2 py-10">
+              <Music size={24} className="text-content-subtle" />
+              <p className="text-xs font-semibold text-content-muted">No lyrics available</p>
+              <p className="text-[10px] text-content-subtle max-w-[200px]">
                 {currentTrack ? `"${currentTrack.title}"` : 'Play a song to view lyrics'}
               </p>
             </div>
@@ -563,12 +565,12 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
         </div>
 
         {/* Music Button Controls Footer */}
-        <div className="px-3.5 py-2.5 bg-[#161616] border-t border-white/5 shrink-0 flex flex-col gap-2">
+        <div className="px-3.5 py-2.5 bg-surface-panel border-t border-white/5 shrink-0 flex flex-col gap-2">
           {/* Scrubber progress */}
           <div className="flex items-center gap-2">
             <span
               style={{ fontSize: `${footerTimeSize}px` }}
-              className="text-[#888] font-mono min-w-[28px] text-right"
+              className="text-content-muted font-mono min-w-[28px] text-right"
             >
               {formatTime(currentTime)}
             </span>
@@ -585,7 +587,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
             </div>
             <span
               style={{ fontSize: `${footerTimeSize}px` }}
-              className="text-[#888] font-mono min-w-[28px]"
+              className="text-content-muted font-mono min-w-[28px]"
             >
               {formatTime(duration)}
             </span>
@@ -596,7 +598,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
             <button
               type="button"
               onClick={prevTrack}
-              className="p-1.5 text-[#b3b3b3] hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
+              className="p-1.5 text-content-secondary hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
               title="Previous"
             >
               <SkipBack size={transportIconSize} />
@@ -617,7 +619,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
             <button
               type="button"
               onClick={nextTrack}
-              className="p-1.5 text-[#b3b3b3] hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
+              className="p-1.5 text-content-secondary hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
               title="Next"
             >
               <SkipForward size={transportIconSize} />
@@ -640,11 +642,11 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
 
     if (sizeMode === 'micro') {
       return (
-        <div className="w-full h-full flex items-center justify-center px-3 py-1 bg-[#121212] text-white font-sans select-none box-border">
+        <div className="w-full h-full flex items-center justify-center px-3 py-1 bg-surface-island text-content-primary font-sans select-none box-border">
           <div className="flex items-center gap-2 mx-auto">
             <button
               onClick={prevTrack}
-              className="p-1.5 text-[#b3b3b3] hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
+              className="p-1.5 text-content-secondary hover:text-content-primary rounded-full hover:bg-white/10 active:scale-95 transition"
               title="Previous"
             >
               <SkipBack size={15} />
@@ -658,7 +660,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
             </button>
             <button
               onClick={nextTrack}
-              className="p-1.5 text-[#b3b3b3] hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
+              className="p-1.5 text-content-secondary hover:text-content-primary rounded-full hover:bg-white/10 active:scale-95 transition"
               title="Next"
             >
               <SkipForward size={15} />
@@ -670,19 +672,19 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
 
     if (sizeMode === 'expanded') {
       return (
-        <div className="w-full h-full flex flex-col justify-between p-2.5 bg-[#121212] text-white font-sans select-none box-border space-y-1.5">
+        <div className="w-full h-full flex flex-col justify-between p-2.5 bg-surface-island text-content-primary font-sans select-none box-border space-y-1.5">
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
               <img
                 src={currentTrack?.cover_url || '/api/covers/0'}
                 alt=""
-                className="w-10 h-10 rounded-lg object-cover shadow shrink-0 bg-[#242424]"
+                className="w-10 h-10 rounded-lg object-cover shadow shrink-0 bg-surface-elevated2"
               />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-white truncate">
+                <p className="text-xs font-bold text-content-primary truncate">
                   {currentTrack?.title || 'No Track'}
                 </p>
-                <p className="text-[10px] text-[#b3b3b3] truncate mt-0.5">
+                <p className="text-[10px] text-content-secondary truncate mt-0.5">
                   {currentTrack?.artist_name || ''}
                 </p>
               </div>
@@ -699,7 +701,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
           <div className="flex items-center justify-center gap-4">
             <button
               onClick={prevTrack}
-              className="p-1 text-[#b3b3b3] hover:text-white rounded-full hover:bg-white/10 transition"
+              className="p-1 text-content-secondary hover:text-content-primary rounded-full hover:bg-white/10 transition"
               title="Previous"
             >
               <SkipBack size={15} />
@@ -713,7 +715,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
             </button>
             <button
               onClick={nextTrack}
-              className="p-1 text-[#b3b3b3] hover:text-white rounded-full hover:bg-white/10 transition"
+              className="p-1 text-content-secondary hover:text-content-primary rounded-full hover:bg-white/10 transition"
               title="Next"
             >
               <SkipForward size={15} />
@@ -725,20 +727,20 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
 
     // Default 'compact' mode
     return (
-      <div className="w-full h-full flex items-center justify-between p-2.5 bg-[#121212] text-white font-sans select-none box-border">
+      <div className="w-full h-full flex items-center justify-between p-2.5 bg-surface-island text-content-primary font-sans select-none box-border">
         <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
           {currentTrack && (
             <img
               src={currentTrack?.cover_url || '/api/covers/0'}
               alt=""
-              className="w-10 h-10 rounded-lg object-cover shadow shrink-0 bg-[#242424]"
+              className="w-10 h-10 rounded-lg object-cover shadow shrink-0 bg-surface-elevated2"
             />
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-white truncate">
+            <p className="text-xs font-bold text-content-primary truncate">
               {currentTrack?.title || 'No Track'}
             </p>
-            <p className="text-[10px] text-[#b3b3b3] truncate mt-0.5">
+            <p className="text-[10px] text-content-secondary truncate mt-0.5">
               {currentTrack?.artist_name || ''}
             </p>
           </div>
@@ -746,7 +748,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
         <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={prevTrack}
-            className="p-1.5 rounded-full hover:bg-white/10 text-[#b3b3b3] hover:text-white transition"
+            className="p-1.5 rounded-full hover:bg-white/10 text-content-secondary hover:text-content-primary transition"
             title="Previous"
           >
             <SkipBack size={15} />
@@ -760,7 +762,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
           </button>
           <button
             onClick={nextTrack}
-            className="p-1.5 rounded-full hover:bg-white/10 text-[#b3b3b3] hover:text-white transition"
+            className="p-1.5 rounded-full hover:bg-white/10 text-content-secondary hover:text-content-primary transition"
             title="Next"
           >
             <SkipForward size={15} />
@@ -785,7 +787,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
             top: `${position.y}px`,
             touchAction: 'none',
           }}
-          className={`fixed z-50 transition-shadow select-none shadow-2xl rounded-2xl border border-white/10 bg-[#121212]/95 backdrop-blur-xl group cursor-move ${
+          className={`fixed z-50 transition-shadow select-none shadow-2xl rounded-2xl border border-white/10 bg-surface-island/95 backdrop-blur-xl group cursor-move ${
             isDragging ? 'shadow-green-500/20 scale-[1.01]' : ''
           }`}
         >
@@ -827,7 +829,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
               <button
                 type="button"
                 onClick={prevTrack}
-                className="p-1.5 text-[#b3b3b3] hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
+                className="p-1.5 text-content-secondary hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
                 title="Previous"
               >
                 <SkipBack size={14} />
@@ -843,7 +845,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
               <button
                 type="button"
                 onClick={nextTrack}
-                className="p-1.5 text-[#b3b3b3] hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
+                className="p-1.5 text-content-secondary hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
                 title="Next"
               >
                 <SkipForward size={14} />
@@ -854,7 +856,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
               <button
                 type="button"
                 onClick={() => handleSetSizeMode('lyrics-small')}
-                className="p-1 text-[#888] hover:text-brand-400 rounded-md hover:bg-white/10 transition"
+                className="p-1 text-content-muted hover:text-brand-400 rounded-md hover:bg-white/10 transition"
                 title="2-Line Lyrics Mode"
               >
                 <Mic2 size={12} />
@@ -862,7 +864,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
               <button
                 type="button"
                 onClick={cycleSizeMode}
-                className="p-1 text-[#888] hover:text-white rounded-md hover:bg-white/10 transition"
+                className="p-1 text-content-muted hover:text-white rounded-md hover:bg-white/10 transition"
                 title="Expand Mini Player"
               >
                 <Maximize2 size={12} />
@@ -871,7 +873,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                 <button
                   type="button"
                   onClick={togglePiP}
-                  className="p-1 text-[#888] hover:text-brand-400 rounded-md hover:bg-white/10 transition"
+                  className="p-1 text-content-muted hover:text-brand-400 rounded-md hover:bg-white/10 transition"
                   title="Pop out Picture-in-Picture (Cross-tab window)"
                 >
                   <PictureInPicture2 size={12} />
@@ -880,7 +882,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1 text-[#888] hover:text-white rounded-md hover:bg-white/10 transition"
+                className="p-1 text-content-muted hover:text-white rounded-md hover:bg-white/10 transition"
                 title="Close"
               >
                 <X size={12} />
@@ -894,13 +896,13 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
               <img
                 src={currentTrack?.cover_url || '/api/covers/0'}
                 alt=""
-                className="w-10 h-10 rounded-lg object-cover bg-[#222] shrink-0 shadow-sm"
+                className="w-10 h-10 rounded-lg object-cover bg-surface-elevated shrink-0 shadow-sm"
               />
               <div className="flex-1 min-w-0 pr-1">
                 <p className="text-xs font-bold text-white truncate">
                   {currentTrack?.title || 'No Track'}
                 </p>
-                <p className="text-[10px] text-[#b3b3b3] truncate mt-0.5">
+                <p className="text-[10px] text-content-secondary truncate mt-0.5">
                   {currentTrack?.artist_name || ''}
                 </p>
               </div>
@@ -909,7 +911,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                 <button
                   type="button"
                   onClick={prevTrack}
-                  className="p-1 text-[#b3b3b3] hover:text-white transition"
+                  className="p-1 text-content-secondary hover:text-white transition"
                   title="Previous"
                 >
                   <SkipBack size={14} />
@@ -925,7 +927,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                 <button
                   type="button"
                   onClick={nextTrack}
-                  className="p-1 text-[#b3b3b3] hover:text-white transition"
+                  className="p-1 text-content-secondary hover:text-white transition"
                   title="Next"
                 >
                   <SkipForward size={14} />
@@ -936,7 +938,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                 <button
                   type="button"
                   onClick={() => handleSetSizeMode('lyrics-small')}
-                  className="p-1 text-[#888] hover:text-brand-400 rounded transition"
+                  className="p-1 text-content-muted hover:text-brand-400 rounded transition"
                   title="2-Line Lyrics Mode"
                 >
                   <Mic2 size={13} />
@@ -944,7 +946,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                 <button
                   type="button"
                   onClick={cycleSizeMode}
-                  className="p-1 text-[#888] hover:text-white rounded transition"
+                  className="p-1 text-content-muted hover:text-white rounded transition"
                   title="Resize Mini Player"
                 >
                   <Maximize2 size={12} />
@@ -953,7 +955,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                   <button
                     type="button"
                     onClick={togglePiP}
-                    className="p-1 text-[#888] hover:text-brand-400 rounded transition"
+                    className="p-1 text-content-muted hover:text-brand-400 rounded transition"
                     title="Pop out Picture-in-Picture (Cross-tab window)"
                   >
                     <ExternalLink size={12} />
@@ -962,7 +964,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                 <button
                   type="button"
                   onClick={onClose}
-                  className="p-1 text-[#888] hover:text-white rounded transition"
+                  className="p-1 text-content-muted hover:text-white rounded transition"
                   title="Close"
                 >
                   <X size={12} />
@@ -979,13 +981,13 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                   <img
                     src={currentTrack?.cover_url || '/api/covers/0'}
                     alt=""
-                    className="w-11 h-11 rounded-lg object-cover bg-[#222] shrink-0 shadow-md"
+                    className="w-11 h-11 rounded-lg object-cover bg-surface-elevated shrink-0 shadow-md"
                   />
                   <div className="truncate flex-1 min-w-0">
                     <p className="text-xs font-bold text-white truncate">
                       {currentTrack?.title || 'No Track'}
                     </p>
-                    <p className="text-[10px] text-[#b3b3b3] truncate mt-0.5">
+                    <p className="text-[10px] text-content-secondary truncate mt-0.5">
                       {currentTrack?.artist_name || ''}
                     </p>
                   </div>
@@ -995,7 +997,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                   <button
                     type="button"
                     onClick={() => handleSetSizeMode('lyrics-small')}
-                    className="p-1 text-[#888] hover:text-brand-400 rounded transition"
+                    className="p-1 text-content-muted hover:text-brand-400 rounded transition"
                     title="2-Line Lyrics Mode"
                   >
                     <Mic2 size={13} />
@@ -1003,7 +1005,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                   <button
                     type="button"
                     onClick={cycleSizeMode}
-                    className="p-1 text-[#888] hover:text-white rounded transition"
+                    className="p-1 text-content-muted hover:text-white rounded transition"
                     title="Shrink to 3-button mode"
                   >
                     <Minimize2 size={13} />
@@ -1012,7 +1014,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                     <button
                       type="button"
                       onClick={togglePiP}
-                      className="p-1 text-[#888] hover:text-brand-400 rounded transition"
+                      className="p-1 text-content-muted hover:text-brand-400 rounded transition"
                       title="Pop out Picture-in-Picture"
                     >
                       <ExternalLink size={13} />
@@ -1021,7 +1023,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                   <button
                     type="button"
                     onClick={onClose}
-                    className="p-1 text-[#888] hover:text-white rounded transition"
+                    className="p-1 text-content-muted hover:text-white rounded transition"
                     title="Close"
                   >
                     <X size={13} />
@@ -1042,7 +1044,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                 <button
                   type="button"
                   onClick={prevTrack}
-                  className="p-1.5 text-[#b3b3b3] hover:text-white rounded-full hover:bg-white/10 transition"
+                  className="p-1.5 text-content-secondary hover:text-white rounded-full hover:bg-white/10 transition"
                   title="Previous"
                 >
                   <SkipBack size={16} />
@@ -1058,7 +1060,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                 <button
                   type="button"
                   onClick={nextTrack}
-                  className="p-1.5 text-[#b3b3b3] hover:text-white rounded-full hover:bg-white/10 transition"
+                  className="p-1.5 text-content-secondary hover:text-white rounded-full hover:bg-white/10 transition"
                   title="Next"
                 >
                   <SkipForward size={16} />

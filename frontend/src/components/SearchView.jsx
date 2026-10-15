@@ -86,19 +86,19 @@ export const SearchView = ({
       {/* Search Input Box (fallback if not using TopBar) */}
       {propQuery === undefined && (
         <div className="relative max-w-md mb-8">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#b3b3b3]" size={20} />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-content-secondary" size={20} />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="What do you want to play?"
             autoFocus
-            className="w-full bg-[#1f1f1f] hover:bg-[#282828] focus:bg-[#282828] text-white pl-12 pr-10 py-3 rounded-full text-sm font-medium outline-none border border-transparent focus:border-white/20 transition placeholder-[#b3b3b3]"
+            className="w-full bg-surface-elevated hover:bg-surface-hover focus:bg-surface-hover text-content-primary pl-12 pr-10 py-3 rounded-full text-sm font-medium outline-none border border-transparent focus:border-border-strong transition placeholder:text-content-secondary"
           />
           {query && (
             <button
               onClick={() => setQuery('')}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-[#b3b3b3] hover:text-white"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-content-secondary hover:text-white"
             >
               <X size={18} />
             </button>
@@ -107,7 +107,7 @@ export const SearchView = ({
       )}
 
       {isLoading && (
-        <div className="flex items-center gap-3 text-sm text-[#b3b3b3] py-4">
+        <div className="flex items-center gap-3 text-sm text-content-secondary py-4">
           <div className="animate-spin rounded-full h-4 w-4 border-2 border-brand-500 border-t-transparent" />
           Searching your library...
         </div>
@@ -115,10 +115,10 @@ export const SearchView = ({
 
       {/* Empty State */}
       {!query && (
-        <div className="text-center py-20 text-[#666]">
+        <div className="text-center py-20 text-content-subtle">
           <Music size={48} className="mx-auto mb-3 opacity-40" />
-          <h3 className="text-lg font-bold text-[#999]">Search your music library</h3>
-          <p className="text-xs text-[#666] mt-1">Find tracks, artists, and albums indexed from your Unraid server.</p>
+          <h3 className="text-lg font-bold text-content-secondary">Search your music library</h3>
+          <p className="text-xs text-content-subtle mt-1">Find tracks, artists, and albums indexed from your Unraid server.</p>
         </div>
       )}
 
@@ -126,12 +126,12 @@ export const SearchView = ({
       {results && (
         <div className="space-y-10">
           {results.corrected_query && (
-            <div className="flex items-center gap-2 px-4 py-2.5 bg-brand-500/10 border border-brand-500/20 rounded-xl text-xs text-white">
+            <div className="flex items-center gap-2 px-4 py-2.5 bg-brand-500/10 border border-brand-500/20 rounded-xl text-xs text-content-primary">
               <Sparkles size={16} className="text-brand-500 shrink-0" />
               <span>
                 Showing results for <strong className="text-brand-500 font-bold">{results.corrected_query}</strong>
                 {results.query && results.query.toLowerCase() !== results.corrected_query.toLowerCase() && (
-                  <span className="text-[#888] ml-1.5">(auto-corrected from "{results.query}")</span>
+                  <span className="text-content-muted ml-1.5">(auto-corrected from "{results.query}")</span>
                 )}
               </span>
             </div>
@@ -140,7 +140,7 @@ export const SearchView = ({
           {/* Tracks Section */}
           {results.tracks && results.tracks.length > 0 && (
             <section>
-              <h2 className="text-xl font-bold text-white mb-4">Songs</h2>
+              <h2 className="text-xl font-bold text-content-primary mb-4">Songs</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {results.tracks.map((track) => {
                   const isCurrentTrack = currentTrack?.id === track.id;
@@ -172,23 +172,23 @@ export const SearchView = ({
                       }}
                       className={`flex items-center justify-between p-3 rounded-lg group cursor-pointer active:cursor-grabbing transition select-none ${
                         isCurrentTrack
-                          ? 'bg-[#242424] text-brand-500'
+                          ? 'bg-surface-elevated2 text-brand-500'
                           : selectedTrackId === track.id
-                          ? 'bg-[#2a2a2a] ring-1 ring-white/20 text-white'
-                          : 'hover:bg-[#1f1f1f] text-white'
+                          ? 'bg-surface-hover ring-1 ring-white/20 text-content-primary'
+                          : 'hover:bg-surface-elevated text-content-primary'
                       }`}
                     >
                       <div className="flex items-center gap-3 truncate">
                         <img
                           src={track.cover_url}
                           alt={track.title}
-                          className="w-11 h-11 rounded object-cover bg-[#222] shrink-0"
+                          className="w-11 h-11 rounded object-cover bg-surface-elevated2 shrink-0"
                         />
                         <div className="truncate">
-                          <p className={`text-sm font-medium truncate ${isCurrentTrack ? 'text-brand-500' : 'text-white'}`}>
+                          <p className={`text-sm font-medium truncate ${isCurrentTrack ? 'text-brand-500' : 'text-content-primary'}`}>
                             {track.title}
                           </p>
-                          <p className="text-xs text-[#b3b3b3] truncate mt-0.5">
+                          <p className="text-xs text-content-secondary truncate mt-0.5">
                             <span
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -219,7 +219,7 @@ export const SearchView = ({
                               e.stopPropagation();
                               onAddToPlaylist(track);
                             }}
-                            className="opacity-0 group-hover:opacity-100 p-1.5 text-[#b3b3b3] hover:text-white transition"
+                            className="opacity-0 group-hover:opacity-100 p-1.5 text-content-secondary hover:text-white transition"
                             title="Add to playlist"
                           >
                             <Plus size={16} />
@@ -231,7 +231,7 @@ export const SearchView = ({
                             toggleFavorite(track.id);
                           }}
                           className={`p-1.5 transition ${
-                            isFav ? 'text-brand-500' : 'opacity-0 group-hover:opacity-100 text-[#b3b3b3] hover:text-white'
+                            isFav ? 'text-brand-500' : 'opacity-0 group-hover:opacity-100 text-content-secondary hover:text-white'
                           }`}
                           title={isFav ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
                         >
@@ -280,19 +280,19 @@ export const SearchView = ({
                         onContextMenu(e, 'album', album);
                       }
                     }}
-                    className="bg-[#1f1f1f] hover:bg-[#282828] p-3.5 rounded-lg cursor-pointer transition group flex flex-col justify-between"
+                    className="bg-surface-elevated hover:bg-surface-hover p-3.5 rounded-lg cursor-pointer transition group flex flex-col justify-between"
                   >
                     <div>
                       <img
                         src={album.cover_url}
                         alt={album.title}
-                        className="w-full aspect-square object-cover rounded-md mb-3 bg-[#222]"
+                        className="w-full aspect-square object-cover rounded-md mb-3 bg-surface-elevated2"
                       />
-                      <h4 className="font-semibold text-sm text-white truncate group-hover:text-brand-400 transition">
+                      <h4 className="font-semibold text-sm text-content-primary truncate group-hover:text-brand-400 transition">
                         {album.title}
                       </h4>
                     </div>
-                    <p className="text-xs text-[#b3b3b3] truncate mt-1">
+                    <p className="text-xs text-content-secondary truncate mt-1">
                       <span
                         onClick={(e) => {
                           e.stopPropagation();
@@ -313,7 +313,7 @@ export const SearchView = ({
           {/* Artists Section */}
           {results.artists && results.artists.length > 0 && (
             <section>
-              <h2 className="text-xl font-bold text-white mb-4">Artists</h2>
+              <h2 className="text-xl font-bold text-content-primary mb-4">Artists</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {results.artists.map((artist) => (
                   <div
@@ -325,7 +325,7 @@ export const SearchView = ({
                         onContextMenu(e, 'artist', artist);
                       }
                     }}
-                    className="bg-[#1f1f1f] hover:bg-[#282828] p-4 rounded-lg cursor-pointer transition text-center group flex flex-col items-center justify-between"
+                    className="bg-surface-elevated hover:bg-surface-hover p-4 rounded-lg cursor-pointer transition text-center group flex flex-col items-center justify-between"
                   >
                     <img
                       src={artist.image_url || `/api/artists/${artist.id}/image`}
@@ -334,13 +334,13 @@ export const SearchView = ({
                         e.target.onerror = null;
                         e.target.src = '/api/covers/0';
                       }}
-                      className="w-20 h-20 sm:w-24 sm:h-24 mx-auto rounded-full object-cover mb-3 shadow-lg bg-[#242424] group-hover:scale-105 transition duration-300 border border-white/5"
+                      className="w-20 h-20 sm:w-24 sm:h-24 mx-auto rounded-full object-cover mb-3 shadow-lg bg-surface-elevated2 group-hover:scale-105 transition duration-300 border border-border-subtle"
                     />
                     <div className="w-full">
-                      <h4 className="font-bold text-sm text-white truncate group-hover:text-brand-400 transition">
+                      <h4 className="font-bold text-sm text-content-primary truncate group-hover:text-brand-400 transition">
                         {artist.name}
                       </h4>
-                      <p className="text-xs text-[#b3b3b3] mt-1">{artist.track_count} tracks</p>
+                      <p className="text-xs text-content-secondary mt-1">{artist.track_count} tracks</p>
                     </div>
                   </div>
                 ))}
@@ -350,7 +350,7 @@ export const SearchView = ({
 
           {results.tracks?.length === 0 && results.albums?.length === 0 && results.artists?.length === 0 && (
             <div className="text-center py-16 space-y-4">
-              <p className="text-sm text-[#888]">
+              <p className="text-sm text-content-muted">
                 {results.corrected_query
                   ? `No local tracks found for "${results.corrected_query}".`
                   : `No local tracks found for "${query}".`}

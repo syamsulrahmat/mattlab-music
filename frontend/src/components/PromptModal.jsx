@@ -61,7 +61,7 @@ export const PromptModal = ({
       }}
     >
       <div 
-        className="bg-[#242424] border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4"
+        className="bg-surface-elevated2 border border-border-medium rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3">
@@ -70,7 +70,7 @@ export const PromptModal = ({
           </div>
           <div>
             <h3 className="text-base font-bold text-white tracking-tight">{title}</h3>
-            {message && <p className="text-xs text-[#888] mt-0.5">{message}</p>}
+            {message && <p className="text-xs text-content-muted mt-0.5">{message}</p>}
           </div>
         </div>
 
@@ -86,7 +86,7 @@ export const PromptModal = ({
               }}
               placeholder={placeholder}
               disabled={isLoading}
-              className="w-full bg-[#181818] border border-white/10 focus:border-brand-500 text-white text-sm rounded-xl px-3.5 py-2.5 outline-none transition placeholder:text-[#666]"
+              className="w-full bg-surface-panel border border-border-medium focus:border-brand-500 text-content-primary text-sm rounded-xl px-3.5 py-2.5 outline-none transition placeholder:text-content-subtle"
             />
             {error && (
               <p className="flex items-center gap-1 text-[11px] text-red-400 mt-1.5">
@@ -101,7 +101,7 @@ export const PromptModal = ({
               type="button"
               onClick={onClose}
               disabled={isLoading}
-              className="px-4 py-2 rounded-full text-xs font-semibold text-[#b3b3b3] hover:text-white hover:bg-white/5 transition disabled:opacity-50"
+              className="px-4 py-2 rounded-full text-xs font-semibold text-content-secondary hover:text-white hover:bg-white/5 transition disabled:opacity-50"
             >
               {cancelText}
             </button>

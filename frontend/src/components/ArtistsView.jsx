@@ -22,9 +22,9 @@ export const ArtistsView = ({ onSelectArtist, onContextMenu }) => {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
         {[...Array(12)].map((_, i) => (
-          <div key={i} className="bg-[#1f1f1f] p-4 rounded-lg animate-pulse text-center">
-            <div className="w-24 h-24 mx-auto rounded-full bg-[#242424] mb-3" />
-            <div className="h-4 bg-[#242424] rounded w-3/4 mx-auto" />
+          <div key={i} className="bg-surface-elevated p-4 rounded-lg animate-pulse text-center">
+            <div className="w-24 h-24 mx-auto rounded-full bg-surface-elevated2 mb-3" />
+            <div className="h-4 bg-surface-elevated2 rounded w-3/4 mx-auto" />
           </div>
         ))}
       </div>
@@ -43,9 +43,9 @@ export const ArtistsView = ({ onSelectArtist, onContextMenu }) => {
               onContextMenu(e, 'artist', artist);
             }
           }}
-          className="bg-[#1f1f1f] hover:bg-[#282828] p-4 rounded-lg cursor-pointer transition text-center group flex flex-col items-center justify-between"
+          className="bg-surface-elevated hover:bg-surface-hover p-4 rounded-lg cursor-pointer transition text-center group flex flex-col items-center justify-between"
         >
-          <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden bg-[#242424] group-hover:scale-105 transition duration-300 flex items-center justify-center mb-4 shadow-lg border border-white/5">
+          <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden bg-surface-elevated2 group-hover:scale-105 transition duration-300 flex items-center justify-center mb-4 shadow-lg border border-border-subtle">
             <img
               src={artist.image_url || `/api/artists/${artist.id}/image`}
               alt={artist.name}
@@ -57,10 +57,10 @@ export const ArtistsView = ({ onSelectArtist, onContextMenu }) => {
             />
           </div>
           <div className="w-full">
-            <h3 className="font-bold text-sm text-white truncate group-hover:text-brand-400 transition">
+            <h3 className="font-bold text-sm text-content-primary truncate group-hover:text-brand-400 transition">
               {artist.name}
             </h3>
-            <p className="text-xs text-[#b3b3b3] mt-1">
+            <p className="text-xs text-content-secondary mt-1">
               Artist • {artist.album_count} {artist.album_count === 1 ? 'album' : 'albums'} • {artist.track_count} songs
             </p>
           </div>

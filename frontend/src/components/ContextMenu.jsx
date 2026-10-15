@@ -93,7 +93,7 @@ export const ContextMenu = ({
     <div
       ref={menuRef}
       style={{ top: `${adjustedY}px`, left: `${adjustedX}px` }}
-      className="fixed z-50 w-56 bg-[#282828] text-[#e0e0e0] rounded-md shadow-2xl border border-white/10 py-1.5 text-xs font-medium select-none animate-in fade-in zoom-in-95 duration-100"
+      className="fixed z-50 w-56 bg-surface-panel text-content-primary rounded-md shadow-2xl border border-border-medium py-1.5 text-xs font-medium select-none animate-in fade-in zoom-in-95 duration-100"
       onClick={(e) => e.stopPropagation()}
     >
       {type === 'track' && (
@@ -107,7 +107,7 @@ export const ContextMenu = ({
               }
               onClose();
             }}
-            className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+            className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
           >
             {isCurrentPlayingThis && isPlaying ? (
               <>
@@ -127,9 +127,9 @@ export const ContextMenu = ({
               addToQueue(data);
               onClose();
             }}
-            className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+            className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
           >
-            <ListPlus size={15} className="text-[#b3b3b3]" />
+            <ListPlus size={15} className="text-content-secondary" />
             <span>Add to queue</span>
           </button>
 
@@ -138,9 +138,9 @@ export const ContextMenu = ({
               playNextInQueue(data);
               onClose();
             }}
-            className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+            className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
           >
-            <CornerDownRight size={15} className="text-[#b3b3b3]" />
+            <CornerDownRight size={15} className="text-content-secondary" />
             <span>Play next</span>
           </button>
 
@@ -151,9 +151,9 @@ export const ContextMenu = ({
               toggleFavorite(data.id);
               onClose();
             }}
-            className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+            className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
           >
-            <Heart size={15} className={isFav ? 'fill-brand-500 text-brand-500' : 'text-[#b3b3b3]'} />
+            <Heart size={15} className={isFav ? 'fill-brand-500 text-brand-500' : 'text-content-secondary'} />
             <span>{isFav ? 'Remove from Liked Songs' : 'Save to your Liked Songs'}</span>
           </button>
 
@@ -163,9 +163,9 @@ export const ContextMenu = ({
                 onAddToPlaylist(data);
                 onClose();
               }}
-              className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+              className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
             >
-              <Plus size={15} className="text-[#b3b3b3]" />
+              <Plus size={15} className="text-content-secondary" />
               <span>Add to playlist</span>
             </button>
           )}
@@ -185,7 +185,7 @@ export const ContextMenu = ({
                       toggleKaraoke();
                       onClose();
                     }}
-                    className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center justify-between transition text-brand-400 hover:text-brand-300"
+                    className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center justify-between transition text-brand-400 hover:text-brand-300"
                   >
                     <div className="flex items-center gap-2.5">
                       {isKaraokeMode ? <MicOff size={15} className="text-brand-500" /> : <Mic size={15} className="text-brand-500" />}
@@ -205,7 +205,7 @@ export const ContextMenu = ({
                     if (!isKaraokeMode) toggleKaraoke();
                     onClose();
                   }}
-                  className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center justify-between transition text-brand-400 hover:text-brand-300"
+                  className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center justify-between transition text-brand-400 hover:text-brand-300"
                 >
                   <div className="flex items-center gap-2.5">
                     <Mic size={15} className="text-brand-500" />
@@ -233,7 +233,7 @@ export const ContextMenu = ({
                   generateKaraokeStems(data.id);
                   onClose();
                 }}
-                className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition text-brand-400 hover:text-brand-300"
+                className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition text-brand-400 hover:text-brand-300"
               >
                 <Mic size={15} className="text-brand-500" />
                 <span>Pre-cache Karaoke</span>
@@ -251,9 +251,9 @@ export const ContextMenu = ({
                 onSelectAlbum(data.album_id);
                 onClose();
               }}
-              className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+              className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
             >
-              <Disc3 size={15} className="text-[#b3b3b3]" />
+              <Disc3 size={15} className="text-content-secondary" />
               <span>Go to album</span>
             </button>
           )}
@@ -264,9 +264,9 @@ export const ContextMenu = ({
                 onSelectArtist(data.artist_id);
                 onClose();
               }}
-              className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+              className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
             >
-              <Mic2 size={15} className="text-[#b3b3b3]" />
+              <Mic2 size={15} className="text-content-secondary" />
               <span>Go to artist</span>
             </button>
           )}
@@ -305,7 +305,7 @@ export const ContextMenu = ({
               }
               onClose();
             }}
-            className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+            className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
           >
             <Play size={15} className="text-brand-500" />
             <span>Play album</span>
@@ -317,9 +317,9 @@ export const ContextMenu = ({
                 onSelectAlbum(data.id);
                 onClose();
               }}
-              className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+              className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
             >
-              <Disc3 size={15} className="text-[#b3b3b3]" />
+              <Disc3 size={15} className="text-content-secondary" />
               <span>Go to album</span>
             </button>
           )}
@@ -330,9 +330,9 @@ export const ContextMenu = ({
                 onSelectArtist(data.artist_id);
                 onClose();
               }}
-              className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+              className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
             >
-              <Mic2 size={15} className="text-[#b3b3b3]" />
+              <Mic2 size={15} className="text-content-secondary" />
               <span>Go to artist</span>
             </button>
           )}
@@ -353,7 +353,7 @@ export const ContextMenu = ({
                 console.error(e);
               }
             }}
-            className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition text-brand-400 hover:text-brand-300"
+            className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition text-brand-400 hover:text-brand-300"
           >
             <Mic size={15} className="text-brand-500" />
             <span>Pre-cache Karaoke</span>
@@ -367,7 +367,7 @@ export const ContextMenu = ({
             onSelectArtist(data.id);
             onClose();
           }}
-          className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+          className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
         >
           <Mic2 size={15} className="text-brand-500" />
           <span>Go to artist</span>
@@ -392,7 +392,7 @@ export const ContextMenu = ({
                 console.error('Failed to play playlist:', err);
               }
             }}
-            className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+            className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
           >
             <Play size={15} className="text-brand-500" />
             <span>Play playlist</span>
@@ -414,9 +414,9 @@ export const ContextMenu = ({
                 console.error('Failed to add playlist to queue:', err);
               }
             }}
-            className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+            className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
           >
-            <ListPlus size={15} className="text-[#b3b3b3]" />
+            <ListPlus size={15} className="text-content-secondary" />
             <span>Add to queue</span>
           </button>
 
@@ -427,9 +427,9 @@ export const ContextMenu = ({
                 onClose();
                 onSelectPlaylist(data.id);
               }}
-              className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+              className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
             >
-              <ListMusic size={15} className="text-[#b3b3b3]" />
+              <ListMusic size={15} className="text-content-secondary" />
               <span>Open playlist</span>
             </button>
           )}
@@ -453,7 +453,7 @@ export const ContextMenu = ({
                 console.error('Failed to pre-cache playlist karaoke:', err);
               }
             }}
-            className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition text-brand-400 hover:text-brand-300"
+            className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition text-brand-400 hover:text-brand-300"
           >
             <Mic size={15} className="text-brand-500" />
             <span>Pre-cache Karaoke</span>
@@ -467,9 +467,9 @@ export const ContextMenu = ({
               onClose();
               onPromptRenamePlaylist?.(data);
             }}
-            className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+            className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
           >
-            <Edit2 size={15} className="text-[#b3b3b3]" />
+            <Edit2 size={15} className="text-content-secondary" />
             <span>Rename</span>
           </button>
 
@@ -487,7 +487,7 @@ export const ContextMenu = ({
                     console.error('Failed to trigger sync:', err);
                   }
                 }}
-                className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition text-[#1DB954]"
+                className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition text-brand-500"
               >
                 <RefreshCw size={15} />
                 <span>Sync with Spotify</span>
@@ -498,9 +498,9 @@ export const ContextMenu = ({
                   onClose();
                   window.open(`https://open.spotify.com/playlist/${data.spotify_id}`, '_blank', 'noopener,noreferrer');
                 }}
-                className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+                className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
               >
-                <ExternalLink size={15} className="text-[#1DB954]" />
+                <ExternalLink size={15} className="text-brand-500" />
                 <span>Open on Spotify</span>
               </button>
 
@@ -509,7 +509,7 @@ export const ContextMenu = ({
                   onClose();
                   onPromptTakeOwnership?.(data);
                 }}
-                className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition text-brand-400 hover:text-brand-300"
+                className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition text-brand-400 hover:text-brand-300"
               >
                 <UserCheck size={15} />
                 <span>Take ownership</span>
@@ -550,7 +550,7 @@ export const ContextMenu = ({
                 console.error('Failed to play favorites:', err);
               }
             }}
-            className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+            className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
           >
             <Play size={15} className="text-brand-500" />
             <span>Play Liked Songs</span>
@@ -570,9 +570,9 @@ export const ContextMenu = ({
                 console.error('Failed to add favorites to queue:', err);
               }
             }}
-            className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+            className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
           >
-            <ListPlus size={15} className="text-[#b3b3b3]" />
+            <ListPlus size={15} className="text-content-secondary" />
             <span>Add to queue</span>
           </button>
 
@@ -593,7 +593,7 @@ export const ContextMenu = ({
                 console.error('Failed to pre-cache favorites karaoke:', err);
               }
             }}
-            className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition text-brand-400 hover:text-brand-300"
+            className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition text-brand-400 hover:text-brand-300"
           >
             <Mic size={15} className="text-brand-500" />
             <span>Pre-cache Karaoke</span>
@@ -605,7 +605,7 @@ export const ContextMenu = ({
                 onClose();
                 onSelectTab('favorites');
               }}
-              className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+              className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
             >
               <Heart size={15} className="fill-brand-500 text-brand-500" />
               <span>Go to Liked Songs</span>
@@ -622,7 +622,7 @@ export const ContextMenu = ({
                 onClose();
                 onCreatePlaylistPrompt();
               }}
-              className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition"
+              className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
             >
               <Plus size={15} className="text-brand-500" />
               <span>Create playlist</span>
@@ -635,7 +635,7 @@ export const ContextMenu = ({
                 onClose();
                 onImportSpotifyPrompt();
               }}
-              className="w-full text-left px-3.5 py-2 hover:bg-[#3e3e3e] hover:text-white flex items-center gap-2.5 transition text-[#1DB954]"
+              className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition text-brand-500"
             >
               <SpotifyIcon size={15} />
               <span>Import Spotify playlist</span>

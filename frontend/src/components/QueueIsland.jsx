@@ -20,16 +20,16 @@ export const QueueIsland = ({
   const isQueueEmpty = !currentTrack && queue.length === 0;
 
   return (
-    <aside className="hidden lg:flex flex-col h-full w-[300px] shrink-0 bg-[#121212] rounded-lg overflow-hidden select-none border border-white/5">
+    <aside className="hidden lg:flex flex-col h-full w-[300px] shrink-0 bg-surface-island rounded-lg overflow-hidden select-none border border-border-subtle">
       {/* Header */}
-      <div className="px-4 py-3.5 flex items-center justify-between border-b border-white/5">
+      <div className="px-4 py-3.5 flex items-center justify-between border-b border-border-subtle">
         <div className="flex items-center gap-2">
           <ListMusic size={18} className="text-brand-500" />
-          <h3 className="font-bold text-sm text-white tracking-tight">Play Queue</h3>
+          <h3 className="font-bold text-sm text-content-primary tracking-tight">Play Queue</h3>
         </div>
         <button
           onClick={onClose}
-          className="w-8 h-8 rounded-full hover:bg-[#1f1f1f] text-[#b3b3b3] hover:text-white flex items-center justify-center transition"
+          className="w-8 h-8 rounded-full hover:bg-surface-elevated text-content-secondary hover:text-content-primary flex items-center justify-center transition"
           title="Close Queue"
         >
           <X size={16} />
@@ -41,11 +41,11 @@ export const QueueIsland = ({
         {isQueueEmpty ? (
           /* Centered Empty State with Green Button */
           <div className="h-full flex flex-col items-center justify-center text-center px-4 py-12">
-            <div className="w-16 h-16 rounded-full bg-[#1f1f1f] flex items-center justify-center text-brand-500 mb-4 shadow-lg">
+            <div className="w-16 h-16 rounded-full bg-surface-elevated flex items-center justify-center text-brand-500 mb-4 shadow-lg">
               <Compass size={28} />
             </div>
-            <h4 className="font-bold text-white text-base mb-1">Your queue is empty</h4>
-            <p className="text-xs text-[#b3b3b3] mb-6 max-w-[200px]">
+            <h4 className="font-bold text-content-primary text-base mb-1">Your queue is empty</h4>
+            <p className="text-xs text-content-secondary mb-6 max-w-[200px]">
               Add songs from your albums or playlists to queue them up here.
             </p>
             <button
@@ -59,7 +59,7 @@ export const QueueIsland = ({
           <>
             {/* Now Playing */}
             <div>
-              <span className="text-xs font-bold text-[#b3b3b3] uppercase tracking-wider block mb-2.5">
+              <span className="text-xs font-bold text-content-secondary uppercase tracking-wider block mb-2.5">
                 Now Playing
               </span>
               {currentTrack ? (
@@ -83,13 +83,13 @@ export const QueueIsland = ({
                       onContextMenu(e, 'track', currentTrack);
                     }
                   }}
-                  className="flex items-center gap-3 p-2.5 bg-[#1f1f1f] rounded-lg border border-white/5 shadow-sm group cursor-grab active:cursor-grabbing select-none"
+                  className="flex items-center gap-3 p-2.5 bg-surface-elevated rounded-lg border border-border-subtle shadow-sm group cursor-grab active:cursor-grabbing select-none"
                 >
                   <img
                     src={currentTrack.cover_url || '/api/covers/0'}
                     alt={currentTrack.title}
                     onClick={() => onSelectAlbum && onSelectAlbum(currentTrack.album_id)}
-                    className="w-12 h-12 rounded object-cover bg-[#282828] shrink-0 cursor-pointer hover:opacity-90 transition"
+                    className="w-12 h-12 rounded object-cover bg-surface-hover shrink-0 cursor-pointer hover:opacity-90 transition"
                   />
                   <div className="truncate flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 justify-between">
@@ -111,21 +111,21 @@ export const QueueIsland = ({
                     </div>
                     <p 
                       onClick={() => onSelectArtist && onSelectArtist(currentTrack.artist_id)}
-                      className="text-[11px] text-[#b3b3b3] truncate mt-0.5 cursor-pointer hover:text-white hover:underline"
+                      className="text-[11px] text-content-secondary truncate mt-0.5 cursor-pointer hover:text-content-primary hover:underline"
                     >
                       {currentTrack.artist_name}
                     </p>
                   </div>
                 </div>
               ) : (
-                <p className="text-xs text-[#666]">Nothing playing right now</p>
+                <p className="text-xs text-content-subtle">Nothing playing right now</p>
               )}
             </div>
 
             {/* Next Up */}
             <div>
               <div className="flex items-center justify-between mb-2.5">
-                <span className="text-xs font-bold text-[#b3b3b3] uppercase tracking-wider">
+                <span className="text-xs font-bold text-content-secondary uppercase tracking-wider">
                   Next Up ({upcomingTracks.length})
                 </span>
               </div>
@@ -202,21 +202,21 @@ export const QueueIsland = ({
                               onContextMenu(e, 'track', track);
                             }
                           }}
-                          className={`flex items-center gap-2 p-2 rounded-md hover:bg-[#1f1f1f] group cursor-pointer transition select-none border border-transparent ${
+                          className={`flex items-center gap-2 p-2 rounded-md hover:bg-surface-elevated group cursor-pointer transition select-none border border-transparent ${
                             isBeingDragged ? 'opacity-40 border-dashed border-white/20' : ''
                           }`}
                         >
-                          <span className="text-[11px] font-mono text-[#666] w-4 text-center shrink-0">
+                          <span className="text-[11px] font-mono text-content-subtle w-4 text-center shrink-0">
                             {i + 1}
                           </span>
                           <img
                             src={track.cover_url || '/api/covers/0'}
                             alt=""
-                            className="w-9 h-9 rounded object-cover bg-[#242424] shrink-0"
+                            className="w-9 h-9 rounded object-cover bg-surface-elevated2 shrink-0"
                           />
                           <div className="truncate flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-1.5">
-                              <p className="text-xs font-medium text-white group-hover:text-brand-400 truncate">
+                              <p className="text-xs font-medium text-content-primary group-hover:text-brand-400 truncate">
                                 {track.title}
                               </p>
                               {isTrackPreloaded(track.id) && (
@@ -234,7 +234,7 @@ export const QueueIsland = ({
                                 e.stopPropagation();
                                 if (onSelectArtist) onSelectArtist(track.artist_id);
                               }}
-                              className="text-[10px] text-[#b3b3b3] truncate hover:text-white hover:underline cursor-pointer"
+                              className="text-[10px] text-content-secondary truncate hover:text-content-primary hover:underline cursor-pointer"
                             >
                               {track.artist_name}
                             </p>
@@ -254,7 +254,7 @@ export const QueueIsland = ({
                   })}
                 </div>
               ) : (
-                <div className="text-xs text-[#666] py-6 text-center">
+                <div className="text-xs text-content-subtle py-6 text-center">
                   No upcoming songs in queue
                 </div>
               )}

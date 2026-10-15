@@ -57,10 +57,10 @@ export const HomeShelves = ({
       <div className="space-y-8 animate-pulse p-4 sm:p-6">
         {[...Array(3)].map((_, idx) => (
           <div key={idx} className="space-y-4">
-            <div className="h-6 bg-[#1f1f1f] rounded w-48" />
+            <div className="h-6 bg-surface-elevated rounded w-48" />
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-44 bg-[#1f1f1f] rounded-lg" />
+                <div key={i} className="h-44 bg-surface-elevated rounded-lg" />
               ))}
             </div>
           </div>
@@ -77,14 +77,14 @@ export const HomeShelves = ({
       <section>
         <div className="flex items-baseline justify-between mb-4">
           <h2 
-            className="text-xl sm:text-2xl font-bold text-white tracking-tight hover:underline cursor-pointer" 
+            className="text-xl sm:text-2xl font-bold text-content-primary tracking-tight hover:underline cursor-pointer" 
             onClick={onShowAllAlbums}
           >
             Trending / Recently Added
           </h2>
           <button
             onClick={onShowAllAlbums}
-            className="text-xs font-bold text-[#b3b3b3] hover:text-white transition"
+            className="text-xs font-bold text-content-secondary hover:text-white transition"
           >
             Show all
           </button>
@@ -104,9 +104,9 @@ export const HomeShelves = ({
                     onContextMenu(e, 'album', album);
                   }
                 }}
-                className="group bg-[#1f1f1f] hover:bg-[#282828] p-3 rounded-lg transition duration-200 cursor-pointer flex flex-col justify-between"
+                className="group bg-surface-elevated hover:bg-surface-hover p-3 rounded-lg transition duration-200 cursor-pointer flex flex-col justify-between"
               >
-                <div className="relative aspect-square mb-3 rounded-md overflow-hidden bg-[#242424] shadow-md">
+                <div className="relative aspect-square mb-3 rounded-md overflow-hidden bg-surface-elevated2 shadow-md">
                   <img
                     src={album.cover_url}
                     alt={album.title}
@@ -133,11 +133,11 @@ export const HomeShelves = ({
 
                 <div>
                   <h3 className={`font-semibold text-xs sm:text-sm truncate transition ${
-                    isThisAlbum ? 'text-brand-500' : 'text-white'
+                    isThisAlbum ? 'text-brand-500' : 'text-content-primary'
                   }`}>
                     {album.title}
                   </h3>
-                  <p className="text-[11px] text-[#b3b3b3] truncate mt-0.5">
+                  <p className="text-[11px] text-content-secondary truncate mt-0.5">
                     <span 
                       onClick={(e) => {
                         e.stopPropagation();
@@ -159,14 +159,14 @@ export const HomeShelves = ({
       <section>
         <div className="flex items-baseline justify-between mb-4">
           <h2 
-            className="text-xl sm:text-2xl font-bold text-white tracking-tight hover:underline cursor-pointer" 
+            className="text-xl sm:text-2xl font-bold text-content-primary tracking-tight hover:underline cursor-pointer" 
             onClick={onShowAllArtists}
           >
             Popular Artists
           </h2>
           <button
             onClick={onShowAllArtists}
-            className="text-xs font-bold text-[#b3b3b3] hover:text-white transition"
+            className="text-xs font-bold text-content-secondary hover:text-white transition"
           >
             Show all
           </button>
@@ -183,9 +183,9 @@ export const HomeShelves = ({
                   onContextMenu(e, 'artist', artist);
                 }
               }}
-              className="group bg-[#1f1f1f] hover:bg-[#282828] p-3 rounded-lg transition duration-200 cursor-pointer text-center flex flex-col items-center justify-between"
+              className="group bg-surface-elevated hover:bg-surface-hover p-3 rounded-lg transition duration-200 cursor-pointer text-center flex flex-col items-center justify-between"
             >
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden bg-[#242424] group-hover:scale-105 transition duration-300 flex items-center justify-center mb-3 shadow-lg border border-white/5">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden bg-surface-elevated2 group-hover:scale-105 transition duration-300 flex items-center justify-center mb-3 shadow-lg border border-border-subtle">
                 <img
                   src={artist.image_url || `/api/artists/${artist.id}/image`}
                   alt={artist.name}
@@ -197,10 +197,10 @@ export const HomeShelves = ({
                 />
               </div>
               <div className="w-full">
-                <h3 className="font-semibold text-xs sm:text-sm text-white truncate group-hover:text-brand-400 transition">
+                <h3 className="font-semibold text-xs sm:text-sm text-content-primary truncate group-hover:text-brand-400 transition">
                   {artist.name}
                 </h3>
-                <p className="text-[11px] text-[#b3b3b3] mt-0.5">
+                <p className="text-[11px] text-content-secondary mt-0.5">
                   Artist • {artist.track_count} songs
                 </p>
               </div>
@@ -213,14 +213,14 @@ export const HomeShelves = ({
       <section>
         <div className="flex items-baseline justify-between mb-4">
           <h2 
-            className="text-xl sm:text-2xl font-bold text-white tracking-tight hover:underline cursor-pointer" 
+            className="text-xl sm:text-2xl font-bold text-content-primary tracking-tight hover:underline cursor-pointer" 
             onClick={onShowAllAlbums}
           >
             Your Albums
           </h2>
           <button
             onClick={onShowAllAlbums}
-            className="text-xs font-bold text-[#b3b3b3] hover:text-white transition"
+            className="text-xs font-bold text-content-secondary hover:text-white transition"
           >
             Show all
           </button>
@@ -240,9 +240,9 @@ export const HomeShelves = ({
                     onContextMenu(e, 'album', album);
                   }
                 }}
-                className="group bg-[#1f1f1f] hover:bg-[#282828] p-3 rounded-lg transition duration-200 cursor-pointer flex flex-col justify-between"
+                className="group bg-surface-elevated hover:bg-surface-hover p-3 rounded-lg transition duration-200 cursor-pointer flex flex-col justify-between"
               >
-                <div className="relative aspect-square mb-3 rounded-md overflow-hidden bg-[#242424] shadow-md">
+                <div className="relative aspect-square mb-3 rounded-md overflow-hidden bg-surface-elevated2 shadow-md">
                   <img
                     src={album.cover_url}
                     alt={album.title}
@@ -268,11 +268,11 @@ export const HomeShelves = ({
 
                 <div>
                   <h3 className={`font-semibold text-xs sm:text-sm truncate transition ${
-                    isThisAlbum ? 'text-brand-500' : 'text-white'
+                    isThisAlbum ? 'text-brand-500' : 'text-content-primary'
                   }`}>
                     {album.title}
                   </h3>
-                  <p className="text-[11px] text-[#b3b3b3] truncate mt-0.5">
+                  <p className="text-[11px] text-content-secondary truncate mt-0.5">
                     <span
                       onClick={(e) => {
                         e.stopPropagation();

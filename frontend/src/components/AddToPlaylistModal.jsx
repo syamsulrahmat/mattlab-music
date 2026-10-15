@@ -86,21 +86,21 @@ export const AddToPlaylistModal = ({ track, isOpen, onClose, onPlaylistUpdated }
       onClick={onClose}
     >
       <div 
-        className="bg-[#242424] border border-[#333] rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-in zoom-in-95 duration-150 cursor-default"
+        className="bg-surface-elevated2 border border-border-medium rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-in zoom-in-95 duration-150 cursor-default"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-white text-base">Add to playlist</h3>
-          <button onClick={onClose} className="text-[#888] hover:text-white transition">
+          <h3 className="font-bold text-content-primary text-base">Add to playlist</h3>
+          <button onClick={onClose} className="text-content-muted hover:text-content-primary transition">
             <X size={20} />
           </button>
         </div>
 
-        <div className="flex items-center gap-3 p-2 bg-[#181818] rounded-lg mb-4">
-          <img src={track.cover_url} alt="" className="w-10 h-10 rounded object-cover bg-[#282828]" />
+        <div className="flex items-center gap-3 p-2 bg-surface-panel rounded-lg mb-4">
+          <img src={track.cover_url} alt="" className="w-10 h-10 rounded object-cover bg-surface-elevated" />
           <div className="truncate">
-            <p className="text-xs font-semibold text-white truncate">{track.title}</p>
-            <p className="text-[11px] text-[#888] truncate">{track.artist_name}</p>
+            <p className="text-xs font-semibold text-content-primary truncate">{track.title}</p>
+            <p className="text-[11px] text-content-muted truncate">{track.artist_name}</p>
           </div>
         </div>
 
@@ -120,14 +120,14 @@ export const AddToPlaylistModal = ({ track, isOpen, onClose, onPlaylistUpdated }
                 key={pl.id}
                 onClick={() => handleAddToPlaylist(pl.id)}
                 disabled={isAdded || isExisting}
-                className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-[#333] transition text-left text-xs font-medium text-white disabled:opacity-60"
+                className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-surface-active transition text-left text-xs font-medium text-content-primary disabled:opacity-60"
               >
                 <div className="flex items-center gap-2.5 truncate">
-                  <Music size={14} className="text-[#1DB954] shrink-0" />
+                  <Music size={14} className="text-brand-500 shrink-0" />
                   <span className="truncate">{pl.name}</span>
                 </div>
                 {isAdded ? (
-                  <span className="flex items-center gap-1 text-[#1DB954] text-[11px] font-bold">
+                  <span className="flex items-center gap-1 text-brand-500 text-[11px] font-bold">
                     <Check size={14} /> Added
                   </span>
                 ) : isExisting ? (
@@ -135,14 +135,14 @@ export const AddToPlaylistModal = ({ track, isOpen, onClose, onPlaylistUpdated }
                     ⚠️ Already exists
                   </span>
                 ) : (
-                  <Plus size={16} className="text-[#888]" />
+                  <Plus size={16} className="text-content-muted" />
                 )}
               </button>
             );
           })}
 
           {playlists.length === 0 && !isCreating && (
-            <p className="text-xs text-[#888] text-center py-4">No playlists yet</p>
+            <p className="text-xs text-content-muted text-center py-4">No playlists yet</p>
           )}
         </div>
 
@@ -155,19 +155,19 @@ export const AddToPlaylistModal = ({ track, isOpen, onClose, onPlaylistUpdated }
               onChange={(e) => setNewPlaylistName(e.target.value)}
               placeholder="Playlist name..."
               autoFocus
-              className="w-full bg-[#181818] border border-[#333] text-white text-xs px-3 py-2 rounded-lg outline-none focus:border-[#1DB954]"
+              className="w-full bg-surface-panel border border-border-medium text-content-primary text-xs px-3 py-2 rounded-lg outline-none focus:border-brand-500"
             />
             <div className="flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setIsCreating(false)}
-                className="px-3 py-1.5 text-xs text-[#888] hover:text-white"
+                className="px-3 py-1.5 text-xs text-content-muted hover:text-content-primary"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-3 py-1.5 text-xs bg-[#1DB954] text-black font-bold rounded-lg hover:bg-brand-400"
+                className="px-3 py-1.5 text-xs bg-brand-500 text-black font-bold rounded-lg hover:bg-brand-400"
               >
                 Create & Add
               </button>
@@ -176,7 +176,7 @@ export const AddToPlaylistModal = ({ track, isOpen, onClose, onPlaylistUpdated }
         ) : (
           <button
             onClick={() => setIsCreating(true)}
-            className="w-full py-2 bg-[#333] hover:bg-[#3e3e3e] text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition"
+            className="w-full py-2 bg-surface-active hover:bg-surface-hover text-content-primary text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition"
           >
             <Plus size={14} /> New Playlist
           </button>

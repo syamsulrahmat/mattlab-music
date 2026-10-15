@@ -43,16 +43,16 @@ export const Sidebar = ({
         {/* Brand */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => handleNavClick('albums')}>
-            <div className="w-10 h-10 rounded-full bg-[#1DB954] flex items-center justify-center text-black font-bold shadow-lg shadow-[#1DB954]/20">
+            <div className="w-10 h-10 rounded-full bg-brand-500 flex items-center justify-center text-black font-bold shadow-lg shadow-brand-500/20">
               <Music2 size={22} className="stroke-[2.5]" />
             </div>
             <div>
-              <h1 className="font-bold text-lg tracking-tight text-white">MattLab</h1>
-              <p className="text-xs text-[#B3B3B3] font-medium -mt-0.5">Music Library</p>
+              <h1 className="font-bold text-lg tracking-tight text-content-primary">MattLab</h1>
+              <p className="text-xs text-content-secondary font-medium -mt-0.5">Music Library</p>
             </div>
           </div>
           {onCloseMobile && (
-            <button onClick={onCloseMobile} className="md:hidden text-[#888] hover:text-white p-1">
+            <button onClick={onCloseMobile} className="md:hidden text-content-muted hover:text-content-primary p-1">
               <X size={20} />
             </button>
           )}
@@ -69,8 +69,8 @@ export const Sidebar = ({
                 onClick={() => handleNavClick(item.id)}
                 className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                   isActive
-                    ? 'bg-[#282828] text-white shadow-sm'
-                    : 'text-[#B3B3B3] hover:text-white hover:bg-[#181818]'
+                    ? 'bg-surface-hover text-content-primary shadow-sm'
+                    : 'text-content-secondary hover:text-content-primary hover:bg-surface-panel'
                 }`}
               >
                 {item.isSpecial ? (
@@ -78,7 +78,7 @@ export const Sidebar = ({
                     <Icon size={14} className="fill-white text-white" />
                   </div>
                 ) : (
-                  <Icon size={20} className={isActive ? 'text-[#1DB954]' : ''} />
+                  <Icon size={20} className={isActive ? 'text-brand-500' : ''} />
                 )}
                 {item.label}
               </button>
@@ -87,15 +87,15 @@ export const Sidebar = ({
         </nav>
 
         {/* Playlists Section */}
-        <div className="flex-1 flex flex-col min-h-0 border-t border-[#222] pt-4">
+        <div className="flex-1 flex flex-col min-h-0 border-t border-border-subtle pt-4">
           <div className="flex items-center justify-between mb-2 px-2">
-            <span className="text-xs font-bold text-[#888] uppercase tracking-wider">Playlists</span>
+            <span className="text-xs font-bold text-content-muted uppercase tracking-wider">Playlists</span>
             <button
               onClick={() => {
                 onCreatePlaylistPrompt();
                 if (onCloseMobile) onCloseMobile();
               }}
-              className="text-[#888] hover:text-white p-1 rounded transition"
+              className="text-content-muted hover:text-content-primary p-1 rounded transition"
               title="Create Playlist"
             >
               <ListPlus size={16} />
@@ -109,42 +109,42 @@ export const Sidebar = ({
                 onClick={() => handlePlaylistClick(pl.id)}
                 className={`w-full text-left px-3 py-2 rounded-md truncate transition font-medium ${
                   activeTab === 'playlist-detail' && pl.id === onSelectPlaylist?.currentId
-                    ? 'text-[#1DB954] bg-[#242424]'
-                    : 'text-[#B3B3B3] hover:text-white hover:bg-[#181818]'
+                    ? 'text-brand-500 bg-surface-elevated2'
+                    : 'text-content-secondary hover:text-content-primary hover:bg-surface-panel'
                 }`}
               >
                 {pl.name}
               </button>
             ))}
             {playlists.length === 0 && (
-              <p className="text-[11px] text-[#666] px-3 py-1">No playlists yet</p>
+              <p className="text-[11px] text-content-subtle px-3 py-1">No playlists yet</p>
             )}
           </div>
         </div>
       </div>
 
       {/* Library Stats & Refresh */}
-      <div className="bg-[#181818] rounded-xl p-3.5 border border-[#282828] mt-4">
-        <div className="text-[11px] font-semibold text-[#888] uppercase tracking-wider mb-1.5">
+      <div className="bg-surface-panel rounded-xl p-3.5 border border-border-medium mt-4">
+        <div className="text-[11px] font-semibold text-content-muted uppercase tracking-wider mb-1.5">
           Library Info
         </div>
         {stats ? (
-          <div className="text-[11px] text-[#888] space-y-0.5 mb-2.5">
-            <p><span className="text-white font-medium">{stats.tracks.toLocaleString()}</span> songs</p>
-            <p><span className="text-white font-medium">{stats.albums.toLocaleString()}</span> albums</p>
-            <p><span className="text-white font-medium">{stats.artists.toLocaleString()}</span> artists</p>
-            <p><span className="text-white font-medium">{stats.total_duration_hours}</span> hours total</p>
+          <div className="text-[11px] text-content-muted space-y-0.5 mb-2.5">
+            <p><span className="text-content-primary font-medium">{stats.tracks.toLocaleString()}</span> songs</p>
+            <p><span className="text-content-primary font-medium">{stats.albums.toLocaleString()}</span> albums</p>
+            <p><span className="text-content-primary font-medium">{stats.artists.toLocaleString()}</span> artists</p>
+            <p><span className="text-content-primary font-medium">{stats.total_duration_hours}</span> hours total</p>
           </div>
         ) : (
-          <div className="text-[11px] text-[#666] mb-2.5">Loading stats...</div>
+          <div className="text-[11px] text-content-subtle mb-2.5">Loading stats...</div>
         )}
 
         <button
           onClick={handleScanClick}
           disabled={isScanning}
-          className="w-full flex items-center justify-center gap-2 py-1.5 px-3 bg-[#282828] hover:bg-[#333] text-white text-xs font-semibold rounded-md transition disabled:opacity-50"
+          className="w-full flex items-center justify-center gap-2 py-1.5 px-3 bg-surface-hover hover:bg-surface-active text-content-primary text-xs font-semibold rounded-md transition disabled:opacity-50"
         >
-          <RefreshCw size={13} className={isScanning ? 'animate-spin text-[#1DB954]' : ''} />
+          <RefreshCw size={13} className={isScanning ? 'animate-spin text-brand-500' : ''} />
           {isScanning ? 'Scanning...' : 'Rescan Library'}
         </button>
       </div>
@@ -154,7 +154,7 @@ export const Sidebar = ({
   return (
     <>
       {/* Desktop Sidebar (Hidden on Mobile) */}
-      <aside className="hidden md:flex md:w-64 bg-black flex-col shrink-0 border-r border-[#222]">
+      <aside className="hidden md:flex md:w-64 bg-surface-base flex-col shrink-0 border-r border-border-subtle">
         {sidebarContent}
       </aside>
 
@@ -162,10 +162,10 @@ export const Sidebar = ({
       {isMobileOpen && (
         <div className="fixed inset-0 z-50 md:hidden flex">
           <div 
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm"
+            className="fixed inset-0 bg-surface-base/80 backdrop-blur-sm"
             onClick={onCloseMobile}
           />
-          <aside className="relative w-72 max-w-[80vw] bg-black h-full border-r border-[#222] shadow-2xl z-10">
+          <aside className="relative w-72 max-w-[80vw] bg-surface-base h-full border-r border-border-subtle shadow-2xl z-10">
             {sidebarContent}
           </aside>
         </div>

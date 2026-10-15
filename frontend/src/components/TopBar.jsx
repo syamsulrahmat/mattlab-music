@@ -144,7 +144,7 @@ export const TopBar = ({
   };
 
   return (
-    <header className="h-16 bg-[#000000] px-4 md:px-5 flex items-center justify-between gap-4 z-40 select-none shrink-0 border-b border-black">
+    <header className="h-16 bg-surface-base px-4 md:px-5 flex items-center justify-between gap-4 z-40 select-none shrink-0 border-b border-border-subtle">
       {/* Left: MattLab Brand */}
       <div className="flex items-center gap-3 shrink-0">
         <div 
@@ -154,10 +154,10 @@ export const TopBar = ({
           <MattLabLogo
             variant="badge"
             bgColor="var(--brand-primary)"
-            color="#000000"
+            color="var(--surface-base)"
             className="w-9 h-9 rounded-full shadow-md group-hover:scale-105 transition"
           />
-          <span className="font-extrabold text-lg tracking-tight text-white group-hover:text-brand-400 transition hidden sm:inline">
+          <span className="font-extrabold text-lg tracking-tight text-content-primary group-hover:text-brand-400 transition hidden sm:inline">
             MattLab Music
           </span>
         </div>
@@ -168,7 +168,7 @@ export const TopBar = ({
         {/* Circular Home button */}
         <button
           onClick={onGoHome}
-          className="w-10 h-10 rounded-full bg-[#1f1f1f] hover:bg-[#282828] text-white flex items-center justify-center transition hover:scale-105 active:scale-95 shrink-0"
+          className="w-10 h-10 rounded-full bg-surface-elevated hover:bg-surface-hover text-content-primary flex items-center justify-center transition hover:scale-105 active:scale-95 shrink-0"
           title="Home"
         >
           <Home size={20} />
@@ -176,7 +176,7 @@ export const TopBar = ({
 
         {/* Pill/Capsule Search Input: matching floating search dropdown width */}
         <div className="relative flex-1 flex items-center">
-          <div className="absolute left-3.5 pointer-events-none text-[#b3b3b3] flex items-center">
+          <div className="absolute left-3.5 pointer-events-none text-content-secondary flex items-center">
             <Search size={18} />
           </div>
           <input
@@ -199,7 +199,7 @@ export const TopBar = ({
             }}
             onKeyDown={handleSearchKeyDown}
             placeholder="What do you want to play?"
-            className="w-full bg-[#1f1f1f] hover:bg-[#242424] focus:bg-[#242424] text-white pl-10 pr-9 py-2.5 rounded-full text-xs sm:text-sm font-medium outline-none border border-transparent focus:border-white/20 transition placeholder-[#b3b3b3]"
+            className="w-full bg-surface-elevated hover:bg-surface-elevated2 focus:bg-surface-elevated2 text-content-primary pl-10 pr-9 py-2.5 rounded-full text-xs sm:text-sm font-medium outline-none border border-transparent focus:border-border-strong transition placeholder-content-secondary"
           />
           {searchQuery && (
             <button
@@ -211,7 +211,7 @@ export const TopBar = ({
                 }
                 searchInputRef.current?.focus();
               }}
-              className="absolute right-3 text-[#b3b3b3] hover:text-white p-0.5 rounded-full"
+              className="absolute right-3 text-content-secondary hover:text-content-primary p-0.5 rounded-full"
               title="Clear Search"
             >
               <X size={16} />
@@ -255,10 +255,10 @@ export const TopBar = ({
       {/* Right: Unraid Sync Status + Rescan Button + User Profile Avatar */}
       <div className="flex items-center gap-3 shrink-0">
         {stats && (
-          <div className="hidden lg:flex items-center gap-1.5 text-xs text-[#b3b3b3] font-medium px-2 py-1 bg-[#121212] rounded-full border border-white/5">
+          <div className="hidden lg:flex items-center gap-1.5 text-xs text-content-secondary font-medium px-2 py-1 bg-surface-island rounded-full border border-border-subtle">
             <HardDrive size={13} className="text-brand-500" />
             <span>{stats.tracks.toLocaleString()} tracks</span>
-            <span className="text-[#666]">•</span>
+            <span className="text-content-subtle">•</span>
             <span>{stats.total_duration_hours} hrs</span>
           </div>
         )}
@@ -280,10 +280,10 @@ export const TopBar = ({
           <button
             onClick={handleScanClick}
             disabled={isScanning}
-            className="bg-[#1f1f1f] hover:bg-[#282828] text-white text-xs font-semibold px-3 py-2 rounded-full flex items-center gap-1.5 transition hover:scale-105 active:scale-95 disabled:opacity-50"
+            className="bg-surface-elevated hover:bg-surface-hover text-content-primary text-xs font-semibold px-3 py-2 rounded-full flex items-center gap-1.5 transition hover:scale-105 active:scale-95 disabled:opacity-50"
             title="Rescan Unraid Music Library"
           >
-            <RefreshCw size={13} className={isScanning ? 'animate-spin text-brand-500' : 'text-[#b3b3b3]'} />
+            <RefreshCw size={13} className={isScanning ? 'animate-spin text-brand-500' : 'text-content-secondary'} />
             <span className="hidden sm:inline">{isScanning ? 'Syncing...' : 'Rescan'}</span>
           </button>
         )}
@@ -305,17 +305,17 @@ export const TopBar = ({
                 className="fixed inset-0 z-40" 
                 onClick={() => setIsUserMenuOpen(false)} 
               />
-              <div className="absolute right-0 mt-2 w-60 bg-[#282828] border border-white/10 rounded-xl shadow-2xl py-2 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
-                <div className="px-3.5 py-2.5 border-b border-white/10 flex items-center gap-3">
+              <div className="absolute right-0 mt-2 w-60 bg-surface-panel border border-border-medium rounded-xl shadow-2xl py-2 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
+                <div className="px-3.5 py-2.5 border-b border-border-medium flex items-center gap-3">
                   <UserAvatar user={user} size="md" />
                   <div className="min-w-0 flex-1">
-                    <div className="font-bold text-white text-sm truncate">
+                    <div className="font-bold text-content-primary text-sm truncate">
                       {user?.display_name || user?.username}
                     </div>
-                    <div className="text-[#a7a7a7] text-[11px] flex items-center justify-between mt-0.5">
+                    <div className="text-content-secondary text-[11px] flex items-center justify-between mt-0.5">
                       <span className="truncate">@{user?.username}</span>
                       <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ml-1 ${
-                        isAdmin ? 'bg-brand-500/20 text-brand-500' : 'bg-white/10 text-[#a7a7a7]'
+                        isAdmin ? 'bg-brand-500/20 text-brand-500' : 'bg-white/10 text-content-secondary'
                       }`}>
                         {isAdmin ? 'Admin' : 'User'}
                       </span>
@@ -328,7 +328,7 @@ export const TopBar = ({
                     setIsUserMenuOpen(false);
                     onOpenSettings?.('account');
                   }}
-                  className="w-full text-left px-3 py-2 text-white hover:bg-white/10 flex items-center gap-2.5 transition"
+                  className="w-full text-left px-3 py-2 text-content-primary hover:bg-white/10 flex items-center gap-2.5 transition"
                 >
                   <User size={15} className="text-brand-500" />
                   <span>Profile & Account</span>
@@ -339,9 +339,9 @@ export const TopBar = ({
                     setIsUserMenuOpen(false);
                     onOpenSettings?.('shortcuts');
                   }}
-                  className="w-full text-left px-3 py-2 text-white hover:bg-white/10 flex items-center gap-2.5 transition"
+                  className="w-full text-left px-3 py-2 text-content-primary hover:bg-white/10 flex items-center gap-2.5 transition"
                 >
-                  <Settings size={15} className="text-[#a7a7a7]" />
+                  <Settings size={15} className="text-content-secondary" />
                   <span>Settings</span>
                 </button>
 

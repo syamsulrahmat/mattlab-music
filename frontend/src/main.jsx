@@ -32,47 +32,20 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{
-          padding: '32px',
-          backgroundColor: '#121212',
-          color: '#ffffff',
-          fontFamily: 'monospace',
-          minHeight: '100vh',
-          boxSizing: 'border-box',
-          overflow: 'auto',
-          zIndex: 999999,
-          position: 'relative'
-        }}>
-          <h1 style={{ color: '#ff4d4d', fontSize: '24px', marginBottom: '16px', fontWeight: 'bold' }}>
+        <div className="p-8 bg-surface-island text-content-primary font-mono min-h-screen box-border overflow-auto relative z-[999999]">
+          <h1 className="text-red-500 text-2xl mb-4 font-bold">
             ⚠️ UI Runtime Error
           </h1>
-          <p style={{ color: '#b3b3b3', marginBottom: '16px' }}>
+          <p className="text-content-secondary mb-4">
             A client-side error occurred during rendering. Details below:
           </p>
-          <div style={{
-            background: '#1e1e1e',
-            border: '1px solid #333',
-            borderRadius: '8px',
-            padding: '16px',
-            marginBottom: '16px',
-            color: '#ff7b72',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-          }}>
+          <div className="bg-surface-elevated border border-border-strong rounded-lg p-4 mb-4 text-red-400 whitespace-pre-wrap break-words">
             <strong>{this.state.error?.toString()}</strong>
             {'\n\n'}
             {this.state.error?.stack}
           </div>
           {this.state.errorInfo?.componentStack && (
-            <div style={{
-              background: '#1a1a1a',
-              border: '1px solid #282828',
-              borderRadius: '8px',
-              padding: '16px',
-              color: '#8b949e',
-              whiteSpace: 'pre-wrap',
-              fontSize: '12px',
-            }}>
+            <div className="bg-surface-panel border border-border-medium rounded-lg p-4 text-content-muted whitespace-pre-wrap text-xs">
               <strong>Component Tree:</strong>
               {'\n'}
               {this.state.errorInfo.componentStack}
@@ -80,16 +53,7 @@ class ErrorBoundary extends React.Component {
           )}
           <button
             onClick={() => window.location.reload()}
-            style={{
-              marginTop: '20px',
-              padding: '10px 20px',
-              backgroundColor: 'var(--brand-primary, #f59e0b)',
-              color: '#000',
-              fontWeight: 'bold',
-              border: 'none',
-              borderRadius: '24px',
-              cursor: 'pointer'
-            }}
+            className="mt-5 px-5 py-2.5 bg-brand-500 text-black font-bold rounded-full cursor-pointer hover:bg-brand-400 transition"
           >
             Reload Application
           </button>

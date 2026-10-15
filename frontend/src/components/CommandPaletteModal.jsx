@@ -169,11 +169,11 @@ export const CommandPaletteModal = ({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl bg-[#181818] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[75vh]"
+        className="w-full max-w-2xl bg-surface-panel border border-border-medium rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[75vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search Input Bar */}
-        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-white/10 bg-[#1f1f1f]">
+        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border-medium bg-surface-elevated">
           <Search size={20} className="text-brand-500 shrink-0" />
           <input
             ref={inputRef}
@@ -182,7 +182,7 @@ export const CommandPaletteModal = ({
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleInputKeyDown}
             placeholder="Search tracks, albums, artists, or type to request..."
-            className="flex-1 bg-transparent text-white placeholder-[#888] text-base font-medium outline-none"
+            className="flex-1 bg-transparent text-content-primary placeholder:text-content-muted text-base font-medium outline-none"
           />
           {query && (
             <button
@@ -190,12 +190,12 @@ export const CommandPaletteModal = ({
                 setQuery('');
                 if (inputRef.current) inputRef.current.focus();
               }}
-              className="text-[#888] hover:text-white p-1"
+              className="text-content-muted hover:text-white p-1"
             >
               <X size={16} />
             </button>
           )}
-          <span className="hidden sm:inline-block text-[10px] uppercase font-bold text-[#777] bg-black/40 px-2 py-0.5 rounded border border-white/5">
+          <span className="hidden sm:inline-block text-[10px] uppercase font-bold text-content-subtle bg-black/40 px-2 py-0.5 rounded border border-border-subtle">
             ESC to close
           </span>
         </div>
@@ -203,14 +203,14 @@ export const CommandPaletteModal = ({
         {/* Search Results Body */}
         <div className="flex-1 overflow-y-auto p-3 space-y-4">
           {isLoading && (
-            <div className="flex items-center justify-center py-8 text-[#888] gap-2">
+            <div className="flex items-center justify-center py-8 text-content-muted gap-2">
               <div className="animate-spin rounded-full h-4 w-4 border-2 border-brand-500 border-t-transparent" />
               <span className="text-xs">Searching library...</span>
             </div>
           )}
 
           {!isLoading && query && totalResults === 0 && (
-            <div className="py-8 text-center text-[#888]">
+            <div className="py-8 text-center text-content-muted">
               <p className="text-sm">No results in your library for "{query}"</p>
               <button
                 id="cp-item-0"
@@ -232,17 +232,17 @@ export const CommandPaletteModal = ({
           )}
 
           {!query && (
-            <div className="py-8 px-4 text-center text-[#777]">
-              <Sparkles size={28} className="mx-auto mb-2 text-[#555]" />
+            <div className="py-8 px-4 text-center text-content-subtle">
+              <Sparkles size={28} className="mx-auto mb-2 text-content-subtle" />
               <p className="text-xs font-medium">Quick search your library or request new songs.</p>
-              <p className="text-[11px] text-[#555] mt-1">Press <kbd className="bg-white/10 px-1 rounded text-white/70">Ctrl+K</kbd> anytime to open.</p>
+              <p className="text-[11px] text-content-subtle mt-1">Press <kbd className="bg-white/10 px-1 rounded text-white/70">Ctrl+K</kbd> anytime to open.</p>
             </div>
           )}
 
           {/* Tracks Section */}
           {results.tracks?.length > 0 && (
             <div>
-              <p className="text-[11px] font-bold uppercase text-[#888] px-3 mb-1.5 tracking-wider">
+              <p className="text-[11px] font-bold uppercase text-content-muted px-3 mb-1.5 tracking-wider">
                 Tracks
               </p>
               <div className="space-y-1">
@@ -271,7 +271,7 @@ export const CommandPaletteModal = ({
                     >
                       <div className="flex items-center gap-3 truncate flex-1 min-w-0">
                         {/* Spotify-style Cover Artwork with Play/Pause overlay */}
-                        <div className="relative w-10 h-10 rounded overflow-hidden bg-[#222] shrink-0 shadow-sm">
+                        <div className="relative w-10 h-10 rounded overflow-hidden bg-surface-elevated2 shrink-0 shadow-sm">
                           <img
                             src={track.cover_url || '/api/covers/0'}
                             alt=""
@@ -306,7 +306,7 @@ export const CommandPaletteModal = ({
                           >
                             {track.title}
                           </p>
-                          <p className="text-xs text-[#b3b3b3] truncate mt-0.5">
+                          <p className="text-xs text-content-secondary truncate mt-0.5">
                             {track.artist_name} • {track.album_title}
                           </p>
                         </div>
@@ -314,7 +314,7 @@ export const CommandPaletteModal = ({
 
                       {/* Track Duration on right */}
                       {track.duration > 0 && (
-                        <span className="text-xs text-[#888] group-hover:text-white shrink-0 ml-3 font-mono">
+                        <span className="text-xs text-content-muted group-hover:text-white shrink-0 ml-3 font-mono">
                           {formatDuration(track.duration)}
                         </span>
                       )}
@@ -328,7 +328,7 @@ export const CommandPaletteModal = ({
           {/* Albums Section */}
           {results.albums?.length > 0 && (
             <div>
-              <p className="text-[11px] font-bold uppercase text-[#888] px-3 mb-1.5 tracking-wider">
+              <p className="text-[11px] font-bold uppercase text-content-muted px-3 mb-1.5 tracking-wider">
                 Albums
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
@@ -353,7 +353,7 @@ export const CommandPaletteModal = ({
                       <img
                         src={album.cover_url || `/api/covers/${album.id}`}
                         alt=""
-                        className="w-10 h-10 rounded object-cover bg-[#222] shrink-0"
+                        className="w-10 h-10 rounded object-cover bg-surface-elevated2 shrink-0"
                       />
                       <div className="truncate flex-1 min-w-0">
                         <p
@@ -363,7 +363,7 @@ export const CommandPaletteModal = ({
                         >
                           {album.title}
                         </p>
-                        <p className="text-[11px] text-[#b3b3b3] truncate">
+                        <p className="text-[11px] text-content-secondary truncate">
                           {album.artist_name}
                         </p>
                       </div>
@@ -377,7 +377,7 @@ export const CommandPaletteModal = ({
           {/* Artists Section */}
           {results.artists?.length > 0 && (
             <div>
-              <p className="text-[11px] font-bold uppercase text-[#888] px-3 mb-1.5 tracking-wider">
+              <p className="text-[11px] font-bold uppercase text-content-muted px-3 mb-1.5 tracking-wider">
                 Artists
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
@@ -399,7 +399,7 @@ export const CommandPaletteModal = ({
                           : 'hover:bg-white/10'
                       }`}
                     >
-                      <div className="w-10 h-10 rounded-full bg-[#242424] flex items-center justify-center text-brand-500 shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-surface-elevated2 flex items-center justify-center text-brand-500 shrink-0">
                         <Mic2 size={18} />
                       </div>
                       <div className="truncate flex-1 min-w-0">
@@ -410,7 +410,7 @@ export const CommandPaletteModal = ({
                         >
                           {artist.name}
                         </p>
-                        <p className="text-[11px] text-[#b3b3b3]">Artist</p>
+                        <p className="text-[11px] text-content-secondary">Artist</p>
                       </div>
                     </div>
                   );
@@ -421,7 +421,7 @@ export const CommandPaletteModal = ({
 
           {/* Quick Request Button at the bottom if user typed query */}
           {query.trim().length > 0 && (
-            <div className="pt-2 border-t border-white/5">
+            <div className="pt-2 border-t border-border-subtle">
               {(() => {
                 const requestIndex = (results.tracks?.length || 0) + (results.albums?.length || 0) + (results.artists?.length || 0);
                 const isSelected = selectedIndex === requestIndex;
@@ -448,12 +448,12 @@ export const CommandPaletteModal = ({
                             <span className="text-brand-500 text-[10px] ml-1.5 font-normal">(corrected)</span>
                           )}
                         </p>
-                        <p className="text-[10px] text-[#888]">
+                        <p className="text-[10px] text-content-muted">
                           Search Lidarr & torrent indexers to download
                         </p>
                       </div>
                     </div>
-                    <span className="text-xs text-[#888] group-hover:text-white">→</span>
+                    <span className="text-xs text-content-muted group-hover:text-white">→</span>
                   </button>
                 );
               })()}
@@ -462,7 +462,7 @@ export const CommandPaletteModal = ({
         </div>
 
         {/* Keyboard Navigation Footer Hints */}
-        <div className="px-3.5 py-2 bg-[#121212] border-t border-white/5 flex items-center justify-between text-[11px] text-[#777]">
+        <div className="px-3.5 py-2 bg-surface-island border-t border-border-subtle flex items-center justify-between text-[11px] text-content-subtle">
           <div className="flex items-center gap-2">
             <span>
               <kbd className="bg-white/10 px-1 py-0.5 rounded text-white/80 font-mono text-[10px]">↑</kbd>{' '}
@@ -477,7 +477,7 @@ export const CommandPaletteModal = ({
               <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-white/80 font-mono text-[10px]">Esc</kbd> Close
             </span>
           </div>
-          <span className="text-[#555] hidden sm:inline">Ctrl + K</span>
+          <span className="text-content-subtle hidden sm:inline">Ctrl + K</span>
         </div>
       </div>
     </div>

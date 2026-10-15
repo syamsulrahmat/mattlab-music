@@ -57,19 +57,19 @@ export const CreatePlaylistModal = ({ isOpen, onClose, onCreatePlaylist }) => {
       onKeyDown={handleKeyDown}
     >
       <div 
-        className="bg-[#1f1f1f] border border-white/10 rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-in zoom-in-95 duration-150 text-white select-none"
+        className="bg-surface-elevated border border-border-medium rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-in zoom-in-95 duration-150 text-white select-none"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-[#121212] flex items-center justify-center text-brand-500 border border-white/5">
+            <div className="w-8 h-8 rounded-full bg-surface-island flex items-center justify-center text-brand-500 border border-border-subtle">
               <ListMusic size={18} />
             </div>
             <h3 className="font-bold text-white text-base">Create playlist</h3>
           </div>
           <button 
             onClick={onClose} 
-            className="w-8 h-8 rounded-full hover:bg-[#282828] text-[#b3b3b3] hover:text-white flex items-center justify-center transition"
+            className="w-8 h-8 rounded-full hover:bg-surface-hover text-content-secondary hover:text-white flex items-center justify-center transition"
             title="Close"
           >
             <X size={18} />
@@ -78,7 +78,7 @@ export const CreatePlaylistModal = ({ isOpen, onClose, onCreatePlaylist }) => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-[#b3b3b3] mb-1.5">
+            <label className="block text-xs font-semibold text-content-secondary mb-1.5">
               Playlist name
             </label>
             <input
@@ -87,7 +87,7 @@ export const CreatePlaylistModal = ({ isOpen, onClose, onCreatePlaylist }) => {
               value={playlistName}
               onChange={(e) => setPlaylistName(e.target.value)}
               placeholder="e.g. Chill Vibes, Rock Classics"
-              className="w-full bg-[#121212] border border-white/10 focus:border-brand-500 text-white text-sm px-3.5 py-2.5 rounded-lg outline-none transition placeholder-[#666]"
+              className="w-full bg-surface-island border border-border-medium focus:border-brand-500 text-white text-sm px-3.5 py-2.5 rounded-lg outline-none transition placeholder:text-content-subtle"
               maxLength={60}
             />
           </div>
@@ -96,7 +96,7 @@ export const CreatePlaylistModal = ({ isOpen, onClose, onCreatePlaylist }) => {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-[#b3b3b3] hover:text-white rounded-full hover:bg-[#282828] transition"
+              className="px-4 py-2 text-xs font-semibold text-content-secondary hover:text-white rounded-full hover:bg-surface-hover transition"
             >
               Cancel
             </button>
