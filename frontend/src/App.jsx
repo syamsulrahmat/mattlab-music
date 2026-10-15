@@ -38,6 +38,7 @@ const MainAppContent = () => {
   const [selectedPlaylistId, setSelectedPlaylistId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLyricsOpen, setIsLyricsOpen] = useState(false);
+  const [detailTitle, setDetailTitle] = useState('');
 
   // Layout & Context States
   const [albums, setAlbums] = useState([]);
@@ -95,6 +96,8 @@ const MainAppContent = () => {
   });
 
   const {
+    currentTrack,
+    isPlaying,
     togglePlay,
     seek,
     currentTime,
@@ -328,6 +331,123 @@ const MainAppContent = () => {
     window.addEventListener('contextmenu', handleGlobalContextMenu);
     return () => window.removeEventListener('contextmenu', handleGlobalContextMenu);
   }, []);
+
+  // Resolve Entity Detail Title for dynamic browser tab title
+  useEffect(() => {
+    let isCancelled = false;
+
+    if (activeTab === 'album-detail' && selectedAlbumId) {
+      const found = albums.find((a) => a.id === selectedAlbumId);
+      if (found?.title) {
+        setDetailTitle(found.title);
+      } else {
+        fetch(`/api/albums/${selectedAlbumId}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (!isCancelled && data?.title) {
+              setDetailTitle(data.title);
+            }
+          })
+          .catch(() => {});
+      }
+    } else if (activeTab === 'artist-detail' && selectedArtistId) {
+      fetch(`/api/artists/${selectedArtistId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (!isCancelled && data?.name) {
+            setDetailTitle(data.name);
+          }
+        })
+        .catch(() => {});
+    } else if (activeTab === 'playlist-detail' && selectedPlaylistId) {
+      const found = playlists.find((p) => p.id === selectedPlaylistId);
+      if (found?.name) {
+        setDetailTitle(found.name);
+      } else {
+        fetch(`/api/playlists/${selectedPlaylistId}`, { credentials: 'include' })
+          .then((res) => res.json())
+          .then((data) => {
+            if (!isCancelled && data?.name) {
+              setDetailTitle(data.name);
+            }
+          })
+          .catch(() => {});
+      }
+    } else {
+      setDetailTitle('');
+    }
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [activeTab, selectedAlbumId, selectedArtistId, selectedPlaylistId, albums, playlists]);
+
+  // Dynamic Browser Tab Document Title Synchronization
+  useEffect(() => {
+    if (isPlaying && currentTrack) {
+      const title = currentTrack.title || 'Unknown Title';
+      const artist = currentTrack.artist_name || currentTrack.artist || 'Unknown Artist';
+      document.title = `${title} • ${artist} | MattLab Music`;
+      return;
+    }
+
+    let pageTitle = '';
+    if (isLyricsOpen) {
+      pageTitle = 'Lyrics';
+    } else if (isSettingsOpen) {
+      pageTitle = 'Settings';
+    } else if (isUserManagementOpen) {
+      pageTitle = 'User Management';
+    } else if (isRequestMusicOpen) {
+      pageTitle = 'Request Music';
+    } else if (isImportSpotifyOpen) {
+      pageTitle = 'Import Spotify';
+    } else {
+      switch (activeTab) {
+        case 'search':
+          pageTitle = searchQuery.trim() ? `Search "${searchQuery.trim()}"` : 'Search';
+          break;
+        case 'favorites':
+          pageTitle = 'Favorites';
+          break;
+        case 'albums':
+          pageTitle = 'Albums';
+          break;
+        case 'artists':
+          pageTitle = 'Artists';
+          break;
+        case 'album-detail':
+          pageTitle = detailTitle || 'Album';
+          break;
+        case 'artist-detail':
+          pageTitle = detailTitle || 'Artist';
+          break;
+        case 'playlist-detail':
+          pageTitle = detailTitle || 'Playlist';
+          break;
+        case 'home':
+        default:
+          pageTitle = '';
+          break;
+      }
+    }
+
+    document.title = pageTitle ? `${pageTitle} • MattLab Music` : 'MattLab Music';
+  }, [
+    isPlaying,
+    currentTrack?.id,
+    currentTrack?.title,
+    currentTrack?.artist_name,
+    currentTrack?.artist,
+    activeTab,
+    detailTitle,
+    searchQuery,
+    isLyricsOpen,
+    isSettingsOpen,
+    isUserManagementOpen,
+    isRequestMusicOpen,
+    isImportSpotifyOpen,
+  ]);
 
   const handleOpenContextMenu = (e, type, data) => {
     e.preventDefault();
