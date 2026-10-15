@@ -913,14 +913,17 @@ export const PlayerProvider = ({ children }) => {
   const fadeIntervalRef = useRef(null);
   const coverImageCacheRef = useRef({});
 
-  // Helper to draw YouTube/Spotify-style card on canvas for native OS Video PiP
+  // Helper to draw YouTube/Spotify-style card on canvas for native OS Video PiP (3:1 aspect ratio)
   const drawPiPCanvas = useCallback((track, time, totalDuration, lyricLine = null, upcomingLyric = null) => {
     let canvas = canvasRef.current;
     if (!canvas) {
       canvas = document.createElement('canvas');
-      canvas.width = 640;
-      canvas.height = 360;
+      canvas.width = 540;
+      canvas.height = 180;
       canvasRef.current = canvas;
+    } else if (canvas.width !== 540 || canvas.height !== 180) {
+      canvas.width = 540;
+      canvas.height = 180;
     }
 
     const ctx = canvas.getContext('2d');
@@ -950,82 +953,77 @@ export const PlayerProvider = ({ children }) => {
 
     const brandColor = (typeof window !== 'undefined' && getComputedStyle(document.documentElement).getPropertyValue('--brand-primary').trim()) || '#1ed760';
 
-    // 1. Ambient atmospheric background
-    ctx.clearRect(0, 0, 640, 360);
+    // 1. Ambient atmospheric background (3:1 aspect ratio: 540x180)
+    ctx.clearRect(0, 0, 540, 180);
     if (cachedImg.complete && cachedImg.naturalWidth > 0) {
       try {
         ctx.save();
-        ctx.filter = 'blur(36px) brightness(0.2)';
-        ctx.drawImage(cachedImg, -40, -40, 720, 440);
+        ctx.filter = 'blur(28px) brightness(0.22)';
+        ctx.drawImage(cachedImg, -20, -20, 580, 220);
         ctx.restore();
       } catch (_) {
         ctx.fillStyle = '#121212';
-        ctx.fillRect(0, 0, 640, 360);
+        ctx.fillRect(0, 0, 540, 180);
       }
     } else {
-      const grad = ctx.createLinearGradient(0, 0, 640, 360);
+      const grad = ctx.createLinearGradient(0, 0, 540, 180);
       grad.addColorStop(0, '#1c1c1c');
       grad.addColorStop(1, '#0c0c0c');
       ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, 640, 360);
+      ctx.fillRect(0, 0, 540, 180);
     }
 
     // Semi-transparent dark overlay for high contrast
     ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-    ctx.fillRect(0, 0, 640, 360);
+    ctx.fillRect(0, 0, 540, 180);
 
     ctx.textAlign = 'center';
 
-    // 2. Brand Tag
-    ctx.fillStyle = brandColor;
-    ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText('● MATTLAB MUSIC', 320, 55);
-
-    // 3. Track Title (Full centered width)
+    // 2. Track Title (Centered at y=36)
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 30px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.font = 'bold 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     const rawTitle = track?.title || 'No Track Selected';
     const truncatedTitle = rawTitle.length > 34 ? rawTitle.substring(0, 32) + '...' : rawTitle;
-    ctx.fillText(truncatedTitle, 320, 95);
+    ctx.fillText(truncatedTitle, 270, 36);
 
-    // 4. Artist Name
+    // 3. Artist Name (Centered at y=58)
     ctx.fillStyle = '#a7a7a7';
-    ctx.font = '600 17px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.font = '600 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     const rawArtist = track?.artist_name || 'MattLab';
-    const truncatedArtist = rawArtist.length > 38 ? rawArtist.substring(0, 36) + '...' : rawArtist;
-    ctx.fillText(truncatedArtist, 320, 126);
+    const truncatedArtist = rawArtist.length > 40 ? rawArtist.substring(0, 38) + '...' : rawArtist;
+    ctx.fillText(truncatedArtist, 270, 58);
 
-    // 5. Subtle Center Separator
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
-    ctx.fillRect(200, 144, 240, 1);
+    // 4. Subtle Center Separator Line
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.fillRect(190, 70, 160, 1);
 
-    // 6. Live Synced Lyrics (Current + Next)
+    // 5. Live Synced Lyrics (Current + Next)
     if (lyricLine) {
       // Active line
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.font = 'bold 17px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
       const truncatedCurr = lyricLine.length > 38 ? lyricLine.substring(0, 36) + '...' : lyricLine;
-      ctx.fillText(`“${truncatedCurr}”`, 320, 192);
+      ctx.fillText(`“${truncatedCurr}”`, 270, 102);
 
       // Upcoming line
       if (upcomingLyric) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-        ctx.font = '500 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        const truncatedNext = upcomingLyric.length > 46 ? upcomingLyric.substring(0, 44) + '...' : upcomingLyric;
-        ctx.fillText(truncatedNext, 320, 226);
+        ctx.font = '500 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        const truncatedNext = upcomingLyric.length > 44 ? upcomingLyric.substring(0, 42) + '...' : upcomingLyric;
+        ctx.fillText(truncatedNext, 270, 128);
       }
     } else {
       // If no lyrics available, show album or clean hint
       const rawAlbum = track?.album_title;
       if (rawAlbum) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.font = '500 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.font = '500 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
         const truncatedAlbum = rawAlbum.length > 40 ? rawAlbum.substring(0, 38) + '...' : rawAlbum;
-        ctx.fillText(`Album: ${truncatedAlbum}`, 320, 195);
+        ctx.fillText(`Album: ${truncatedAlbum}`, 270, 106);
       } else {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-        ctx.font = 'italic 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        ctx.fillText('Streaming in high fidelity', 320, 195);
+        ctx.font = 'italic 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillText('Streaming in high fidelity', 270, 106);
       }
     }
 
@@ -1100,8 +1098,8 @@ export const PlayerProvider = ({ children }) => {
         let canvas = canvasRef.current;
         if (!canvas) {
           canvas = document.createElement('canvas');
-          canvas.width = 640;
-          canvas.height = 360;
+          canvas.width = 540;
+          canvas.height = 180;
           canvasRef.current = canvas;
         }
 
