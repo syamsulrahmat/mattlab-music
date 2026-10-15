@@ -370,7 +370,7 @@ export const PlayerBar = ({
             className={`p-2 rounded-lg transition ${
               isPiPActive ? 'text-brand-500 bg-[#1f1f1f]' : 'text-[#b3b3b3] hover:text-white'
             }`}
-            title={isPiPActive ? 'Close Picture-in-Picture' : 'Picture-in-Picture (Float across tabs & desktop apps)'}
+            title={isPiPActive ? 'Close Picture-in-Picture' : 'Picture-in-Picture (Floating lyrics & music controls across apps)'}
           >
             <PictureInPicture2 size={18} />
           </button>

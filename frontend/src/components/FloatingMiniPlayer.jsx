@@ -2,9 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   Play, Pause, SkipBack, SkipForward, X, Maximize2, Minimize2, 
-  ExternalLink, Move, PictureInPicture2 
+  ExternalLink, PictureInPicture2, MicOff, Mic2, Music 
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
+
+const formatTime = (secs) => {
+  if (isNaN(secs) || secs < 0) return '0:00';
+  const m = Math.floor(secs / 60);
+  const s = Math.floor(secs % 60);
+  return `${m}:${s < 10 ? '0' : ''}${s}`;
+};
 
 export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp }) => {
   const {
@@ -20,15 +27,41 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
     isMiniPlayerOpen,
     setIsMiniPlayerOpen,
     togglePiP,
+    isKaraokeMode,
+    toggleKaraoke,
+    lyricsState,
+    activeLyricIndex,
+    currentLyricLine,
+    upcomingLyricLine,
   } = usePlayer();
 
   const isOpen = isOpenProp !== undefined ? isOpenProp : isMiniPlayerOpen;
   const onClose = onCloseProp || (() => setIsMiniPlayerOpen(false));
 
-  // Mode: 'micro' (3 buttons only), 'compact' (cover + title + 3 buttons), 'expanded' (full details)
+  // Mode: 'lyrics-small' (2-line lyrics: current sentence + upcoming), 'lyrics-full' (large scrolling), 'compact', 'micro', 'expanded'
   const [sizeMode, setSizeMode] = useState(() => {
-    return localStorage.getItem('mini_player_size_mode') || 'compact';
+    const saved = localStorage.getItem('mini_player_size_mode');
+    if (saved === 'lyrics') return 'lyrics-small';
+    return saved || 'lyrics-small';
   });
+
+  // Track container dimensions to dynamically scale font size, padding, and UI elements
+  const [dimensions, setDimensions] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        if (pipWindow) {
+          return {
+            width: pipWindow.innerWidth || 360,
+            height: pipWindow.innerHeight || 140,
+          };
+        }
+      } catch (_) {}
+    }
+    return { width: 360, height: 140 };
+  });
+
+  const smallLyricsRef = useRef(null);
+  const fullLyricsRef = useRef(null);
 
   // Draggable position coordinates for in-page mini player
   const [position, setPosition] = useState(() => {
@@ -36,12 +69,18 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
       const saved = localStorage.getItem('mini_player_pos');
       if (saved) return JSON.parse(saved);
     } catch (_) {}
-    return { x: window.innerWidth - 320, y: window.innerHeight - 130 };
+    return { x: Math.max(20, window.innerWidth - 370), y: Math.max(20, window.innerHeight - 180) };
   });
 
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef({ startX: 0, startY: 0, posX: 0, posY: 0 });
   const containerRef = useRef(null);
+
+  // Full lyrics scrolling refs & state
+  const lyricsContainerRef = useRef(null);
+  const lineRefs = useRef([]);
+  const [isUserScrolled, setIsUserScrolled] = useState(false);
+  const userScrollTimeoutRef = useRef(null);
 
   // Sync sizeMode to localStorage and update PiP window dimensions if open
   const handleSetSizeMode = (mode) => {
@@ -49,35 +88,65 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
     localStorage.setItem('mini_player_size_mode', mode);
     if (pipWindow) {
       try {
-        if (mode === 'micro') pipWindow.resizeTo(185, 65);
-        else if (mode === 'compact') pipWindow.resizeTo(330, 105);
-        else if (mode === 'expanded') pipWindow.resizeTo(340, 150);
+        if (mode === 'micro') {
+          pipWindow.resizeTo(185, 65);
+          setDimensions({ width: 185, height: 65 });
+        } else if (mode === 'compact') {
+          pipWindow.resizeTo(330, 105);
+          setDimensions({ width: 330, height: 105 });
+        } else if (mode === 'expanded') {
+          pipWindow.resizeTo(340, 150);
+          setDimensions({ width: 340, height: 150 });
+        } else if (mode === 'lyrics-small') {
+          pipWindow.resizeTo(360, 140);
+          setDimensions({ width: 360, height: 140 });
+        } else if (mode === 'lyrics-full') {
+          pipWindow.resizeTo(380, 440);
+          setDimensions({ width: 380, height: 440 });
+        }
       } catch (_) {}
     }
   };
 
-  // Cycle between micro -> compact -> expanded -> micro
+  // Cycle between modes: lyrics-small -> lyrics-full -> compact -> micro -> lyrics-small
   const cycleSizeMode = (e) => {
     if (e && e.stopPropagation) e.stopPropagation();
-    if (sizeMode === 'micro') handleSetSizeMode('compact');
-    else if (sizeMode === 'compact') handleSetSizeMode('expanded');
-    else handleSetSizeMode('micro');
+    if (sizeMode === 'lyrics-small') handleSetSizeMode('lyrics-full');
+    else if (sizeMode === 'lyrics-full') handleSetSizeMode('compact');
+    else if (sizeMode === 'compact') handleSetSizeMode('micro');
+    else if (sizeMode === 'micro') handleSetSizeMode('expanded');
+    else handleSetSizeMode('lyrics-small');
   };
 
-  // Listen for native OS window resize events on the PiP window
+  // Listen for native OS window resize events on the PiP window to adapt layout & font scale
   useEffect(() => {
     if (!pipWindow) return;
     const handlePipResize = () => {
       try {
-        if (pipWindow.innerWidth < 235 || pipWindow.innerHeight < 75) {
+        const w = pipWindow.innerWidth;
+        const h = pipWindow.innerHeight;
+        setDimensions({ width: w, height: h });
+
+        if (h < 70) {
           if (sizeMode !== 'micro') {
             setSizeMode('micro');
             localStorage.setItem('mini_player_size_mode', 'micro');
+          }
+        } else if (h >= 70 && h < 220) {
+          if (sizeMode !== 'lyrics-small' && sizeMode !== 'compact' && sizeMode !== 'expanded') {
+            setSizeMode('lyrics-small');
+            localStorage.setItem('mini_player_size_mode', 'lyrics-small');
+          }
+        } else if (h >= 220) {
+          if (sizeMode !== 'lyrics-full') {
+            setSizeMode('lyrics-full');
+            localStorage.setItem('mini_player_size_mode', 'lyrics-full');
           }
         }
       } catch (_) {}
     };
 
+    handlePipResize();
     pipWindow.addEventListener('resize', handlePipResize);
     return () => {
       try {
@@ -85,6 +154,52 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
       } catch (_) {}
     };
   }, [pipWindow, sizeMode]);
+
+  // ResizeObserver for in-page mini player or container element
+  useEffect(() => {
+    const target = smallLyricsRef.current || fullLyricsRef.current || containerRef.current;
+    if (!target) return;
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { width, height } = entry.contentRect;
+          if (width > 0 && height > 0) {
+            setDimensions((prev) => {
+              if (Math.abs(prev.width - width) < 1 && Math.abs(prev.height - height) < 1) {
+                return prev;
+              }
+              return { width, height };
+            });
+          }
+        }
+      });
+      ro.observe(target);
+      return () => ro.disconnect();
+    }
+  }, [sizeMode, pipWindow]);
+
+  // Smooth auto-scroll for full multi-line lyrics container
+  useEffect(() => {
+    if (sizeMode !== 'lyrics-full' || isUserScrolled) return;
+    const container = lyricsContainerRef.current;
+    const activeEl = lineRefs.current[activeLyricIndex];
+    if (container && activeEl) {
+      const targetScroll = activeEl.offsetTop - (container.clientHeight / 2) + (activeEl.clientHeight / 2);
+      container.scrollTo({
+        top: Math.max(0, targetScroll),
+        behavior: 'smooth',
+      });
+    }
+  }, [activeLyricIndex, isUserScrolled, sizeMode]);
+
+  const handleLyricsScroll = () => {
+    setIsUserScrolled(true);
+    if (userScrollTimeoutRef.current) clearTimeout(userScrollTimeoutRef.current);
+    userScrollTimeoutRef.current = setTimeout(() => {
+      setIsUserScrolled(false);
+    }, 4000);
+  };
 
   // Mouse & Touch Dragging Handlers for in-page mini player
   const handlePointerDown = (e) => {
@@ -126,8 +241,422 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
   if (!currentTrack && !pipWindow) return null;
   if (!isOpen && !pipWindow) return null;
 
+  // 1. Small 2-Line Lyrics Mode (Current sentence + Upcoming sentence) with Music Controls
+  const renderSmallLyricsContent = (isPiP = false) => {
+    const currentSentence = currentLyricLine || (lyricsState?.isLoading ? 'Loading lyrics...' : (lyricsState?.plainLyrics ? '♪ ... ♪' : 'No lyrics available'));
+    const upcomingSentence = upcomingLyricLine || (currentLyricLine ? '' : (currentTrack ? `"${currentTrack.title}" • ${currentTrack.artist_name}` : ''));
+
+    const currentLineObj = activeLyricIndex >= 0 ? lyricsState?.parsedLines?.[activeLyricIndex] : null;
+    const nextLineObj = activeLyricIndex >= 0 && activeLyricIndex < (lyricsState?.parsedLines?.length || 0) - 1 ? lyricsState?.parsedLines?.[activeLyricIndex + 1] : null;
+
+    // Dynamically scale font size, gaps, and elements based on window/container dimensions
+    const currentW = dimensions.width || (pipWindow ? pipWindow.innerWidth : 360);
+    const currentH = dimensions.height || (pipWindow ? pipWindow.innerHeight : 140);
+    const widthRatio = Math.max(0.48, Math.min(1.4, currentW / 360));
+    const heightRatio = Math.max(0.48, Math.min(1.4, currentH / 140));
+    const scale = Math.min(widthRatio, heightRatio);
+
+    // Fluid font sizes: shrink smoothly as window gets smaller
+    const currentLyricFontSize = Math.max(8.5, Math.min(18, Math.round(14 * scale * 10) / 10));
+    const upcomingLyricFontSize = Math.max(7.5, Math.min(14, Math.round(11 * scale * 10) / 10));
+    const titleFontSize = Math.max(8.5, Math.min(15, Math.round(12 * scale * 10) / 10));
+    const artistFontSize = Math.max(7.5, Math.min(12, Math.round(10 * scale * 10) / 10));
+    const timeFontSize = Math.max(7, Math.min(11, Math.round(9 * scale * 10) / 10));
+
+    // Dynamic element dimensions
+    const coverSize = Math.max(18, Math.min(32, Math.round(28 * Math.max(0.65, scale))));
+    const headerIconSize = Math.max(10, Math.min(15, Math.round(13 * scale)));
+    const transportIconSize = Math.max(10, Math.min(15, Math.round(13 * scale)));
+    const playButtonSize = Math.max(18, Math.min(30, Math.round(24 * scale)));
+    const playIconSize = Math.max(9, Math.min(14, Math.round(12 * scale)));
+
+    // Extra compact spacing when window is short (< 115px) or narrow (< 270px)
+    const isUltraCompact = currentH < 115 || currentW < 270;
+    const containerPadding = isUltraCompact ? 'px-2 py-1' : 'px-3 py-2';
+
+    return (
+      <div
+        ref={smallLyricsRef}
+        className={`w-full h-full flex flex-col justify-between bg-[#121212] text-white font-sans select-none box-border overflow-hidden ${containerPadding}`}
+      >
+        {/* Top row: Track Info & Action Icons */}
+        <div className="flex items-center justify-between w-full gap-1.5 shrink-0">
+          <div className="flex items-center gap-1.5 truncate flex-1 min-w-0 pr-1">
+            <img
+              src={currentTrack?.cover_url || '/api/covers/0'}
+              alt=""
+              style={{ width: `${coverSize}px`, height: `${coverSize}px` }}
+              className="rounded object-cover bg-[#222] shrink-0 shadow-sm"
+            />
+            <div className="flex-1 min-w-0 truncate">
+              <p
+                style={{ fontSize: `${titleFontSize}px` }}
+                className="font-bold text-white truncate leading-tight"
+              >
+                {currentTrack?.title || 'No Track'}
+              </p>
+              <p
+                style={{ fontSize: `${artistFontSize}px` }}
+                className="text-[#b3b3b3] truncate leading-tight"
+              >
+                {currentTrack?.artist_name || ''}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-0.5 shrink-0">
+            {/* Karaoke Mode */}
+            <button
+              type="button"
+              onClick={toggleKaraoke}
+              className={`p-1 rounded transition ${
+                isKaraokeMode ? 'text-brand-500 bg-brand-500/10' : 'text-[#888] hover:text-white'
+              }`}
+              title={isKaraokeMode ? 'Karaoke Active (Vocals Off)' : 'Toggle Karaoke'}
+            >
+              <MicOff size={headerIconSize} />
+            </button>
+
+            {/* Expand to Full Multi-line Lyrics */}
+            <button
+              type="button"
+              onClick={() => handleSetSizeMode('lyrics-full')}
+              className="p-1 text-[#888] hover:text-white rounded transition hover:bg-white/10"
+              title="Expand to Full Lyrics Window"
+            >
+              <Maximize2 size={headerIconSize} />
+            </button>
+
+            {/* Pop-out Document PiP (when rendered in-app) */}
+            {!isPiP && 'documentPictureInPicture' in window && (
+              <button
+                type="button"
+                onClick={togglePiP}
+                className="p-1 text-[#888] hover:text-brand-400 rounded transition hover:bg-white/10"
+                title="Pop out Picture-in-Picture window"
+              >
+                <PictureInPicture2 size={headerIconSize} />
+              </button>
+            )}
+
+            {/* Close */}
+            <button
+              type="button"
+              onClick={() => (isPiP ? pipWindow?.close() : onClose())}
+              className="p-1 text-[#888] hover:text-white rounded transition hover:bg-white/10"
+              title="Close"
+            >
+              <X size={headerIconSize} />
+            </button>
+          </div>
+        </div>
+
+        {/* Center: The 2 Lines of Lyrics (Current sentence + Upcoming one) */}
+        <div className="flex flex-col justify-center text-center my-auto py-0.5 space-y-0.5 min-h-0 overflow-hidden">
+          {/* Line 1: Current Sentence */}
+          <p
+            onClick={() => currentLineObj && seek(currentLineObj.time)}
+            style={{ fontSize: `${currentLyricFontSize}px` }}
+            className={`font-extrabold truncate leading-tight cursor-pointer transition-all duration-150 ${
+              currentLineObj ? 'text-brand-400 drop-shadow-sm hover:underline' : 'text-white/80'
+            }`}
+            title={currentLineObj ? `Current lyric: "${currentSentence}" (Click to rewind)` : currentSentence}
+          >
+            {currentSentence}
+          </p>
+
+          {/* Line 2: Upcoming Sentence */}
+          <p
+            onClick={() => nextLineObj && seek(nextLineObj.time)}
+            style={{ fontSize: `${upcomingLyricFontSize}px` }}
+            className={`font-medium text-white/50 truncate leading-tight transition-all duration-150 ${
+              nextLineObj ? 'hover:text-white/80 cursor-pointer hover:underline' : ''
+            }`}
+            title={nextLineObj ? `Next lyric: "${upcomingSentence}" (Click to seek)` : upcomingSentence}
+          >
+            {upcomingSentence || '♪'}
+          </p>
+        </div>
+
+        {/* Bottom row: Scrubber + Controls */}
+        <div className="flex items-center justify-between gap-1.5 pt-0.5 shrink-0">
+          {/* Scrubber progress */}
+          <div className="flex items-center gap-1 flex-1 min-w-0">
+            <span
+              style={{ fontSize: `${timeFontSize}px`, minWidth: `${Math.round(24 * scale)}px` }}
+              className="text-[#888] font-mono text-right shrink-0"
+            >
+              {formatTime(currentTime)}
+            </span>
+            <div className="flex-1 relative flex items-center group">
+              <input
+                type="range"
+                min={0}
+                max={duration || 100}
+                step={0.1}
+                value={currentTime}
+                onChange={(e) => seek(parseFloat(e.target.value))}
+                className="w-full h-1 bg-white/15 group-hover:bg-white/25 rounded-full appearance-none cursor-pointer accent-brand-500 transition"
+              />
+            </div>
+            <span
+              style={{ fontSize: `${timeFontSize}px`, minWidth: `${Math.round(24 * scale)}px` }}
+              className="text-[#888] font-mono shrink-0"
+            >
+              {formatTime(duration)}
+            </span>
+          </div>
+
+          {/* Transport buttons */}
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={prevTrack}
+              className="p-1 text-[#b3b3b3] hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
+              title="Previous"
+            >
+              <SkipBack size={transportIconSize} />
+            </button>
+            <button
+              type="button"
+              onClick={togglePlay}
+              style={{ width: `${playButtonSize}px`, height: `${playButtonSize}px` }}
+              className="rounded-full bg-brand-500 text-black flex items-center justify-center hover:scale-105 active:scale-95 transition shadow"
+              title={isPlaying ? 'Pause' : 'Play'}
+            >
+              {isPlaying ? (
+                <Pause size={playIconSize} className="fill-black" />
+              ) : (
+                <Play size={playIconSize} className="fill-black ml-0.5" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={nextTrack}
+              className="p-1 text-[#b3b3b3] hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
+              title="Next"
+            >
+              <SkipForward size={transportIconSize} />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // 2. Large Multi-Line Scrolling Lyrics Mode
+  const renderFullLyricsContent = (isPiP = false) => {
+    const currentW = dimensions.width || (pipWindow ? pipWindow.innerWidth : 380);
+    const currentH = dimensions.height || (pipWindow ? pipWindow.innerHeight : 440);
+    const fullScale = Math.min(
+      Math.max(0.55, Math.min(1.3, currentW / 380)),
+      Math.max(0.55, Math.min(1.3, currentH / 440))
+    );
+
+    const activeFontSize = Math.max(10.5, Math.min(20, Math.round(14 * fullScale * 10) / 10));
+    const inactiveFontSize = Math.max(9, Math.min(15, Math.round(12 * fullScale * 10) / 10));
+    const headerTitleSize = Math.max(9, Math.min(15, Math.round(12 * fullScale * 10) / 10));
+    const headerArtistSize = Math.max(7.5, Math.min(12, Math.round(10 * fullScale * 10) / 10));
+    const headerThumbSize = Math.max(22, Math.min(36, Math.round(32 * Math.max(0.7, fullScale))));
+    const headerIconSize = Math.max(10, Math.min(15, Math.round(13 * fullScale)));
+    const transportIconSize = Math.max(11, Math.min(18, Math.round(16 * fullScale)));
+    const playBtnSize = Math.max(22, Math.min(36, Math.round(32 * fullScale)));
+    const playIcnSize = Math.max(10, Math.min(17, Math.round(15 * fullScale)));
+    const footerTimeSize = Math.max(7.5, Math.min(12, Math.round(10 * fullScale * 10) / 10));
+
+    return (
+      <div
+        ref={fullLyricsRef}
+        className="w-full h-full flex flex-col justify-between bg-[#121212] text-white font-sans select-none box-border overflow-hidden"
+      >
+        {/* Header Bar */}
+        <div className="flex items-center justify-between px-3.5 py-2.5 bg-[#181818]/80 backdrop-blur-md border-b border-white/5 shrink-0">
+          <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+            <img
+              src={currentTrack?.cover_url || '/api/covers/0'}
+              alt=""
+              style={{ width: `${headerThumbSize}px`, height: `${headerThumbSize}px` }}
+              className="rounded-md object-cover bg-[#222] shrink-0 shadow"
+            />
+            <div className="flex-1 min-w-0">
+              <p
+                style={{ fontSize: `${headerTitleSize}px` }}
+                className="font-bold text-white truncate leading-tight"
+              >
+                {currentTrack?.title || 'No Track'}
+              </p>
+              <p
+                style={{ fontSize: `${headerArtistSize}px` }}
+                className="text-[#b3b3b3] truncate mt-0.5 leading-tight"
+              >
+                {currentTrack?.artist_name || ''}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 shrink-0">
+            {/* Karaoke Mode */}
+            <button
+              type="button"
+              onClick={toggleKaraoke}
+              className={`p-1.5 rounded-md transition ${
+                isKaraokeMode ? 'text-brand-500 bg-brand-500/10' : 'text-[#888] hover:text-white'
+              }`}
+              title={isKaraokeMode ? 'Karaoke Active (Vocals Off)' : 'Toggle Karaoke'}
+            >
+              <MicOff size={headerIconSize} />
+            </button>
+
+            {/* Shrink to 2-Line Small Lyrics Mode */}
+            <button
+              type="button"
+              onClick={() => handleSetSizeMode('lyrics-small')}
+              className="p-1.5 text-[#888] hover:text-white rounded-md transition hover:bg-white/10"
+              title="Shrink to 2-Line Lyrics Mode"
+            >
+              <Minimize2 size={headerIconSize} />
+            </button>
+
+            {/* Close */}
+            <button
+              type="button"
+              onClick={() => (isPiP ? pipWindow?.close() : onClose())}
+              className="p-1.5 text-[#888] hover:text-white rounded-md transition hover:bg-white/10"
+              title="Close"
+            >
+              <X size={headerIconSize} />
+            </button>
+          </div>
+        </div>
+
+        {/* Lyrics Area (Scrollable) */}
+        <div
+          ref={lyricsContainerRef}
+          onWheel={handleLyricsScroll}
+          onTouchMove={handleLyricsScroll}
+          className="flex-1 overflow-y-auto px-4 py-5 space-y-3 text-center select-none scrollbar-thin scrollbar-thumb-white/10"
+        >
+          {lyricsState?.isLoading ? (
+            <div className="flex flex-col items-center justify-center h-full text-[#888] gap-2 py-10">
+              <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+              <span className="text-xs">Loading lyrics...</span>
+            </div>
+          ) : lyricsState?.parsedLines?.length > 0 ? (
+            lyricsState.parsedLines.map((line, idx) => {
+              const isActive = idx === activeLyricIndex;
+              const isPast = idx < activeLyricIndex;
+              return (
+                <p
+                  key={`${line.time}-${idx}`}
+                  ref={(el) => (lineRefs.current[idx] = el)}
+                  onClick={() => seek(line.time)}
+                  style={{ fontSize: `${isActive ? activeFontSize : inactiveFontSize}px` }}
+                  className={`transition-all duration-300 font-bold cursor-pointer px-2.5 py-1 rounded-lg ${
+                    isActive
+                      ? 'text-brand-400 font-extrabold bg-brand-500/15 scale-[1.03] shadow-sm'
+                      : isPast
+                      ? 'text-white/60 hover:text-white'
+                      : 'text-white/30 hover:text-white/70'
+                  }`}
+                >
+                  {line.text}
+                </p>
+              );
+            })
+          ) : lyricsState?.plainLyrics ? (
+            <div
+              style={{ fontSize: `${inactiveFontSize}px` }}
+              className="text-white/80 leading-relaxed whitespace-pre-line py-4"
+            >
+              {lyricsState.plainLyrics}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-[#666] gap-2 py-10">
+              <Music size={24} className="text-[#555]" />
+              <p className="text-xs font-semibold text-[#888]">No lyrics available</p>
+              <p className="text-[10px] text-[#666] max-w-[200px]">
+                {currentTrack ? `"${currentTrack.title}"` : 'Play a song to view lyrics'}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Music Button Controls Footer */}
+        <div className="px-3.5 py-2.5 bg-[#161616] border-t border-white/5 shrink-0 flex flex-col gap-2">
+          {/* Scrubber progress */}
+          <div className="flex items-center gap-2">
+            <span
+              style={{ fontSize: `${footerTimeSize}px` }}
+              className="text-[#888] font-mono min-w-[28px] text-right"
+            >
+              {formatTime(currentTime)}
+            </span>
+            <div className="flex-1 relative flex items-center group">
+              <input
+                type="range"
+                min={0}
+                max={duration || 100}
+                step={0.1}
+                value={currentTime}
+                onChange={(e) => seek(parseFloat(e.target.value))}
+                className="w-full h-1 bg-white/15 group-hover:bg-white/25 rounded-full appearance-none cursor-pointer accent-brand-500 transition"
+              />
+            </div>
+            <span
+              style={{ fontSize: `${footerTimeSize}px` }}
+              className="text-[#888] font-mono min-w-[28px]"
+            >
+              {formatTime(duration)}
+            </span>
+          </div>
+
+          {/* Transport buttons */}
+          <div className="flex items-center justify-center gap-4">
+            <button
+              type="button"
+              onClick={prevTrack}
+              className="p-1.5 text-[#b3b3b3] hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
+              title="Previous"
+            >
+              <SkipBack size={transportIconSize} />
+            </button>
+            <button
+              type="button"
+              onClick={togglePlay}
+              style={{ width: `${playBtnSize}px`, height: `${playBtnSize}px` }}
+              className="rounded-full bg-brand-500 text-black flex items-center justify-center hover:scale-105 active:scale-95 transition shadow-lg"
+              title={isPlaying ? 'Pause' : 'Play'}
+            >
+              {isPlaying ? (
+                <Pause size={playIcnSize} className="fill-black" />
+              ) : (
+                <Play size={playIcnSize} className="fill-black ml-0.5" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={nextTrack}
+              className="p-1.5 text-[#b3b3b3] hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
+              title="Next"
+            >
+              <SkipForward size={transportIconSize} />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Render content for Document Picture-in-Picture window (always on top across tabs and desktop apps)
   const renderPiPContent = () => {
+    if (sizeMode === 'lyrics-small' || sizeMode === 'lyrics') {
+      return renderSmallLyricsContent(true);
+    }
+
+    if (sizeMode === 'lyrics-full') {
+      return renderFullLyricsContent(true);
+    }
+
     if (sizeMode === 'micro') {
       return (
         <div className="w-full h-full flex items-center justify-between px-3 py-1 bg-[#121212] text-white font-sans select-none box-border">
@@ -155,9 +684,16 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
             </button>
             <div className="w-px h-3.5 bg-white/10 mx-1" />
             <button
+              onClick={() => handleSetSizeMode('lyrics-small')}
+              className="p-1 text-[#777] hover:text-white rounded transition"
+              title="2-Line Lyrics Mode"
+            >
+              <Mic2 size={12} />
+            </button>
+            <button
               onClick={cycleSizeMode}
               className="p-1 text-[#777] hover:text-white rounded transition"
-              title="Expand (Cover & Title)"
+              title="Expand Mode"
             >
               <Maximize2 size={12} />
             </button>
@@ -193,6 +729,13 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
               </div>
             </div>
             <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={() => handleSetSizeMode('lyrics-small')}
+                className="p-1 text-[#777] hover:text-white rounded transition"
+                title="2-Line Lyrics Mode"
+              >
+                <Mic2 size={13} />
+              </button>
               <button
                 onClick={cycleSizeMode}
                 className="p-1 text-[#777] hover:text-white rounded transition"
@@ -250,7 +793,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
         <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
           {currentTrack && (
             <img
-              src={currentTrack.cover_url || '/api/covers/0'}
+              src={currentTrack?.cover_url || '/api/covers/0'}
               alt=""
               className="w-10 h-10 rounded-lg object-cover shadow shrink-0 bg-[#242424]"
             />
@@ -287,6 +830,13 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
             <SkipForward size={15} />
           </button>
           <div className="w-px h-3.5 bg-white/10 mx-0.5" />
+          <button
+            onClick={() => handleSetSizeMode('lyrics-small')}
+            className="p-1 text-[#777] hover:text-white rounded transition"
+            title="2-Line Lyrics Mode"
+          >
+            <Mic2 size={13} />
+          </button>
           <button
             onClick={cycleSizeMode}
             className="p-1 text-[#777] hover:text-white rounded transition"
@@ -325,6 +875,38 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
             isDragging ? 'shadow-green-500/20 scale-[1.01]' : ''
           }`}
         >
+          {/* 2-LINE LYRICS MODE */}
+          {(sizeMode === 'lyrics-small' || sizeMode === 'lyrics') && (
+            <div
+              style={{
+                resize: 'both',
+                minWidth: '220px',
+                minHeight: '85px',
+                maxWidth: '600px',
+                maxHeight: '300px',
+              }}
+              className="w-[350px] h-[135px] rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+            >
+              {renderSmallLyricsContent(false)}
+            </div>
+          )}
+
+          {/* FULL MULTI-LINE LYRICS MODE */}
+          {sizeMode === 'lyrics-full' && (
+            <div
+              style={{
+                resize: 'both',
+                minWidth: '240px',
+                minHeight: '220px',
+                maxWidth: '600px',
+                maxHeight: '700px',
+              }}
+              className="w-[360px] h-[410px] rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+            >
+              {renderFullLyricsContent(false)}
+            </div>
+          )}
+
           {/* MICRO MODE: Only the 3 transport buttons */}
           {sizeMode === 'micro' && (
             <div className="flex items-center gap-1 px-2.5 py-1.5 bg-black/60 rounded-full border border-white/10">
@@ -355,6 +937,14 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
 
               <div className="w-px h-3.5 bg-white/10 mx-0.5" />
 
+              <button
+                type="button"
+                onClick={() => handleSetSizeMode('lyrics-small')}
+                className="p-1 text-[#888] hover:text-brand-400 rounded-md hover:bg-white/10 transition"
+                title="2-Line Lyrics Mode"
+              >
+                <Mic2 size={12} />
+              </button>
               <button
                 type="button"
                 onClick={cycleSizeMode}
@@ -431,6 +1021,14 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
 
                 <button
                   type="button"
+                  onClick={() => handleSetSizeMode('lyrics-small')}
+                  className="p-1 text-[#888] hover:text-brand-400 rounded transition"
+                  title="2-Line Lyrics Mode"
+                >
+                  <Mic2 size={13} />
+                </button>
+                <button
+                  type="button"
                   onClick={cycleSizeMode}
                   className="p-1 text-[#888] hover:text-white rounded transition"
                   title="Resize Mini Player"
@@ -480,6 +1078,14 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                 </div>
 
                 <div className="flex items-center gap-1 shrink-0 ml-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSetSizeMode('lyrics-small')}
+                    className="p-1 text-[#888] hover:text-brand-400 rounded transition"
+                    title="2-Line Lyrics Mode"
+                  >
+                    <Mic2 size={13} />
+                  </button>
                   <button
                     type="button"
                     onClick={cycleSizeMode}

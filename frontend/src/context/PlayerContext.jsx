@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { audioPreloader } from '../utils/audioPreloader';
 import { shuffleArray } from '../utils/shuffle';
+import { parseLrc, findActiveLyricIndex } from '../utils/lyrics';
 import { useAuth } from './AuthContext';
 
 const PlayerContext = createContext(null);
@@ -55,6 +56,96 @@ export const PlayerProvider = ({ children }) => {
   // AI Stem Status: { [trackId]: { exists: boolean, status: string, progress: number } }
   const [karaokeStemStatus, setKaraokeStemStatus] = useState({});
   const [isGeneratingStems, setIsGeneratingStems] = useState(false);
+
+  // Live Lyrics State: { trackId, syncedLyrics, plainLyrics, parsedLines, isLoading, notFound }
+  const [lyricsState, setLyricsState] = useState({
+    trackId: null,
+    syncedLyrics: null,
+    plainLyrics: null,
+    parsedLines: [],
+    isLoading: false,
+    notFound: false,
+  });
+
+  const fetchTrackLyrics = useCallback(async (trackId, force = false) => {
+    if (!trackId) {
+      setLyricsState({ trackId: null, syncedLyrics: null, plainLyrics: null, parsedLines: [], isLoading: false, notFound: false });
+      return;
+    }
+
+    const cacheKey = `lyrics_cache_${trackId}`;
+    if (!force) {
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const data = JSON.parse(cached);
+          const parsedLines = data.syncedLyrics ? parseLrc(data.syncedLyrics) : [];
+          setLyricsState({
+            trackId,
+            syncedLyrics: data.syncedLyrics || null,
+            plainLyrics: data.plainLyrics || data.lyrics || null,
+            parsedLines,
+            isLoading: false,
+            notFound: !data.syncedLyrics && !data.plainLyrics && !data.lyrics,
+          });
+          return;
+        }
+      } catch (_) {}
+    }
+
+    setLyricsState((prev) => ({ ...prev, trackId, isLoading: true }));
+    try {
+      const res = await fetch(`/api/lyrics/${trackId}`);
+      const data = await res.json();
+      if (data && !data.error) {
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(data));
+        } catch (_) {}
+        const parsedLines = data.syncedLyrics ? parseLrc(data.syncedLyrics) : [];
+        setLyricsState({
+          trackId,
+          syncedLyrics: data.syncedLyrics || null,
+          plainLyrics: data.plainLyrics || data.lyrics || null,
+          parsedLines,
+          isLoading: false,
+          notFound: !data.syncedLyrics && !data.plainLyrics && !data.lyrics,
+        });
+      } else {
+        setLyricsState({ trackId, syncedLyrics: null, plainLyrics: null, parsedLines: [], isLoading: false, notFound: true });
+      }
+    } catch (_) {
+      setLyricsState({ trackId, syncedLyrics: null, plainLyrics: null, parsedLines: [], isLoading: false, notFound: true });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (currentTrack?.id) {
+      fetchTrackLyrics(currentTrack.id);
+    } else {
+      setLyricsState({ trackId: null, syncedLyrics: null, plainLyrics: null, parsedLines: [], isLoading: false, notFound: false });
+    }
+  }, [currentTrack?.id, fetchTrackLyrics]);
+
+  const activeLyricIndex = useMemo(() => {
+    return findActiveLyricIndex(lyricsState.parsedLines, currentTime);
+  }, [lyricsState.parsedLines, currentTime]);
+
+  const currentLyricLine = useMemo(() => {
+    if (activeLyricIndex >= 0 && lyricsState.parsedLines[activeLyricIndex]) {
+      return lyricsState.parsedLines[activeLyricIndex].text;
+    }
+    return null;
+  }, [activeLyricIndex, lyricsState.parsedLines]);
+
+  const upcomingLyricLine = useMemo(() => {
+    if (activeLyricIndex >= 0 && activeLyricIndex < lyricsState.parsedLines.length - 1) {
+      return lyricsState.parsedLines[activeLyricIndex + 1].text;
+    }
+    if (activeLyricIndex === -1 && lyricsState.parsedLines.length > 1) {
+      return lyricsState.parsedLines[1].text;
+    }
+    return null;
+  }, [activeLyricIndex, lyricsState.parsedLines]);
 
   // In-app Toast Notification System
   const [toastMessage, setToastMessage] = useState(null);
@@ -603,6 +694,7 @@ export const PlayerProvider = ({ children }) => {
 
   const togglePlay = () => {
     const audio = audioRef.current;
+    if (!audio) return;
 
     if (!currentTrack) {
       if (queue.length > 0) {
@@ -611,8 +703,13 @@ export const PlayerProvider = ({ children }) => {
       return;
     }
 
-    if (isPlaying) {
+    // Determine playback state directly from the authoritative audio element
+    const isCurrentlyPlaying = !audio.paused;
+
+    if (isCurrentlyPlaying) {
       audio.pause();
+      setIsPlaying(false);
+      setIsBuffering(false);
       if (isCrossfadingRef.current && standbyAudioRef.current) {
         standbyAudioRef.current.pause();
       }
@@ -620,9 +717,11 @@ export const PlayerProvider = ({ children }) => {
       if (audio.readyState < 3) {
         setIsBuffering(true);
       }
+      setIsPlaying(true);
       audio.play().catch((err) => {
         console.warn('Play prevented:', err);
         setIsBuffering(false);
+        setIsPlaying(false);
       });
       if (isCrossfadingRef.current && standbyAudioRef.current) {
         standbyAudioRef.current.play().catch(() => {});
@@ -785,7 +884,7 @@ export const PlayerProvider = ({ children }) => {
   const coverImageCacheRef = useRef({});
 
   // Helper to draw Spotify-style card on canvas for native OS Video PiP
-  const drawPiPCanvas = useCallback((track, time, totalDuration) => {
+  const drawPiPCanvas = useCallback((track, time, totalDuration, lyricLine = null) => {
     let canvas = canvasRef.current;
     if (!canvas) {
       canvas = document.createElement('canvas');
@@ -817,7 +916,7 @@ export const PlayerProvider = ({ children }) => {
       cachedImg.src = coverUrl;
       cachedImg.onload = () => {
         coverImageCacheRef.current[coverUrl] = cachedImg;
-        drawPiPCanvas(track, time, totalDuration);
+        drawPiPCanvas(track, time, totalDuration, lyricLine);
       };
       coverImageCacheRef.current[coverUrl] = cachedImg;
     }
@@ -864,23 +963,37 @@ export const PlayerProvider = ({ children }) => {
     ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     const rawTitle = track?.title || 'No Track Selected';
     const truncatedTitle = rawTitle.length > 22 ? rawTitle.substring(0, 20) + '...' : rawTitle;
-    ctx.fillText(truncatedTitle, 310, 140);
+    ctx.fillText(truncatedTitle, 310, 130);
 
     // Artist text
     ctx.fillStyle = '#b3b3b3';
-    ctx.font = '500 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.font = '500 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     const rawArtist = track?.artist_name || 'MattLab Music';
     const truncatedArtist = rawArtist.length > 26 ? rawArtist.substring(0, 24) + '...' : rawArtist;
-    ctx.fillText(truncatedArtist, 310, 180);
+    ctx.fillText(truncatedArtist, 310, 165);
 
-    // MattLab Branding pill
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-    ctx.beginPath();
-    safeRoundRect(ctx, 310, 220, 120, 32, 16);
-    ctx.fill();
-    ctx.fillStyle = brandColor;
-    ctx.font = 'bold 12px sans-serif';
-    ctx.fillText('● MATTLAB', 328, 241);
+    // Live synced lyrics lines (Current sentence + Upcoming sentence)
+    if (lyricLine) {
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 19px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      const truncatedCurr = lyricLine.length > 30 ? lyricLine.substring(0, 28) + '...' : lyricLine;
+      ctx.fillText(`“${truncatedCurr}”`, 310, 210);
+
+      if (upcomingLyricLine) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+        ctx.font = '500 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        const truncatedNext = upcomingLyricLine.length > 36 ? upcomingLyricLine.substring(0, 34) + '...' : upcomingLyricLine;
+        ctx.fillText(truncatedNext, 310, 235);
+      }
+    } else {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.beginPath();
+      safeRoundRect(ctx, 310, 195, 120, 32, 16);
+      ctx.fill();
+      ctx.fillStyle = brandColor;
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText('● MATTLAB', 328, 216);
+    }
 
     // Scrubber progress bar at the bottom
     const barWidth = 560;
@@ -904,9 +1017,9 @@ export const PlayerProvider = ({ children }) => {
   // Continuously update native Canvas Video PiP frame while active
   useEffect(() => {
     if (isCanvasPiPActive) {
-      drawPiPCanvas(currentTrack, currentTime, duration);
+      drawPiPCanvas(currentTrack, currentTime, duration, currentLyricLine, upcomingLyricLine);
     }
-  }, [isCanvasPiPActive, currentTrack, currentTime, duration, drawPiPCanvas]);
+  }, [isCanvasPiPActive, currentTrack, currentTime, duration, currentLyricLine, upcomingLyricLine, drawPiPCanvas]);
 
   // Close PiP when main window unloads
   useEffect(() => {
@@ -963,15 +1076,24 @@ export const PlayerProvider = ({ children }) => {
     // 4. Try native Document Picture-in-Picture window (modern Chrome on HTTPS/localhost)
     if ('documentPictureInPicture' in window) {
       try {
-        const savedMode = localStorage.getItem('mini_player_size_mode') || 'compact';
-        let width = 330;
-        let height = 105;
+        const savedMode = localStorage.getItem('mini_player_size_mode') || 'lyrics-small';
+        let width = 360;
+        let height = 140;
         if (savedMode === 'micro') {
-          width = 180;
+          width = 185;
           height = 65;
+        } else if (savedMode === 'compact') {
+          width = 330;
+          height = 105;
         } else if (savedMode === 'expanded') {
           width = 340;
-          height = 145;
+          height = 150;
+        } else if (savedMode === 'lyrics' || savedMode === 'lyrics-full') {
+          width = 380;
+          height = 440;
+        } else if (savedMode === 'lyrics-small') {
+          width = 360;
+          height = 140;
         }
 
         const pip = await window.documentPictureInPicture.requestWindow({
@@ -1009,6 +1131,10 @@ export const PlayerProvider = ({ children }) => {
         });
 
         pip.document.title = 'MattLab Music';
+        pip.document.documentElement.style.width = '100%';
+        pip.document.documentElement.style.height = '100%';
+        pip.document.body.style.width = '100%';
+        pip.document.body.style.height = '100%';
         pip.document.body.style.backgroundColor = '#121212';
         pip.document.body.style.margin = '0';
         pip.document.body.style.padding = '0';
@@ -1187,6 +1313,11 @@ export const PlayerProvider = ({ children }) => {
         setIsMiniPlayerOpen,
         isPiPActive: Boolean(pipWindow) || isCanvasPiPActive || isMiniPlayerOpen,
         togglePiP,
+        lyricsState,
+        currentLyricLine,
+        upcomingLyricLine,
+        activeLyricIndex,
+        fetchTrackLyrics,
         fadePause,
         fadeResume,
         isKaraokeMode,

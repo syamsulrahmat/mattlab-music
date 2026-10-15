@@ -63,6 +63,7 @@ export const PlaylistDetail = ({
   // In-playlist filter & sort
   const [searchQuery, setSearchQuery] = useState('');
   const [focusedTrackIdx, setFocusedTrackIdx] = useState(-1);
+  const filterInputRef = useRef(null);
   const [sortBy, setSortBy] = useState('custom'); // 'custom', 'title', 'artist', 'album', 'added_at', 'duration'
   const [sortOrder, setSortOrder] = useState('asc'); // 'asc', 'desc'
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
@@ -262,23 +263,13 @@ export const PlaylistDetail = ({
     });
   }, [playlist?.tracks, playlist?.spotify_id, playlist?.name, spotifyStatus]);
 
-  // Filter & sort
-  const tracks = useMemo(() => {
-    let list = rawTracks;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      list = list.filter((t) =>
-        (t.title && t.title.toLowerCase().includes(q)) ||
-        (t.artist_name && t.artist_name.toLowerCase().includes(q)) ||
-        (t.album_title && t.album_title.toLowerCase().includes(q))
-      );
-    }
-
+  // Full playlist in current sort order (unaffected by search filtering)
+  const allTracks = useMemo(() => {
     if (sortBy === 'custom') {
-      return list;
+      return rawTracks;
     }
 
-    const sorted = [...list].sort((a, b) => {
+    const sorted = [...rawTracks].sort((a, b) => {
       let cmp = 0;
       if (sortBy === 'title') {
         cmp = (a.title || '').localeCompare(b.title || '');
@@ -295,7 +286,20 @@ export const PlaylistDetail = ({
     });
 
     return sorted;
-  }, [rawTracks, searchQuery, sortBy, sortOrder]);
+  }, [rawTracks, sortBy, sortOrder]);
+
+  // Filter & sort display list
+  const tracks = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return allTracks;
+    }
+    const q = searchQuery.toLowerCase().trim();
+    return allTracks.filter((t) =>
+      (t.title && t.title.toLowerCase().includes(q)) ||
+      (t.artist_name && t.artist_name.toLowerCase().includes(q)) ||
+      (t.album_title && t.album_title.toLowerCase().includes(q))
+    );
+  }, [allTracks, searchQuery]);
 
   const isDragEnabled = !playlist?.spotify_id && sortBy === 'custom' && !searchQuery.trim();
   const isCurrentPlayingInPlaylist =
@@ -304,6 +308,9 @@ export const PlaylistDetail = ({
   // Synchronization refs for responsive, lag-free keyboard navigation
   const rawTracksRef = useRef(rawTracks);
   useEffect(() => { rawTracksRef.current = rawTracks; }, [rawTracks]);
+
+  const allTracksRef = useRef(allTracks);
+  useEffect(() => { allTracksRef.current = allTracks; }, [allTracks]);
 
   const tracksRef = useRef(tracks);
   useEffect(() => { tracksRef.current = tracks; }, [tracks]);
@@ -342,7 +349,8 @@ export const PlaylistDetail = ({
   // Playback handlers using unbiased Fisher-Yates shuffle
   const handleTrackPlay = (track) => {
     if (track.isSyncPending) return;
-    const playableTracks = tracks
+    // Playback queue always maintains the full playlist in its current sort order
+    const playableTracks = allTracks
       .filter((t) => !t.isSyncPending)
       .map((t) => ({ ...t, playlist_id: playlistId }));
     if (playableTracks.length === 0) return;
@@ -359,15 +367,23 @@ export const PlaylistDetail = ({
     if (isCurrentPlayingInPlaylist) {
       togglePlay();
     } else {
-      const playableTracks = tracks
+      const playableTracks = allTracks
         .filter((t) => !t.isSyncPending)
         .map((t) => ({ ...t, playlist_id: playlistId }));
       if (playableTracks.length === 0) return;
+
+      // If a search query is active and has matches, start from the first matching track
+      const firstPlayable = tracks.find((t) => !t.isSyncPending) || playableTracks[0];
+      const startTrackWithPl = { ...firstPlayable, playlist_id: playlistId };
+
       if (isShuffle) {
-        const shuffled = shuffleArray(playableTracks);
-        playTrack(shuffled[0], shuffled);
+        if (playableTracks.length > 1) {
+          playTrack(startTrackWithPl, shuffledQueueStartingWith(startTrackWithPl, playableTracks));
+        } else {
+          playTrack(startTrackWithPl, playableTracks);
+        }
       } else {
-        playTrack(playableTracks[0], playableTracks);
+        playTrack(startTrackWithPl, playableTracks);
       }
     }
   };
@@ -376,7 +392,7 @@ export const PlaylistDetail = ({
     const nextShuffle = !isShuffle;
     toggleShuffle();
 
-    const playableTracks = tracks
+    const playableTracks = allTracks
       .filter((t) => !t.isSyncPending)
       .map((t) => ({ ...t, playlist_id: playlistId }));
     if (nextShuffle) {
@@ -455,6 +471,9 @@ export const PlaylistDetail = ({
       const targetTrack = tracks[targetIdx];
       if (targetTrack && !targetTrack.isSyncPending) {
         handleTrackPlay(targetTrack);
+        if (filterInputRef.current) {
+          filterInputRef.current.blur();
+        }
       }
     } else if (e.key === 'Escape') {
       e.preventDefault();
@@ -464,8 +483,11 @@ export const PlaylistDetail = ({
         selectedTrackIdsRef.current = new Set();
         setLastSelectedTrackIdx(null);
         lastSelectedTrackIdxRef.current = null;
-      } else {
+      }
+      if (searchQuery) {
         setSearchQuery('');
+      } else if (filterInputRef.current) {
+        filterInputRef.current.blur();
       }
     }
   };
@@ -900,7 +922,7 @@ export const PlaylistDetail = ({
         <div className="flex items-center gap-3 flex-wrap">
           <button
             onClick={handlePlayAll}
-            disabled={tracks.length === 0}
+            disabled={isCurrentPlayingInPlaylist ? false : (tracks.length === 0 && allTracks.length === 0)}
             className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-brand-500 hover:bg-brand-400 hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-xl transition disabled:opacity-40 shrink-0"
             title="Play Playlist"
           >
@@ -913,7 +935,7 @@ export const PlaylistDetail = ({
 
           <button
             onClick={handleToggleShuffle}
-            disabled={tracks.length === 0}
+            disabled={allTracks.length === 0}
             className={`relative p-3 rounded-full hover:scale-105 active:scale-95 transition flex items-center justify-center disabled:opacity-40 ${
               isShuffle ? 'text-brand-500 hover:text-brand-400' : 'text-[#b3b3b3] hover:text-white'
             }`}
@@ -951,6 +973,7 @@ export const PlaylistDetail = ({
           <div className="relative flex-1 sm:w-52">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#888]" />
             <input
+              ref={filterInputRef}
               type="text"
               placeholder="Filter playlist..."
               value={searchQuery}
@@ -960,7 +983,10 @@ export const PlaylistDetail = ({
             />
             {searchQuery && (
               <button
-                onClick={() => setSearchQuery('')}
+                onClick={() => {
+                  setSearchQuery('');
+                  setFocusedTrackIdx(-1);
+                }}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#888] hover:text-white p-0.5"
               >
                 <X size={12} />
