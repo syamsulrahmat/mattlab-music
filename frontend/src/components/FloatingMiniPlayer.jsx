@@ -254,7 +254,13 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
     const currentH = dimensions.height || (pipWindow ? pipWindow.innerHeight : 140);
     const widthRatio = Math.max(0.48, Math.min(1.4, currentW / 360));
     const heightRatio = Math.max(0.48, Math.min(1.4, currentH / 140));
-    const scale = Math.min(widthRatio, heightRatio);
+
+    // Minimalist layout: when window gets smaller, hide title/artist and duration slider
+    const isMinimalLayout = currentH < 118 || currentW < 280;
+
+    // In minimal layout, vertical room is freed up, so we can relax vertical font scale penalty
+    const effectiveHScale = isMinimalLayout ? Math.max(0.68, Math.min(1.3, currentH / 110)) : heightRatio;
+    const scale = Math.min(widthRatio, effectiveHScale);
 
     // Fluid font sizes: shrink smoothly as window gets smaller
     const currentLyricFontSize = Math.max(8.5, Math.min(18, Math.round(14 * scale * 10) / 10));
@@ -266,9 +272,9 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
     // Dynamic element dimensions
     const coverSize = Math.max(18, Math.min(32, Math.round(28 * Math.max(0.65, scale))));
     const headerIconSize = Math.max(10, Math.min(15, Math.round(13 * scale)));
-    const transportIconSize = Math.max(10, Math.min(15, Math.round(13 * scale)));
-    const playButtonSize = Math.max(18, Math.min(30, Math.round(24 * scale)));
-    const playIconSize = Math.max(9, Math.min(14, Math.round(12 * scale)));
+    const transportIconSize = Math.max(11, Math.min(16, Math.round(13 * (isMinimalLayout ? Math.max(0.9, scale) : scale))));
+    const playButtonSize = Math.max(20, Math.min(32, Math.round(24 * (isMinimalLayout ? Math.max(0.95, scale) : scale))));
+    const playIconSize = Math.max(10, Math.min(15, Math.round(12 * (isMinimalLayout ? Math.max(0.95, scale) : scale))));
 
     // Extra compact spacing when window is short (< 115px) or narrow (< 270px)
     const isUltraCompact = currentH < 115 || currentW < 270;
@@ -279,30 +285,32 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
         ref={smallLyricsRef}
         className={`w-full h-full flex flex-col justify-between bg-[#121212] text-white font-sans select-none box-border overflow-hidden ${containerPadding}`}
       >
-        {/* Top row: Track Info & Action Icons */}
-        <div className="flex items-center justify-between w-full gap-1.5 shrink-0">
-          <div className="flex items-center gap-1.5 truncate flex-1 min-w-0 pr-1">
-            <img
-              src={currentTrack?.cover_url || '/api/covers/0'}
-              alt=""
-              style={{ width: `${coverSize}px`, height: `${coverSize}px` }}
-              className="rounded object-cover bg-[#222] shrink-0 shadow-sm"
-            />
-            <div className="flex-1 min-w-0 truncate">
-              <p
-                style={{ fontSize: `${titleFontSize}px` }}
-                className="font-bold text-white truncate leading-tight"
-              >
-                {currentTrack?.title || 'No Track'}
-              </p>
-              <p
-                style={{ fontSize: `${artistFontSize}px` }}
-                className="text-[#b3b3b3] truncate leading-tight"
-              >
-                {currentTrack?.artist_name || ''}
-              </p>
+        {/* Top row: Track Info (hidden in minimal) & Action Icons */}
+        <div className={`flex items-center ${isMinimalLayout ? 'justify-end' : 'justify-between'} w-full gap-1.5 shrink-0`}>
+          {!isMinimalLayout && (
+            <div className="flex items-center gap-1.5 truncate flex-1 min-w-0 pr-1">
+              <img
+                src={currentTrack?.cover_url || '/api/covers/0'}
+                alt=""
+                style={{ width: `${coverSize}px`, height: `${coverSize}px` }}
+                className="rounded object-cover bg-[#222] shrink-0 shadow-sm"
+              />
+              <div className="flex-1 min-w-0 truncate">
+                <p
+                  style={{ fontSize: `${titleFontSize}px` }}
+                  className="font-bold text-white truncate leading-tight"
+                >
+                  {currentTrack?.title || 'No Track'}
+                </p>
+                <p
+                  style={{ fontSize: `${artistFontSize}px` }}
+                  className="text-[#b3b3b3] truncate leading-tight"
+                >
+                  {currentTrack?.artist_name || ''}
+                </p>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="flex items-center gap-0.5 shrink-0">
             {/* Karaoke Mode */}
@@ -352,7 +360,10 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
         </div>
 
         {/* Center: The 2 Lines of Lyrics (Current sentence + Upcoming one) */}
-        <div className="flex flex-col justify-center text-center my-auto py-0.5 space-y-0.5 min-h-0 overflow-hidden">
+        <div
+          title={currentTrack ? `${currentTrack.title} • ${currentTrack.artist_name}` : undefined}
+          className="flex flex-col justify-center text-center my-auto py-0.5 space-y-0.5 min-h-0 overflow-hidden"
+        >
           {/* Line 1: Current Sentence */}
           <p
             onClick={() => currentLineObj && seek(currentLineObj.time)}
@@ -378,37 +389,39 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
           </p>
         </div>
 
-        {/* Bottom row: Scrubber + Controls */}
-        <div className="flex items-center justify-between gap-1.5 pt-0.5 shrink-0">
-          {/* Scrubber progress */}
-          <div className="flex items-center gap-1 flex-1 min-w-0">
-            <span
-              style={{ fontSize: `${timeFontSize}px`, minWidth: `${Math.round(24 * scale)}px` }}
-              className="text-[#888] font-mono text-right shrink-0"
-            >
-              {formatTime(currentTime)}
-            </span>
-            <div className="flex-1 relative flex items-center group">
-              <input
-                type="range"
-                min={0}
-                max={duration || 100}
-                step={0.1}
-                value={currentTime}
-                onChange={(e) => seek(parseFloat(e.target.value))}
-                className="w-full h-1 bg-white/15 group-hover:bg-white/25 rounded-full appearance-none cursor-pointer accent-brand-500 transition"
-              />
+        {/* Bottom row: Scrubber (hidden in minimal) + Controls (centered in minimal) */}
+        <div className={`flex items-center ${isMinimalLayout ? 'justify-center' : 'justify-between'} gap-1.5 pt-0.5 shrink-0`}>
+          {/* Scrubber progress - only shown in standard mode */}
+          {!isMinimalLayout && (
+            <div className="flex items-center gap-1 flex-1 min-w-0">
+              <span
+                style={{ fontSize: `${timeFontSize}px`, minWidth: `${Math.round(24 * scale)}px` }}
+                className="text-[#888] font-mono text-right shrink-0"
+              >
+                {formatTime(currentTime)}
+              </span>
+              <div className="flex-1 relative flex items-center group">
+                <input
+                  type="range"
+                  min={0}
+                  max={duration || 100}
+                  step={0.1}
+                  value={currentTime}
+                  onChange={(e) => seek(parseFloat(e.target.value))}
+                  className="w-full h-1 bg-white/15 group-hover:bg-white/25 rounded-full appearance-none cursor-pointer accent-brand-500 transition"
+                />
+              </div>
+              <span
+                style={{ fontSize: `${timeFontSize}px`, minWidth: `${Math.round(24 * scale)}px` }}
+                className="text-[#888] font-mono shrink-0"
+              >
+                {formatTime(duration)}
+              </span>
             </div>
-            <span
-              style={{ fontSize: `${timeFontSize}px`, minWidth: `${Math.round(24 * scale)}px` }}
-              className="text-[#888] font-mono shrink-0"
-            >
-              {formatTime(duration)}
-            </span>
-          </div>
+          )}
 
-          {/* Transport buttons */}
-          <div className="flex items-center gap-1 shrink-0">
+          {/* Transport buttons - centered in minimal mode, right-aligned in standard */}
+          <div className={`flex items-center ${isMinimalLayout ? 'gap-3.5' : 'gap-1'} shrink-0`}>
             <button
               type="button"
               onClick={prevTrack}
