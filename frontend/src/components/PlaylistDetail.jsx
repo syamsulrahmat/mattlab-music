@@ -62,6 +62,7 @@ export const PlaylistDetail = ({
 
   // In-playlist filter & sort
   const [searchQuery, setSearchQuery] = useState('');
+  const [focusedTrackIdx, setFocusedTrackIdx] = useState(-1);
   const [sortBy, setSortBy] = useState('custom'); // 'custom', 'title', 'artist', 'album', 'added_at', 'duration'
   const [sortOrder, setSortOrder] = useState('asc'); // 'asc', 'desc'
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
@@ -391,6 +392,80 @@ export const PlaylistDetail = ({
         const currIdx = playableTracks.findIndex((t) => t.id === currentTrack.id);
         setQueue(playableTracks);
         setQueueIndex(currIdx !== -1 ? currIdx : 0);
+      }
+    }
+  };
+
+  // Reset search track focus when query changes
+  useEffect(() => {
+    setFocusedTrackIdx(-1);
+  }, [searchQuery]);
+
+  // Auto-scroll focused track into view
+  useEffect(() => {
+    if (focusedTrackIdx >= 0 && tracks[focusedTrackIdx]) {
+      const el = document.querySelector(`[data-track-id="${tracks[focusedTrackIdx].id}"]`);
+      if (el) {
+        el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }
+  }, [focusedTrackIdx, tracks]);
+
+  const handleFilterKeyDown = (e) => {
+    if (tracks.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setFocusedTrackIdx((prev) => {
+        const nextIdx = prev < 0 ? 0 : Math.min(tracks.length - 1, prev + 1);
+        const nextTrack = tracks[nextIdx];
+        if (nextTrack) {
+          const nextSet = new Set([nextTrack.id]);
+          setSelectedTrackIds(nextSet);
+          selectedTrackIdsRef.current = nextSet;
+          setLastSelectedTrackIdx(nextIdx);
+          lastSelectedTrackIdxRef.current = nextIdx;
+        }
+        return nextIdx;
+      });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setFocusedTrackIdx((prev) => {
+        if (prev <= 0) {
+          setSelectedTrackIds(new Set());
+          selectedTrackIdsRef.current = new Set();
+          setLastSelectedTrackIdx(null);
+          lastSelectedTrackIdxRef.current = null;
+          return -1;
+        }
+        const prevIdx = prev - 1;
+        const prevTrack = tracks[prevIdx];
+        if (prevTrack) {
+          const nextSet = new Set([prevTrack.id]);
+          setSelectedTrackIds(nextSet);
+          selectedTrackIdsRef.current = nextSet;
+          setLastSelectedTrackIdx(prevIdx);
+          lastSelectedTrackIdxRef.current = prevIdx;
+        }
+        return prevIdx;
+      });
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const targetIdx = focusedTrackIdx >= 0 ? focusedTrackIdx : 0;
+      const targetTrack = tracks[targetIdx];
+      if (targetTrack && !targetTrack.isSyncPending) {
+        handleTrackPlay(targetTrack);
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      if (focusedTrackIdx >= 0) {
+        setFocusedTrackIdx(-1);
+        setSelectedTrackIds(new Set());
+        selectedTrackIdsRef.current = new Set();
+        setLastSelectedTrackIdx(null);
+        lastSelectedTrackIdxRef.current = null;
+      } else {
+        setSearchQuery('');
       }
     }
   };
@@ -880,6 +955,7 @@ export const PlaylistDetail = ({
               placeholder="Filter playlist..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleFilterKeyDown}
               className="w-full bg-[#242424] hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-white text-xs pl-8 pr-7 py-2 rounded-full border border-white/5 focus:border-white/20 outline-none transition placeholder:text-[#666]"
             />
             {searchQuery && (
@@ -1135,11 +1211,13 @@ export const PlaylistDetail = ({
                 const isSelected = selectedTrackIds.has(track.id);
                 const isDragOver = dragOverTrackIdx === idx;
                 const isBeingDragged = draggedTrackIdx === idx;
+                const isFocused = focusedTrackIdx === idx;
 
                 return (
                   <div
                     key={`${track.id}-${idx}`}
                     data-track-id={track.id}
+                    onMouseEnter={() => searchQuery.trim() && setFocusedTrackIdx(idx)}
                     onClick={(e) => handleRowClick(e, track, idx)}
                     onDoubleClick={() => !track.isSyncPending && handleTrackPlay(track)}
                     onContextMenu={(e) => {
@@ -1210,6 +1288,8 @@ export const PlaylistDetail = ({
                         ? 'opacity-40 border-dashed border-white/20'
                         : isDragOver
                         ? 'border-t-2 border-brand-500 bg-brand-500/10 shadow-lg'
+                        : isFocused
+                        ? 'bg-[#2a2a2a] ring-1 ring-brand-500/60 shadow-md text-white'
                         : isSelected
                         ? 'bg-[#2a2a2a] ring-1 ring-white/20 text-white'
                         : track.isSyncPending
@@ -1299,7 +1379,15 @@ export const PlaylistDetail = ({
                       )}
                       <div className="truncate min-w-0">
                         <div className="flex items-center gap-2 truncate">
-                          <p className={`text-sm font-medium truncate ${track.isSyncPending ? 'text-[#e0e0e0]' : isThisTrack ? 'text-brand-500 font-bold' : 'text-white'}`}>
+                          <p className={`text-sm font-medium truncate ${
+                            track.isSyncPending 
+                              ? 'text-[#e0e0e0]' 
+                              : isThisTrack 
+                              ? 'text-brand-500 font-bold' 
+                              : isFocused 
+                              ? 'text-brand-300 font-bold' 
+                              : 'text-white'
+                          }`}>
                             {track.title}
                           </p>
                           {track.syncStatus === 'downloading' && (

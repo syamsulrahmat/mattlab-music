@@ -28,6 +28,7 @@ export const LibrarySidebar = ({
   const [librarySearchQuery, setLibrarySearchQuery] = useState('');
   const [playlistSort, setPlaylistSort] = useState('custom'); // 'custom', 'name_asc', 'name_desc', 'recent', 'tracks'
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
   const sortMenuRef = useRef(null);
 
   const { toggleFavorite, currentTrack, isPlaying } = usePlayer();
@@ -69,6 +70,71 @@ export const LibrarySidebar = ({
     const q = librarySearchQuery.toLowerCase().trim();
     return 'liked songs'.includes(q) || 'favorites'.includes(q);
   }, [librarySearchQuery]);
+
+  // Combined matched items list for keyboard navigation
+  const filteredItems = useMemo(() => {
+    const items = [];
+    if (showLikedSongs) {
+      items.push({ type: 'favorites', id: 'favorites', name: 'Liked Songs' });
+    }
+    displayPlaylists.forEach((pl) => {
+      items.push({ type: 'playlist', id: pl.id, data: pl, name: pl.name });
+    });
+    return items;
+  }, [showLikedSongs, displayPlaylists]);
+
+  // Reset focus when user types so typing is never interrupted
+  useEffect(() => {
+    setFocusedIndex(-1);
+  }, [librarySearchQuery]);
+
+  // Auto-scroll the focused item into view when navigating with arrow keys
+  useEffect(() => {
+    if (focusedIndex >= 0) {
+      const el = document.getElementById(`library-item-${focusedIndex}`);
+      if (el) {
+        el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }
+  }, [focusedIndex]);
+
+  const handleSearchKeyDown = (e) => {
+    if (filteredItems.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setFocusedIndex((prev) => {
+        if (prev < 0) return 0; // Down arrow on search activates focus on the first row!
+        return prev < filteredItems.length - 1 ? prev + 1 : prev;
+      });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setFocusedIndex((prev) => {
+        if (prev <= 0) return -1; // Up arrow from top row returns focus to input
+        return prev - 1;
+      });
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const targetIdx = focusedIndex >= 0 ? focusedIndex : 0;
+      const targetItem = filteredItems[targetIdx];
+      if (targetItem) {
+        if (targetItem.type === 'favorites') {
+          setActiveTab('favorites');
+          if (onCloseMobile) onCloseMobile();
+        } else if (targetItem.type === 'playlist') {
+          onSelectPlaylist(targetItem.id);
+          if (onCloseMobile) onCloseMobile();
+        }
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      if (focusedIndex >= 0) {
+        setFocusedIndex(-1);
+      } else {
+        setLibrarySearchQuery('');
+      }
+    }
+  };
 
   const isCustomOrder = playlistSort === 'custom' && !librarySearchQuery.trim();
 
@@ -149,6 +215,7 @@ export const LibrarySidebar = ({
             placeholder="Search in library..."
             value={librarySearchQuery}
             onChange={(e) => setLibrarySearchQuery(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
             className="w-full bg-[#181818] hover:bg-[#202020] focus:bg-[#202020] text-xs text-white pl-7 pr-6 py-1.5 rounded-full border border-white/5 focus:border-white/20 outline-none transition placeholder:text-[#666]"
           />
           {librarySearchQuery && (
@@ -267,9 +334,12 @@ export const LibrarySidebar = ({
         {showLikedSongs && (() => {
           const isFavoritesSelected = activeTab === 'favorites';
           const isPlayingFavorites = isPlaying && currentTrack?.playlist_id === 'favorites';
+          const isFavoritesFocused = focusedIndex === 0;
 
           return (
             <div
+              id="library-item-0"
+              onMouseEnter={() => librarySearchQuery.trim() && setFocusedIndex(0)}
               onClick={() => {
                 setActiveTab('favorites');
                 if (onCloseMobile) onCloseMobile();
@@ -307,13 +377,17 @@ export const LibrarySidebar = ({
               className={`flex items-center gap-3 p-2 rounded-md cursor-pointer transition border relative ${
                 dragOverId === 'favorites'
                   ? 'bg-brand-500/20 border-brand-500 scale-[1.02] shadow-lg'
+                  : isFavoritesFocused
+                  ? 'bg-[#2a2a2a] border-brand-500/60 ring-1 ring-brand-500/40 shadow-md'
                   : isFavoritesSelected
                   ? 'bg-[#282828] border-brand-500/40 shadow-sm'
                   : 'hover:bg-[#1f1f1f] border-transparent'
               }`}
             >
-              {isFavoritesSelected && (
-                <div className="absolute left-0 top-2 bottom-2 w-1 bg-brand-500 rounded-r-full shadow-sm shadow-brand-500/50" />
+              {(isFavoritesSelected || isFavoritesFocused) && (
+                <div className={`absolute left-0 top-2 bottom-2 w-1 rounded-r-full shadow-sm ${
+                  isFavoritesFocused ? 'bg-brand-400 shadow-brand-400/50' : 'bg-brand-500 shadow-brand-500/50'
+                }`} />
               )}
               <div className="w-12 h-12 rounded-md bg-gradient-to-br from-indigo-700 via-purple-700 to-indigo-900 flex items-center justify-center shrink-0 shadow">
                 <Heart size={20} className="fill-white text-white" />
@@ -322,7 +396,9 @@ export const LibrarySidebar = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 truncate">
                     <p className={`text-sm font-semibold truncate ${
-                      isFavoritesSelected
+                      isFavoritesFocused
+                        ? 'text-brand-300 font-bold'
+                        : isFavoritesSelected
                         ? 'text-brand-400 font-bold'
                         : isPlayingFavorites
                         ? 'text-brand-500 font-bold'
@@ -367,6 +443,8 @@ export const LibrarySidebar = ({
           const isTargetAbove = playlistDropTarget?.idx === idx && playlistDropTarget?.position === 'above';
           const isTargetBelow = playlistDropTarget?.idx === idx && playlistDropTarget?.position === 'below';
           const isBeingDragged = draggedPlaylistIdx === idx;
+          const itemIndex = (showLikedSongs ? 1 : 0) + idx;
+          const isItemFocused = focusedIndex === itemIndex;
 
           return (
             <React.Fragment key={pl.id}>
@@ -374,6 +452,8 @@ export const LibrarySidebar = ({
                 <div className="h-0.5 w-full bg-brand-500 rounded-full my-1 shadow-sm shadow-brand-500/50" />
               )}
               <div
+                id={`library-item-${itemIndex}`}
+                onMouseEnter={() => librarySearchQuery.trim() && setFocusedIndex(itemIndex)}
                 onClick={() => {
                   onSelectPlaylist(pl.id);
                   if (onCloseMobile) onCloseMobile();
@@ -464,13 +544,17 @@ export const LibrarySidebar = ({
                     ? 'opacity-40 border-dashed border-white/20'
                     : isDragOverTrack
                     ? 'bg-brand-500/20 border-brand-500 scale-[1.02] shadow-lg'
+                    : isItemFocused
+                    ? 'bg-[#2a2a2a] border-brand-500/60 ring-1 ring-brand-500/40 shadow-md'
                     : isSelected
                     ? 'bg-[#282828] border-brand-500/40 shadow-sm'
                     : 'hover:bg-[#1f1f1f] border-transparent'
                 }`}
               >
-                {isSelected && (
-                  <div className="absolute left-0 top-2 bottom-2 w-1 bg-brand-500 rounded-r-full shadow-sm shadow-brand-500/50" />
+                {(isSelected || isItemFocused) && (
+                  <div className={`absolute left-0 top-2 bottom-2 w-1 rounded-r-full shadow-sm ${
+                    isItemFocused ? 'bg-brand-400 shadow-brand-400/50' : 'bg-brand-500 shadow-brand-500/50'
+                  }`} />
                 )}
                 <div className="relative shrink-0">
                   <PlaylistCover covers={pl.covers || []} size="w-12 h-12" iconSize={20} />
@@ -482,7 +566,9 @@ export const LibrarySidebar = ({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 truncate">
                       <p className={`text-sm font-semibold truncate ${
-                        isSelected
+                        isItemFocused
+                          ? 'text-brand-300 font-bold'
+                          : isSelected
                           ? 'text-brand-400 font-bold'
                           : isPlayingThis
                           ? 'text-brand-500 font-bold'
