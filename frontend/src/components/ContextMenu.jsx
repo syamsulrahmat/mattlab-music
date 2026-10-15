@@ -381,7 +381,7 @@ export const ContextMenu = ({
             onClick={async () => {
               onClose();
               try {
-                const res = await fetch(`/api/playlists/${data.id}`);
+                const res = await fetch(`/api/playlists/${data.id}`, { credentials: 'include' });
                 if (res.ok) {
                   const pData = await res.json();
                   if (Array.isArray(pData.tracks) && pData.tracks.length > 0) {
@@ -403,7 +403,7 @@ export const ContextMenu = ({
             onClick={async () => {
               onClose();
               try {
-                const res = await fetch(`/api/playlists/${data.id}`);
+                const res = await fetch(`/api/playlists/${data.id}`, { credentials: 'include' });
                 if (res.ok) {
                   const pData = await res.json();
                   if (Array.isArray(pData.tracks)) {
@@ -441,7 +441,7 @@ export const ContextMenu = ({
             onClick={async () => {
               onClose();
               try {
-                const res = await fetch(`/api/playlists/${data.id}`);
+                const res = await fetch(`/api/playlists/${data.id}`, { credentials: 'include' });
                 if (res.ok) {
                   const pData = await res.json();
                   if (Array.isArray(pData.tracks) && pData.tracks.length > 0) {
@@ -538,7 +538,7 @@ export const ContextMenu = ({
             onClick={async () => {
               onClose();
               try {
-                const res = await fetch('/api/favorites');
+                const res = await fetch('/api/favorites', { credentials: 'include' });
                 if (res.ok) {
                   const fData = await res.json();
                   const tracks = Array.isArray(fData.items) ? fData.items : (Array.isArray(fData) ? fData : []);
@@ -560,7 +560,7 @@ export const ContextMenu = ({
             onClick={async () => {
               onClose();
               try {
-                const res = await fetch('/api/favorites');
+                const res = await fetch('/api/favorites', { credentials: 'include' });
                 if (res.ok) {
                   const fData = await res.json();
                   const tracks = Array.isArray(fData.items) ? fData.items : (Array.isArray(fData) ? fData : []);
@@ -580,7 +580,7 @@ export const ContextMenu = ({
             onClick={async () => {
               onClose();
               try {
-                const res = await fetch('/api/favorites');
+                const res = await fetch('/api/favorites', { credentials: 'include' });
                 if (res.ok) {
                   const fData = await res.json();
                   const tracks = Array.isArray(fData.items) ? fData.items : (Array.isArray(fData) ? fData : []);

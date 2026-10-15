@@ -71,12 +71,15 @@ def init_db() -> None:
         );
 
         CREATE TABLE IF NOT EXISTS favorites (
-            track_id INTEGER PRIMARY KEY REFERENCES tracks(id) ON DELETE CASCADE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            track_id INTEGER NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_id, track_id)
         );
 
         CREATE TABLE IF NOT EXISTS playlists (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
             name TEXT NOT NULL,
             description TEXT DEFAULT '',
             position INTEGER DEFAULT 0,
@@ -99,6 +102,7 @@ def init_db() -> None:
             password_hash TEXT NOT NULL,
             role TEXT DEFAULT 'user',
             display_name TEXT,
+            preferences TEXT DEFAULT '{}',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             last_login TIMESTAMP
         );
@@ -131,10 +135,24 @@ def init_db() -> None:
         CREATE INDEX IF NOT EXISTS idx_spotify_sync_playlist ON spotify_sync_tracks(playlist_id, position);
         """)
 
-        # Migrations for playlists
         cursor = conn.cursor()
+
+        # Find admin user ID for data migration backfills
+        cursor.execute("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1")
+        admin_row = cursor.fetchone()
+        admin_id = admin_row["id"] if admin_row else 1
+
+        # Migrations for playlists
         cursor.execute("PRAGMA table_info(playlists)")
         cols = [c["name"] for c in cursor.fetchall()]
+
+        if "user_id" not in cols:
+            try:
+                conn.execute("ALTER TABLE playlists ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE")
+                conn.execute("UPDATE playlists SET user_id = ? WHERE user_id IS NULL", (admin_id,))
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_playlists_user ON playlists(user_id)")
+            except Exception as e:
+                print(f"[DB MIGRATION] Error migrating playlists user_id: {e}")
 
         if "position" not in cols:
             try:
@@ -171,3 +189,41 @@ def init_db() -> None:
                 conn.execute("ALTER TABLE playlists ADD COLUMN sync_status TEXT DEFAULT 'idle'")
             except Exception:
                 pass
+
+        # Migrations for favorites (composite user_id + track_id primary key)
+        cursor.execute("PRAGMA table_info(favorites)")
+        fav_cols = [c["name"] for c in cursor.fetchall()]
+        if "user_id" not in fav_cols:
+            try:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS favorites_new (
+                        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                        track_id INTEGER NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (user_id, track_id)
+                    )
+                """)
+                cursor.execute(
+                    "INSERT OR IGNORE INTO favorites_new (user_id, track_id, created_at) SELECT ?, track_id, created_at FROM favorites",
+                    (admin_id,)
+                )
+                cursor.execute("DROP TABLE favorites")
+                cursor.execute("ALTER TABLE favorites_new RENAME TO favorites")
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_favorites_user ON favorites(user_id)")
+            except Exception as e:
+                print(f"[DB MIGRATION] Error migrating favorites user_id: {e}")
+
+        # Migrations for users preferences
+        cursor.execute("PRAGMA table_info(users)")
+        user_cols = [c["name"] for c in cursor.fetchall()]
+        if "preferences" not in user_cols:
+            try:
+                conn.execute("ALTER TABLE users ADD COLUMN preferences TEXT DEFAULT '{}'")
+            except Exception as e:
+                print(f"[DB MIGRATION] Error adding preferences to users: {e}")
+
+        try:
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_playlists_user ON playlists(user_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_favorites_user ON favorites(user_id)")
+        except Exception:
+            pass

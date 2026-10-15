@@ -720,8 +720,8 @@ def import_spotify_playlist(
     with get_db() as conn:
         cursor = conn.cursor()
 
-        # Check if playlist already exists with this spotify_id
-        cursor.execute("SELECT id FROM playlists WHERE spotify_id = ?", (spotify_id,))
+        # Check if playlist already exists with this spotify_id for the current user
+        cursor.execute("SELECT id FROM playlists WHERE spotify_id = ? AND user_id = ?", (spotify_id, current_user["id"]))
         existing_pl = cursor.fetchone()
 
         if existing_pl:
@@ -729,13 +729,15 @@ def import_spotify_playlist(
             cursor.execute("""
                 UPDATE playlists
                 SET name = ?, description = ?, auto_sync = ?, last_synced_at = CURRENT_TIMESTAMP
-                WHERE id = ?
-            """, (name, description, 1 if data.auto_sync else 0, playlist_id))
+                WHERE id = ? AND user_id = ?
+            """, (name, description, 1 if data.auto_sync else 0, playlist_id, current_user["id"]))
         else:
+            cursor.execute("SELECT COALESCE(MAX(position), 0) + 1 AS next_pos FROM playlists WHERE user_id = ?", (current_user["id"],))
+            next_pos = cursor.fetchone()["next_pos"]
             cursor.execute("""
-                INSERT INTO playlists (name, description, spotify_id, spotify_url, auto_sync, last_synced_at)
-                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-            """, (name, description, spotify_id, spotify_url, 1 if data.auto_sync else 0))
+                INSERT INTO playlists (name, description, spotify_id, spotify_url, auto_sync, last_synced_at, user_id, position)
+                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?)
+            """, (name, description, spotify_id, spotify_url, 1 if data.auto_sync else 0, current_user["id"], next_pos))
             playlist_id = cursor.lastrowid
 
     sync_result = sync_single_spotify_playlist(playlist_id, playlist_data=playlist_data)
@@ -757,7 +759,7 @@ def get_spotify_playlist_status(
     """Get live download and sync status of a Spotify-linked playlist."""
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, name, spotify_id, spotify_url, auto_sync, last_synced_at, sync_status FROM playlists WHERE id = ?", (playlist_id,))
+        cursor.execute("SELECT id, name, spotify_id, spotify_url, auto_sync, last_synced_at, sync_status FROM playlists WHERE id = ? AND user_id = ?", (playlist_id, current_user["id"]))
         pl = cursor.fetchone()
         if not pl:
             raise HTTPException(status_code=404, detail="Playlist not found")
@@ -808,6 +810,11 @@ def sync_playlist_now(
     current_user: Dict[str, Any] = Depends(get_current_user),
 ):
     """Force an immediate resync with Spotify for a linked playlist."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM playlists WHERE id = ? AND user_id = ?", (playlist_id, current_user["id"]))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Playlist not found")
     try:
         return sync_single_spotify_playlist(playlist_id)
     except Exception as e:

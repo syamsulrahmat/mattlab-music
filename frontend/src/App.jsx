@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { TopBar } from './components/TopBar';
 import { LibrarySidebar } from './components/LibrarySidebar';
 import { QueueIsland } from './components/QueueIsland';
@@ -129,7 +129,7 @@ const MainAppContent = () => {
 
   const fetchPlaylists = async () => {
     try {
-      const res = await fetch('/api/playlists');
+      const res = await fetch('/api/playlists', { credentials: 'include' });
       const data = await res.json();
       setPlaylists(data.items || []);
     } catch (err) {
@@ -137,13 +137,29 @@ const MainAppContent = () => {
     }
   };
 
+  const previousUserIdRef = useRef(null);
+
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && user?.id) {
+      if (previousUserIdRef.current !== user.id) {
+        previousUserIdRef.current = user.id;
+        setSelectedPlaylistId(null);
+        if (activeTab === 'playlist') {
+          setActiveTab('home');
+        }
+      }
       fetchStats();
       fetchAlbums();
       fetchPlaylists();
+    } else if (!isAuthenticated) {
+      previousUserIdRef.current = null;
+      setPlaylists([]);
+      setSelectedPlaylistId(null);
+      if (activeTab === 'playlist') {
+        setActiveTab('home');
+      }
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user?.id, activeTab]);
 
   // Centralized Navigation Dispatcher
   const navigateTo = useCallback((nextState) => {
@@ -403,6 +419,7 @@ const MainAppContent = () => {
     const res = await fetch('/api/spotify/import', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ url, auto_download, auto_sync }),
     });
     if (!res.ok) {
@@ -423,6 +440,7 @@ const MainAppContent = () => {
       const res = await fetch('/api/playlists', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ name: name.trim() }),
       });
       const data = await res.json();
@@ -444,7 +462,7 @@ const MainAppContent = () => {
     if (!playlistToDelete) return;
     try {
       setIsDeletingPlaylist(true);
-      const res = await fetch(`/api/playlists/${playlistToDelete.id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/playlists/${playlistToDelete.id}`, { method: 'DELETE', credentials: 'include' });
       if (res.ok) {
         handlePlaylistDeleted(playlistToDelete.id);
       }
@@ -463,6 +481,7 @@ const MainAppContent = () => {
       const res = await fetch(`/api/playlists/${playlistToRename.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ name: newName.trim() }),
       });
       if (res.ok) {
@@ -482,6 +501,7 @@ const MainAppContent = () => {
       setIsTakingOwnership(true);
       const res = await fetch(`/api/playlists/${playlistToTakeOwnership.id}/take-ownership`, {
         method: 'POST',
+        credentials: 'include',
       });
       if (res.ok) {
         await fetchPlaylists();
@@ -518,6 +538,7 @@ const MainAppContent = () => {
       const res = await fetch(`/api/playlists/${playlistId}/tracks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ track_id: trackId }),
       });
       const data = await res.json();

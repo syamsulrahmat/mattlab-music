@@ -116,11 +116,20 @@ def get_user_from_request(request: Request) -> Optional[Dict[str, Any]]:
     # Fetch fresh user info from DB
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, username, role, display_name, created_at, last_login FROM users WHERE id = ?", (decoded["user_id"],))
+        cursor.execute("SELECT id, username, role, display_name, preferences, created_at, last_login FROM users WHERE id = ?", (decoded["user_id"],))
         user_row = cursor.fetchone()
         if not user_row:
             return None
-        return dict(user_row)
+        user_dict = dict(user_row)
+        raw_prefs = user_dict.get("preferences")
+        if raw_prefs and isinstance(raw_prefs, str):
+            try:
+                user_dict["preferences"] = json.loads(raw_prefs)
+            except Exception:
+                user_dict["preferences"] = {}
+        else:
+            user_dict["preferences"] = {}
+        return user_dict
 
 def get_current_user(request: Request) -> Dict[str, Any]:
     """Dependency for routes requiring authenticated user."""

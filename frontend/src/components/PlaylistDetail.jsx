@@ -105,7 +105,7 @@ export const PlaylistDetail = ({
   const fetchPlaylistSilently = async () => {
     if (!playlistId) return;
     try {
-      const res = await fetch(`/api/playlists/${playlistId}`);
+      const res = await fetch(`/api/playlists/${playlistId}`, { credentials: 'include' });
       if (!res.ok) return;
       const data = await res.json();
       setPlaylist((prev) => ({
@@ -123,7 +123,7 @@ export const PlaylistDetail = ({
     if (!playlistId) return;
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/playlists/${playlistId}`);
+      const res = await fetch(`/api/playlists/${playlistId}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Playlist not found');
       const data = await res.json();
       setPlaylist({
@@ -163,7 +163,7 @@ export const PlaylistDetail = ({
 
     const pollStatus = async () => {
       try {
-        const res = await fetch(`/api/spotify/status/${playlistId}`);
+        const res = await fetch(`/api/spotify/status/${playlistId}`, { credentials: 'include' });
         if (!res.ok) return;
         const data = await res.json();
         if (!isMounted) return;
@@ -198,8 +198,8 @@ export const PlaylistDetail = ({
     if (isSyncingNow || !playlistId) return;
     setIsSyncingNow(true);
     try {
-      const syncRes = await fetch(`/api/spotify/sync-now/${playlistId}`, { method: 'POST' });
-      const res = await fetch(`/api/spotify/status/${playlistId}`);
+      const syncRes = await fetch(`/api/spotify/sync-now/${playlistId}`, { method: 'POST', credentials: 'include' });
+      const res = await fetch(`/api/spotify/status/${playlistId}`, { credentials: 'include' });
       if (res.ok) {
         setSpotifyStatus(await res.json());
       }
@@ -328,6 +328,7 @@ export const PlaylistDetail = ({
         await fetch(`/api/playlists/${playlistId}/reorder`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ track_ids: newTrackIds }),
         });
         if (onPlaylistUpdated) onPlaylistUpdated();
@@ -602,7 +603,7 @@ export const PlaylistDetail = ({
   const handleRemoveTrack = async (e, trackId) => {
     if (e) e.stopPropagation();
     try {
-      await fetch(`/api/playlists/${playlistId}/tracks/${trackId}`, { method: 'DELETE' });
+      await fetch(`/api/playlists/${playlistId}/tracks/${trackId}`, { method: 'DELETE', credentials: 'include' });
       setPlaylist((prev) => (prev ? {
         ...prev,
         tracks: prev.tracks.filter((t) => t.id !== trackId),
@@ -625,6 +626,7 @@ export const PlaylistDetail = ({
       await fetch(`/api/playlists/${playlistId}/tracks/remove`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ track_ids: ids }),
       });
       setPlaylist((prev) => (prev ? {
@@ -661,6 +663,7 @@ export const PlaylistDetail = ({
       const res = await fetch(`/api/playlists/${playlistId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           name: cleanName,
           description: editDescription.trim()
@@ -680,7 +683,7 @@ export const PlaylistDetail = ({
 
   const handleDeletePlaylist = async () => {
     try {
-      await fetch(`/api/playlists/${playlistId}`, { method: 'DELETE' });
+      await fetch(`/api/playlists/${playlistId}`, { method: 'DELETE', credentials: 'include' });
       setIsConfirmDeleteOpen(false);
       onPlaylistDeleted(playlistId);
     } catch (err) {

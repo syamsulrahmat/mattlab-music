@@ -1,10 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { audioPreloader } from '../utils/audioPreloader';
 import { shuffleArray } from '../utils/shuffle';
+import { useAuth } from './AuthContext';
 
 const PlayerContext = createContext(null);
 
 export const PlayerProvider = ({ children }) => {
+  const { user, isAuthenticated } = useAuth();
+  const loadedUserIdRef = useRef(null);
+  const debouncePrefTimerRef = useRef(null);
+
   const audioRef = useRef(null);
   const standbyAudioRef = useRef(null);
   const isCrossfadingRef = useRef(false);
@@ -270,10 +275,39 @@ export const PlayerProvider = ({ children }) => {
     }
   }, [isKaraokeMode, currentTrack, karaokeStemStatus, fetchKaraokeStatus, generateKaraokeStems, crossfadeToSource]);
 
+  const saveUserPreference = useCallback((patch) => {
+    if (!isAuthenticated || !user?.id) return;
+    if (debouncePrefTimerRef.current) {
+      clearTimeout(debouncePrefTimerRef.current);
+    }
+    debouncePrefTimerRef.current = setTimeout(async () => {
+      try {
+        await fetch('/api/auth/preferences', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(patch),
+        });
+      } catch (err) {
+        console.warn('[PREFERENCES] Failed to save user preference:', err);
+      }
+    }, 500);
+  }, [isAuthenticated, user?.id]);
+
+  const handleSetVolume = useCallback((val) => {
+    setVolume((prev) => {
+      const nextVol = typeof val === 'function' ? val(prev) : val;
+      const clamped = Math.max(0, Math.min(1, nextVol));
+      saveUserPreference({ volume: clamped });
+      return clamped;
+    });
+  }, [saveUserPreference]);
+
   const setPreloadCount = useCallback((count) => {
     const updated = audioPreloader.setMaxPreloadCount(count);
     setPreloadCountState(updated);
-  }, []);
+    saveUserPreference({ preloadCount: updated });
+  }, [saveUserPreference]);
 
   const clearPreloadCache = useCallback(async () => {
     await audioPreloader.clearAll();
@@ -294,17 +328,46 @@ export const PlayerProvider = ({ children }) => {
     }
   }, [queue, queueIndex]);
 
-  // Load initial favorites
+  // Synchronize favorites and preferences when authenticated user changes
   useEffect(() => {
-    fetch('/api/favorites/ids')
-      .then((res) => res.json())
-      .then((ids) => {
-        if (Array.isArray(ids)) {
-          setFavoriteIds(new Set(ids));
+    if (isAuthenticated && user?.id) {
+      if (loadedUserIdRef.current !== user.id) {
+        loadedUserIdRef.current = user.id;
+
+        // Apply saved user preferences if available
+        const prefs = user.preferences || {};
+        if (typeof prefs.volume === 'number' && !isNaN(prefs.volume)) {
+          setVolume(prefs.volume);
+          if (audioRef.current && !isCrossfadingRef.current) {
+            audioRef.current.volume = isMuted ? 0 : prefs.volume;
+          }
         }
-      })
-      .catch((err) => console.error('Failed to load favorites:', err));
-  }, []);
+        if (prefs.repeat && ['off', 'all', 'one'].includes(prefs.repeat)) {
+          setRepeatMode(prefs.repeat);
+        }
+        if (typeof prefs.shuffle === 'boolean') {
+          setIsShuffle(prefs.shuffle);
+        }
+        if (typeof prefs.preloadCount === 'number') {
+          const updated = audioPreloader.setMaxPreloadCount(prefs.preloadCount);
+          setPreloadCountState(updated);
+        }
+
+        // Fetch user-scoped favorites
+        fetch('/api/favorites/ids', { credentials: 'include' })
+          .then((res) => res.json())
+          .then((ids) => {
+            if (Array.isArray(ids)) {
+              setFavoriteIds(new Set(ids));
+            }
+          })
+          .catch((err) => console.error('Failed to load user favorites:', err));
+      }
+    } else if (!isAuthenticated) {
+      loadedUserIdRef.current = null;
+      setFavoriteIds(new Set());
+    }
+  }, [isAuthenticated, user?.id, user?.preferences, isMuted]);
 
   // Initialize audio element settings
   useEffect(() => {
@@ -635,15 +698,19 @@ export const PlayerProvider = ({ children }) => {
           setQueue([...queue.slice(0, queueIndex + 1), ...shuffledUpcoming]);
         }
       }
+      saveUserPreference({ shuffle: next });
       return next;
     });
   };
 
   const toggleRepeat = () => {
     setRepeatMode((prev) => {
-      if (prev === 'off') return 'all';
-      if (prev === 'all') return 'one';
-      return 'off';
+      let next = 'off';
+      if (prev === 'off') next = 'all';
+      else if (prev === 'all') next = 'one';
+      else next = 'off';
+      saveUserPreference({ repeat: next });
+      return next;
     });
   };
 
@@ -661,9 +728,9 @@ export const PlayerProvider = ({ children }) => {
 
     try {
       if (isFav) {
-        await fetch(`/api/favorites/${trackId}`, { method: 'DELETE' });
+        await fetch(`/api/favorites/${trackId}`, { method: 'DELETE', credentials: 'include' });
       } else {
-        await fetch(`/api/favorites/${trackId}`, { method: 'POST' });
+        await fetch(`/api/favorites/${trackId}`, { method: 'POST', credentials: 'include' });
       }
     } catch (err) {
       console.error('Failed to toggle favorite:', err);
@@ -1099,7 +1166,8 @@ export const PlayerProvider = ({ children }) => {
         playTrack,
         togglePlay,
         seek,
-        setVolume,
+        setVolume: handleSetVolume,
+        saveUserPreference,
         toggleMute,
         nextTrack,
         prevTrack,

@@ -433,6 +433,7 @@ export const LibrarySidebar = ({
                       await fetch('/api/playlists/reorder', {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
                         body: JSON.stringify({ playlist_ids: newPlaylists.map((p) => p.id) }),
                       });
                     } catch (err) {

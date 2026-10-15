@@ -11,7 +11,7 @@ export const AddToPlaylistModal = ({ track, isOpen, onClose, onPlaylistUpdated }
 
   useEffect(() => {
     if (isOpen) {
-      fetch('/api/playlists')
+      fetch('/api/playlists', { credentials: 'include' })
         .then((res) => res.json())
         .then((data) => setPlaylists(data.items || []))
         .catch((err) => console.error('Failed to load playlists:', err));
@@ -39,6 +39,7 @@ export const AddToPlaylistModal = ({ track, isOpen, onClose, onPlaylistUpdated }
       const res = await fetch(`/api/playlists/${playlistId}/tracks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ track_id: track.id }),
       });
       const data = await res.json();
@@ -63,6 +64,7 @@ export const AddToPlaylistModal = ({ track, isOpen, onClose, onPlaylistUpdated }
       const res = await fetch('/api/playlists', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ name: newPlaylistName.trim() }),
       });
       const data = await res.json();
@@ -70,7 +72,7 @@ export const AddToPlaylistModal = ({ track, isOpen, onClose, onPlaylistUpdated }
       setNewPlaylistName('');
       setIsCreating(false);
       // Reload playlists
-      const listRes = await fetch('/api/playlists');
+      const listRes = await fetch('/api/playlists', { credentials: 'include' });
       const listData = await listRes.json();
       setPlaylists(listData.items || []);
     } catch (err) {

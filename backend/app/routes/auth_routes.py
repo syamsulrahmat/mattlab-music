@@ -1,4 +1,5 @@
 import time
+import json
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends, Request, Response, status
 from pydantic import BaseModel, Field
@@ -91,6 +92,7 @@ def setup_admin(data: SetupRequest, response: Response):
         "username": clean_username,
         "role": "admin",
         "display_name": display_name,
+        "preferences": {},
     }
     token = create_access_token({"user_id": new_id, "username": clean_username, "role": "admin"})
     set_auth_cookie(response, token)
@@ -116,11 +118,20 @@ def login(data: LoginRequest, response: Response):
         # Update last login timestamp
         cursor.execute("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", (row["id"],))
 
+    prefs = {}
+    raw_prefs = row["preferences"] if "preferences" in row.keys() else None
+    if raw_prefs and isinstance(raw_prefs, str):
+        try:
+            prefs = json.loads(raw_prefs)
+        except Exception:
+            prefs = {}
+
     user = {
         "id": row["id"],
         "username": row["username"],
         "role": row["role"],
         "display_name": row["display_name"] or row["username"],
+        "preferences": prefs,
     }
     token = create_access_token({"user_id": row["id"], "username": row["username"], "role": row["role"]})
     set_auth_cookie(response, token)
@@ -137,6 +148,28 @@ def logout(response: Response):
 def get_me(current_user: Dict[str, Any] = Depends(get_current_user)):
     """Return currently authenticated user profile."""
     return {"user": current_user}
+
+@router.get("/preferences")
+def get_preferences(current_user: Dict[str, Any] = Depends(get_current_user)):
+    """Get preferences for the current authenticated user."""
+    return current_user.get("preferences", {})
+
+@router.put("/preferences")
+def update_preferences(payload: Dict[str, Any], current_user: Dict[str, Any] = Depends(get_current_user)):
+    """Update or merge preferences for the current authenticated user."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT preferences FROM users WHERE id = ?", (current_user["id"],))
+        row = cursor.fetchone()
+        existing = {}
+        if row and row["preferences"]:
+            try:
+                existing = json.loads(row["preferences"])
+            except Exception:
+                pass
+        existing.update(payload)
+        cursor.execute("UPDATE users SET preferences = ? WHERE id = ?", (json.dumps(existing), current_user["id"]))
+    return {"status": "ok", "preferences": existing}
 
 @router.get("/users")
 def list_users(admin: Dict[str, Any] = Depends(get_current_admin)):

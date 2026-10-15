@@ -1,7 +1,8 @@
-from typing import Optional, List
-from fastapi import APIRouter, HTTPException, status
+from typing import Optional, List, Dict, Any
+from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel
 from app.database import get_db
+from app.auth import get_current_user
 
 router = APIRouter(tags=["Playlists & Favorites"])
 
@@ -21,17 +22,17 @@ class ReorderTracksRequest(BaseModel):
 # ==================== FAVORITES ====================
 
 @router.get("/favorites/ids")
-async def get_favorite_ids():
-    """Return all favorited track IDs for fast frontend matching."""
+async def get_favorite_ids(current_user: Dict[str, Any] = Depends(get_current_user)):
+    """Return all favorited track IDs for fast frontend matching for current user."""
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT track_id FROM favorites")
+        cursor.execute("SELECT track_id FROM favorites WHERE user_id = ?", (current_user["id"],))
         ids = [row["track_id"] for row in cursor.fetchall()]
     return ids
 
 @router.get("/favorites")
-async def get_favorites():
-    """Return all favorited tracks in reverse chronological order."""
+async def get_favorites(current_user: Dict[str, Any] = Depends(get_current_user)):
+    """Return all favorited tracks in reverse chronological order for current user."""
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -44,8 +45,9 @@ async def get_favorites():
             JOIN tracks t ON f.track_id = t.id
             JOIN albums a ON t.album_id = a.id
             JOIN artists ar ON t.artist_id = ar.id
+            WHERE f.user_id = ?
             ORDER BY f.created_at DESC
-        """)
+        """, (current_user["id"],))
         tracks = [
             {
                 **dict(row),
@@ -57,31 +59,31 @@ async def get_favorites():
     return {"items": tracks, "count": len(tracks)}
 
 @router.post("/favorites/{track_id}")
-async def add_favorite(track_id: int):
-    """Add a track to favorites."""
+async def add_favorite(track_id: int, current_user: Dict[str, Any] = Depends(get_current_user)):
+    """Add a track to favorites for current user."""
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT id FROM tracks WHERE id = ?", (track_id,))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="Track not found")
 
-        cursor.execute("INSERT OR IGNORE INTO favorites (track_id) VALUES (?)", (track_id,))
+        cursor.execute("INSERT OR IGNORE INTO favorites (user_id, track_id) VALUES (?, ?)", (current_user["id"], track_id))
     return {"status": "added", "track_id": track_id}
 
 @router.delete("/favorites/{track_id}")
-async def remove_favorite(track_id: int):
-    """Remove a track from favorites."""
+async def remove_favorite(track_id: int, current_user: Dict[str, Any] = Depends(get_current_user)):
+    """Remove a track from favorites for current user."""
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM favorites WHERE track_id = ?", (track_id,))
+        cursor.execute("DELETE FROM favorites WHERE user_id = ? AND track_id = ?", (current_user["id"], track_id))
     return {"status": "removed", "track_id": track_id}
 
 
 # ==================== PLAYLISTS ====================
 
 @router.get("/playlists")
-async def list_playlists():
-    """List all playlists with track count, duration, and sample covers for 2x2 grid."""
+async def list_playlists(current_user: Dict[str, Any] = Depends(get_current_user)):
+    """List all playlists belonging to current user with track count, duration, and sample covers for 2x2 grid."""
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -99,9 +101,10 @@ async def list_playlists():
             FROM playlists p
             LEFT JOIN playlist_tracks pt ON pt.playlist_id = p.id
             LEFT JOIN tracks t ON pt.track_id = t.id
+            WHERE p.user_id = ?
             GROUP BY p.id
             ORDER BY p.position ASC, p.updated_at DESC
-        """)
+        """, (current_user["id"],))
         playlists = [dict(row) for row in cursor.fetchall()]
 
         # Attach up to 4 distinct album cover URLs for each playlist for 2x2 collage (first 4 albums by track position)
@@ -122,28 +125,30 @@ async def list_playlists():
     return {"items": playlists}
 
 @router.post("/playlists")
-async def create_playlist(payload: PlaylistCreate):
-    """Create a new playlist."""
+async def create_playlist(payload: PlaylistCreate, current_user: Dict[str, Any] = Depends(get_current_user)):
+    """Create a new playlist scoped to current user."""
     clean_name = payload.name.strip()
     if not clean_name:
         raise HTTPException(status_code=400, detail="Playlist name cannot be empty")
 
     with get_db() as conn:
         cursor = conn.cursor()
+        cursor.execute("SELECT COALESCE(MAX(position), 0) + 1 AS next_pos FROM playlists WHERE user_id = ?", (current_user["id"],))
+        next_pos = cursor.fetchone()["next_pos"]
         cursor.execute(
-            "INSERT INTO playlists (name, description) VALUES (?, ?)",
-            (clean_name, payload.description or "")
+            "INSERT INTO playlists (name, description, user_id, position) VALUES (?, ?, ?, ?)",
+            (clean_name, payload.description or "", current_user["id"], next_pos)
         )
         playlist_id = cursor.lastrowid
 
     return {"id": playlist_id, "name": clean_name, "track_count": 0}
 
 @router.get("/playlists/{playlist_id}")
-async def get_playlist_detail(playlist_id: int):
-    """Get single playlist and its ordered tracks, including sample covers."""
+async def get_playlist_detail(playlist_id: int, current_user: Dict[str, Any] = Depends(get_current_user)):
+    """Get single playlist and its ordered tracks, verifying user ownership."""
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM playlists WHERE id = ?", (playlist_id,))
+        cursor.execute("SELECT * FROM playlists WHERE id = ? AND user_id = ?", (playlist_id, current_user["id"]))
         playlist = cursor.fetchone()
         if not playlist:
             raise HTTPException(status_code=404, detail="Playlist not found")
@@ -198,11 +203,11 @@ class BulkRemoveRequest(BaseModel):
     track_ids: List[int]
 
 @router.patch("/playlists/{playlist_id}")
-async def update_playlist(playlist_id: int, payload: PlaylistUpdate):
+async def update_playlist(playlist_id: int, payload: PlaylistUpdate, current_user: Dict[str, Any] = Depends(get_current_user)):
     """Rename a playlist and/or update its description."""
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT id FROM playlists WHERE id = ?", (playlist_id,))
+        cursor.execute("SELECT id FROM playlists WHERE id = ? AND user_id = ?", (playlist_id, current_user["id"]))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="Playlist not found")
 
@@ -211,25 +216,29 @@ async def update_playlist(playlist_id: int, payload: PlaylistUpdate):
             if not clean_name:
                 raise HTTPException(status_code=400, detail="Playlist name cannot be empty")
             cursor.execute(
-                "UPDATE playlists SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                (clean_name[:100], playlist_id),
+                "UPDATE playlists SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?",
+                (clean_name[:100], playlist_id, current_user["id"]),
             )
         if payload.description is not None:
             cursor.execute(
-                "UPDATE playlists SET description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                (payload.description.strip()[:300], playlist_id),
+                "UPDATE playlists SET description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?",
+                (payload.description.strip()[:300], playlist_id, current_user["id"]),
             )
-        cursor.execute("SELECT id, name, description FROM playlists WHERE id = ?", (playlist_id,))
+        cursor.execute("SELECT id, name, description FROM playlists WHERE id = ? AND user_id = ?", (playlist_id, current_user["id"]))
         row = cursor.fetchone()
     return dict(row)
 
 @router.post("/playlists/{playlist_id}/tracks/remove")
-async def bulk_remove_tracks(playlist_id: int, payload: BulkRemoveRequest):
+async def bulk_remove_tracks(playlist_id: int, payload: BulkRemoveRequest, current_user: Dict[str, Any] = Depends(get_current_user)):
     """Remove several tracks from a playlist in one call (multi-select delete)."""
     if not payload.track_ids:
         return {"status": "removed", "count": 0}
     with get_db() as conn:
         cursor = conn.cursor()
+        cursor.execute("SELECT id FROM playlists WHERE id = ? AND user_id = ?", (playlist_id, current_user["id"]))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Playlist not found")
+
         placeholders = ",".join("?" for _ in payload.track_ids)
         cursor.execute(
             f"DELETE FROM playlist_tracks WHERE playlist_id = ? AND track_id IN ({placeholders})",
@@ -239,11 +248,11 @@ async def bulk_remove_tracks(playlist_id: int, payload: BulkRemoveRequest):
     return {"status": "removed", "count": removed}
 
 @router.post("/playlists/{playlist_id}/tracks")
-async def add_track_to_playlist(playlist_id: int, payload: AddTrackRequest):
+async def add_track_to_playlist(playlist_id: int, payload: AddTrackRequest, current_user: Dict[str, Any] = Depends(get_current_user)):
     """Add a track to a playlist, checking for duplicates."""
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT id FROM playlists WHERE id = ?", (playlist_id,))
+        cursor.execute("SELECT id FROM playlists WHERE id = ? AND user_id = ?", (playlist_id, current_user["id"]))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="Playlist not found")
 
@@ -287,37 +296,49 @@ async def add_track_to_playlist(playlist_id: int, payload: AddTrackRequest):
     }
 
 @router.delete("/playlists/{playlist_id}/tracks/{track_id}")
-async def remove_track_from_playlist(playlist_id: int, track_id: int):
+async def remove_track_from_playlist(playlist_id: int, track_id: int, current_user: Dict[str, Any] = Depends(get_current_user)):
     """Remove a track from a playlist."""
     with get_db() as conn:
         cursor = conn.cursor()
+        cursor.execute("SELECT id FROM playlists WHERE id = ? AND user_id = ?", (playlist_id, current_user["id"]))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Playlist not found")
+
         cursor.execute("DELETE FROM playlist_tracks WHERE playlist_id = ? AND track_id = ?", (playlist_id, track_id))
         cursor.execute("UPDATE playlists SET updated_at = CURRENT_TIMESTAMP WHERE id = ?", (playlist_id,))
 
     return {"status": "removed", "playlist_id": playlist_id, "track_id": track_id}
 
 @router.delete("/playlists/{playlist_id}")
-async def delete_playlist(playlist_id: int):
+async def delete_playlist(playlist_id: int, current_user: Dict[str, Any] = Depends(get_current_user)):
     """Delete a playlist."""
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM playlists WHERE id = ?", (playlist_id,))
+        cursor.execute("SELECT id FROM playlists WHERE id = ? AND user_id = ?", (playlist_id, current_user["id"]))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Playlist not found")
+
+        cursor.execute("DELETE FROM playlists WHERE id = ? AND user_id = ?", (playlist_id, current_user["id"]))
     return {"status": "deleted", "id": playlist_id}
 
 @router.put("/playlists/reorder")
-async def reorder_playlists(payload: ReorderPlaylistsRequest):
-    """Reorder playlists in sidebar by setting sequential position."""
+async def reorder_playlists(payload: ReorderPlaylistsRequest, current_user: Dict[str, Any] = Depends(get_current_user)):
+    """Reorder playlists in sidebar by setting sequential position for current user."""
     with get_db() as conn:
         cursor = conn.cursor()
         for idx, pl_id in enumerate(payload.playlist_ids):
-            cursor.execute("UPDATE playlists SET position = ? WHERE id = ?", (idx, pl_id))
+            cursor.execute("UPDATE playlists SET position = ? WHERE id = ? AND user_id = ?", (idx, pl_id, current_user["id"]))
     return {"status": "success", "count": len(payload.playlist_ids)}
 
 @router.put("/playlists/{playlist_id}/reorder")
-async def reorder_playlist_tracks(playlist_id: int, payload: ReorderTracksRequest):
+async def reorder_playlist_tracks(playlist_id: int, payload: ReorderTracksRequest, current_user: Dict[str, Any] = Depends(get_current_user)):
     """Reorder tracks inside a playlist by setting sequential position."""
     with get_db() as conn:
         cursor = conn.cursor()
+        cursor.execute("SELECT id FROM playlists WHERE id = ? AND user_id = ?", (playlist_id, current_user["id"]))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Playlist not found")
+
         for idx, trk_id in enumerate(payload.track_ids):
             cursor.execute(
                 "UPDATE playlist_tracks SET position = ? WHERE playlist_id = ? AND track_id = ?",
@@ -327,7 +348,7 @@ async def reorder_playlist_tracks(playlist_id: int, payload: ReorderTracksReques
     return {"status": "success", "playlist_id": playlist_id, "count": len(payload.track_ids)}
 
 @router.post("/playlists/from-album/{album_id}")
-async def create_playlist_from_album(album_id: int):
+async def create_playlist_from_album(album_id: int, current_user: Dict[str, Any] = Depends(get_current_user)):
     """Create a new playlist from an album and populate all tracks in order."""
     with get_db() as conn:
         cursor = conn.cursor()
@@ -343,12 +364,12 @@ async def create_playlist_from_album(album_id: int):
 
         playlist_name = f"{album['artist_name']} - {album['album_title']}"
         
-        cursor.execute("SELECT COALESCE(MAX(position), 0) + 1 AS next_pos FROM playlists")
+        cursor.execute("SELECT COALESCE(MAX(position), 0) + 1 AS next_pos FROM playlists WHERE user_id = ?", (current_user["id"],))
         next_pl_pos = cursor.fetchone()["next_pos"]
 
         cursor.execute(
-            "INSERT INTO playlists (name, description, position) VALUES (?, ?, ?)",
-            (playlist_name, f"Album: {album['album_title']} by {album['artist_name']}", next_pl_pos)
+            "INSERT INTO playlists (name, description, position, user_id) VALUES (?, ?, ?, ?)",
+            (playlist_name, f"Album: {album['album_title']} by {album['artist_name']}", next_pl_pos, current_user["id"])
         )
         playlist_id = cursor.lastrowid
 
@@ -373,11 +394,11 @@ async def create_playlist_from_album(album_id: int):
     }
 
 @router.post("/playlists/{playlist_id}/take-ownership")
-async def take_playlist_ownership(playlist_id: int):
+async def take_playlist_ownership(playlist_id: int, current_user: Dict[str, Any] = Depends(get_current_user)):
     """Convert an imported Spotify playlist into a standard local user-owned playlist."""
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, name, spotify_id FROM playlists WHERE id = ?", (playlist_id,))
+        cursor.execute("SELECT id, name, spotify_id FROM playlists WHERE id = ? AND user_id = ?", (playlist_id, current_user["id"]))
         row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Playlist not found")
@@ -402,8 +423,8 @@ async def take_playlist_ownership(playlist_id: int):
                 sync_status = NULL,
                 last_synced_at = NULL,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-        """, (playlist_id,))
+            WHERE id = ? AND user_id = ?
+        """, (playlist_id, current_user["id"]))
 
         # 3. Clean up sync tracks queue
         cursor.execute("DELETE FROM spotify_sync_tracks WHERE playlist_id = ?", (playlist_id,))
@@ -421,4 +442,5 @@ async def take_playlist_ownership(playlist_id: int):
         "message": f"Successfully took ownership of playlist '{row['name']}'",
         "playlist_id": playlist_id,
     }
+
 

@@ -38,7 +38,7 @@ export const FavoritesView = ({
 
   const fetchFavorites = () => {
     setIsLoading(true);
-    fetch('/api/favorites')
+    fetch('/api/favorites', { credentials: 'include' })
       .then((res) => res.json())
       .then((data) => {
         setTracks(data.items || []);

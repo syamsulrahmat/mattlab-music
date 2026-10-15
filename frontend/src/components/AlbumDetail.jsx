@@ -114,7 +114,7 @@ export const AlbumDetail = ({
     if (!album || isAddingToLibrary) return;
     setIsAddingToLibrary(true);
     try {
-      const res = await fetch(`/api/playlists/from-album/${album.id}`, { method: 'POST' });
+      const res = await fetch(`/api/playlists/from-album/${album.id}`, { method: 'POST', credentials: 'include' });
       if (res.ok) {
         setAddedToLibrary(true);
         if (onPlaylistCreated) onPlaylistCreated();
