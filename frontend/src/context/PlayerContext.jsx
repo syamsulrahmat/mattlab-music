@@ -950,12 +950,12 @@ export const PlayerProvider = ({ children }) => {
 
     const brandColor = (typeof window !== 'undefined' && getComputedStyle(document.documentElement).getPropertyValue('--brand-primary').trim()) || '#1ed760';
 
-    // 1. Ambient blurred background or gradient
+    // 1. Ambient atmospheric background
     ctx.clearRect(0, 0, 640, 360);
     if (cachedImg.complete && cachedImg.naturalWidth > 0) {
       try {
         ctx.save();
-        ctx.filter = 'blur(28px) brightness(0.22)';
+        ctx.filter = 'blur(36px) brightness(0.2)';
         ctx.drawImage(cachedImg, -40, -40, 720, 440);
         ctx.restore();
       } catch (_) {
@@ -970,96 +970,66 @@ export const PlayerProvider = ({ children }) => {
       ctx.fillRect(0, 0, 640, 360);
     }
 
-    // Semi-transparent overlay to ensure contrast
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    // Semi-transparent dark overlay for high contrast
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
     ctx.fillRect(0, 0, 640, 360);
 
-    // 2. Cover Art (220x220 on left)
-    const coverX = 36;
-    const coverY = 55;
-    const coverSize = 220;
-    if (cachedImg.complete && cachedImg.naturalWidth > 0) {
-      try {
-        ctx.save();
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
-        ctx.shadowBlur = 24;
-        ctx.shadowOffsetY = 8;
-        ctx.beginPath();
-        safeRoundRect(ctx, coverX, coverY, coverSize, coverSize, 14);
-        ctx.clip();
-        ctx.drawImage(cachedImg, coverX, coverY, coverSize, coverSize);
-        ctx.restore();
-      } catch (_) {
-        ctx.fillStyle = '#242424';
-        ctx.fillRect(coverX, coverY, coverSize, coverSize);
-      }
-    } else {
-      ctx.fillStyle = '#1e1e1e';
-      ctx.beginPath();
-      safeRoundRect(ctx, coverX, coverY, coverSize, coverSize, 14);
-      ctx.fill();
-      ctx.fillStyle = brandColor;
-      ctx.font = '60px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('🎵', coverX + coverSize / 2, coverY + coverSize / 2 + 20);
-      ctx.textAlign = 'left';
-    }
+    ctx.textAlign = 'center';
 
-    // 3. Right Content Area (Starts at x=280)
-    const textX = 280;
-
-    // Small Brand Tag
+    // 2. Brand Tag
     ctx.fillStyle = brandColor;
     ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText('● MATTLAB MUSIC', textX, 75);
+    ctx.fillText('● MATTLAB MUSIC', 320, 55);
 
-    // Track Title
+    // 3. Track Title (Full centered width)
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.font = 'bold 30px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     const rawTitle = track?.title || 'No Track Selected';
-    const truncatedTitle = rawTitle.length > 22 ? rawTitle.substring(0, 20) + '...' : rawTitle;
-    ctx.fillText(truncatedTitle, textX, 110);
+    const truncatedTitle = rawTitle.length > 34 ? rawTitle.substring(0, 32) + '...' : rawTitle;
+    ctx.fillText(truncatedTitle, 320, 95);
 
-    // Artist Name
+    // 4. Artist Name
     ctx.fillStyle = '#a7a7a7';
-    ctx.font = '600 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.font = '600 17px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     const rawArtist = track?.artist_name || 'MattLab';
-    const truncatedArtist = rawArtist.length > 26 ? rawArtist.substring(0, 24) + '...' : rawArtist;
-    ctx.fillText(truncatedArtist, textX, 138);
+    const truncatedArtist = rawArtist.length > 38 ? rawArtist.substring(0, 36) + '...' : rawArtist;
+    ctx.fillText(truncatedArtist, 320, 126);
 
-    // Separator line
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-    ctx.fillRect(textX, 156, 320, 1);
+    // 5. Subtle Center Separator
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.fillRect(200, 144, 240, 1);
 
-    // Live Synced Lyrics (Current + Next)
+    // 6. Live Synced Lyrics (Current + Next)
     if (lyricLine) {
       // Active line
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-      const truncatedCurr = lyricLine.length > 30 ? lyricLine.substring(0, 28) + '...' : lyricLine;
-      ctx.fillText(`“${truncatedCurr}”`, textX, 192);
+      ctx.font = 'bold 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      const truncatedCurr = lyricLine.length > 38 ? lyricLine.substring(0, 36) + '...' : lyricLine;
+      ctx.fillText(`“${truncatedCurr}”`, 320, 192);
 
       // Upcoming line
       if (upcomingLyric) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-        ctx.font = '500 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        const truncatedNext = upcomingLyric.length > 36 ? upcomingLyric.substring(0, 34) + '...' : upcomingLyric;
-        ctx.fillText(truncatedNext, textX, 222);
+        ctx.font = '500 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        const truncatedNext = upcomingLyric.length > 46 ? upcomingLyric.substring(0, 44) + '...' : upcomingLyric;
+        ctx.fillText(truncatedNext, 320, 226);
       }
     } else {
       // If no lyrics available, show album or clean hint
       const rawAlbum = track?.album_title;
       if (rawAlbum) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.font = '500 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        const truncatedAlbum = rawAlbum.length > 32 ? rawAlbum.substring(0, 30) + '...' : rawAlbum;
-        ctx.fillText(`Album: ${truncatedAlbum}`, textX, 192);
+        ctx.font = '500 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        const truncatedAlbum = rawAlbum.length > 40 ? rawAlbum.substring(0, 38) + '...' : rawAlbum;
+        ctx.fillText(`Album: ${truncatedAlbum}`, 320, 195);
       } else {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-        ctx.font = 'italic 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        ctx.fillText('Streaming in high fidelity', textX, 192);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.font = 'italic 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillText('Streaming in high fidelity', 320, 195);
       }
     }
+
+    ctx.textAlign = 'left';
   }, []);
 
   // Continuously update native Canvas Video PiP frame while active
