@@ -116,7 +116,7 @@ def get_user_from_request(request: Request) -> Optional[Dict[str, Any]]:
     # Fetch fresh user info from DB
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, username, role, display_name, preferences, created_at, last_login FROM users WHERE id = ?", (decoded["user_id"],))
+        cursor.execute("SELECT id, username, role, display_name, preferences, avatar_url, created_at, last_login FROM users WHERE id = ?", (decoded["user_id"],))
         user_row = cursor.fetchone()
         if not user_row:
             return None

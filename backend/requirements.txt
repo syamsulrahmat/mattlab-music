@@ -5,3 +5,4 @@ pillow>=10.2.0
 pydantic>=2.6.0
 aiofiles>=23.2.1
 yt-dlp>=2024.1.0
+python-multipart>=0.0.9

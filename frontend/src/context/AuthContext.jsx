@@ -168,6 +168,67 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
+  const updateProfile = async ({ username, display_name }) => {
+    const res = await fetch('/api/auth/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ username, display_name }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(parseApiError(data.detail, 'Failed to update profile'));
+    }
+    if (data.user) {
+      setUser((prev) => ({ ...prev, ...data.user }));
+    }
+    return data.user;
+  };
+
+  const changeOwnPassword = async ({ current_password, new_password }) => {
+    const res = await fetch('/api/auth/profile/password', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ current_password, new_password }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(parseApiError(data.detail, 'Failed to change password'));
+    }
+    return data;
+  };
+
+  const uploadAvatar = async (file) => {
+    const res = await fetch('/api/auth/profile/avatar', {
+      method: 'POST',
+      headers: { 'Content-Type': file.type || 'image/jpeg' },
+      credentials: 'include',
+      body: file,
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(parseApiError(data.detail, 'Failed to upload avatar'));
+    }
+    if (data.avatar_url) {
+      setUser((prev) => prev ? { ...prev, avatar_url: data.avatar_url } : null);
+    }
+    return data;
+  };
+
+  const removeAvatar = async () => {
+    const res = await fetch('/api/auth/profile/avatar', {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(parseApiError(data.detail, 'Failed to remove avatar'));
+    }
+    setUser((prev) => prev ? { ...prev, avatar_url: null } : null);
+    return data;
+  };
+
   const isAdmin = user?.role === 'admin';
 
   return (
@@ -187,6 +248,10 @@ export const AuthProvider = ({ children }) => {
         createUser,
         deleteUser,
         changePassword,
+        updateProfile,
+        changeOwnPassword,
+        uploadAvatar,
+        removeAvatar,
       }}
     >
       {children}

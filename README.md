@@ -46,7 +46,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: music-app-backend
+    container_name: mattlab-music
     restart: unless-stopped
     volumes:
       - ./backend/app:/app/app

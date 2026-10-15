@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, UserPlus, Users, Trash2, Shield, User, Key, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { ConfirmModal } from './ConfirmModal';
+import { UserAvatar } from './UserAvatar';
 
 export const UserManagementModal = ({ isOpen, onClose }) => {
   const { user: currentUser, fetchUsers, createUser, deleteUser, changePassword } = useAuth();
@@ -317,11 +318,7 @@ export const UserManagementModal = ({ isOpen, onClose }) => {
                 return (
                   <div key={u.id} className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[#1c1c1c] transition">
                     <div className="flex items-center gap-3">
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs uppercase ${
-                        isAdmin ? 'bg-brand-500/20 text-brand-500 ring-1 ring-brand-500/40' : 'bg-[#2a2a2a] text-white'
-                      }`}>
-                        {u.username.slice(0, 2)}
-                      </div>
+                      <UserAvatar user={u} size="md" />
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-semibold text-white">

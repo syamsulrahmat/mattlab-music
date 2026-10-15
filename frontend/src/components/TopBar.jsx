@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Home, Search, X, RefreshCw, HardDrive, DownloadCloud, Users, LogOut, Settings } from 'lucide-react';
+import { Home, Search, X, RefreshCw, HardDrive, DownloadCloud, Users, LogOut, Settings, User } from 'lucide-react';
 import { MattLabLogo } from './MattLabLogo';
 import { SearchFloatingModal } from './SearchFloatingModal';
+import { UserAvatar } from './UserAvatar';
 import { useAuth } from '../context/AuthContext';
 import { usePlayer } from '../context/PlayerContext';
 
@@ -291,10 +292,10 @@ export const TopBar = ({
         <div className="relative">
           <button
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-            className="w-9 h-9 rounded-full bg-[#1f1f1f] hover:bg-[#282828] text-brand-500 font-bold text-xs flex items-center justify-center ring-1 ring-white/10 shadow transition cursor-pointer"
+            className="rounded-full hover:scale-105 active:scale-95 transition cursor-pointer"
             title={user ? `${user.display_name || user.username} (${user.role})` : 'Account'}
           >
-            {user ? (user.username || 'U').slice(0, 2).toUpperCase() : 'U'}
+            <UserAvatar user={user} size="md" />
           </button>
 
           {isUserMenuOpen && (
@@ -304,29 +305,43 @@ export const TopBar = ({
                 className="fixed inset-0 z-40" 
                 onClick={() => setIsUserMenuOpen(false)} 
               />
-              <div className="absolute right-0 mt-2 w-56 bg-[#282828] border border-white/10 rounded-xl shadow-2xl py-2 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
-                <div className="px-3 py-2 border-b border-white/10">
-                  <div className="font-bold text-white text-sm truncate">
-                    {user?.display_name || user?.username}
-                  </div>
-                  <div className="text-[#a7a7a7] text-[11px] flex items-center justify-between mt-0.5">
-                    <span>@{user?.username}</span>
-                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                      isAdmin ? 'bg-brand-500/20 text-brand-500' : 'bg-white/10 text-[#a7a7a7]'
-                    }`}>
-                      {isAdmin ? 'Admin' : 'User'}
-                    </span>
+              <div className="absolute right-0 mt-2 w-60 bg-[#282828] border border-white/10 rounded-xl shadow-2xl py-2 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
+                <div className="px-3.5 py-2.5 border-b border-white/10 flex items-center gap-3">
+                  <UserAvatar user={user} size="md" />
+                  <div className="min-w-0 flex-1">
+                    <div className="font-bold text-white text-sm truncate">
+                      {user?.display_name || user?.username}
+                    </div>
+                    <div className="text-[#a7a7a7] text-[11px] flex items-center justify-between mt-0.5">
+                      <span className="truncate">@{user?.username}</span>
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ml-1 ${
+                        isAdmin ? 'bg-brand-500/20 text-brand-500' : 'bg-white/10 text-[#a7a7a7]'
+                      }`}>
+                        {isAdmin ? 'Admin' : 'User'}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
                 <button
                   onClick={() => {
                     setIsUserMenuOpen(false);
-                    onOpenSettings?.();
+                    onOpenSettings?.('account');
                   }}
-                  className="w-full text-left px-3 py-2.5 text-white hover:bg-white/10 flex items-center gap-2.5 transition"
+                  className="w-full text-left px-3 py-2 text-white hover:bg-white/10 flex items-center gap-2.5 transition"
                 >
-                  <Settings size={15} className="text-brand-500" />
+                  <User size={15} className="text-brand-500" />
+                  <span>Profile & Account</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    onOpenSettings?.('shortcuts');
+                  }}
+                  className="w-full text-left px-3 py-2 text-white hover:bg-white/10 flex items-center gap-2.5 transition"
+                >
+                  <Settings size={15} className="text-[#a7a7a7]" />
                   <span>Settings</span>
                 </button>
 

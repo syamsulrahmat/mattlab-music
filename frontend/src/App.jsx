@@ -55,6 +55,12 @@ const MainAppContent = () => {
   const [searchRefreshTrigger, setSearchRefreshTrigger] = useState(0);
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState('account');
+
+  const handleOpenSettings = (tab = 'account') => {
+    setSettingsInitialTab(tab);
+    setIsSettingsOpen(true);
+  };
 
   // In-app Modal Confirm & Prompt States
   const [playlistToDelete, setPlaylistToDelete] = useState(null);
@@ -236,6 +242,7 @@ const MainAppContent = () => {
       // Settings & Keyboard Shortcuts: Ctrl + , or ?
       if (((e.ctrlKey || e.metaKey) && e.key === ',') || (!e.ctrlKey && !e.metaKey && !e.altKey && e.key === '?')) {
         e.preventDefault();
+        setSettingsInitialTab('shortcuts');
         setIsSettingsOpen((prev) => !prev);
         return;
       }
@@ -601,7 +608,7 @@ const MainAppContent = () => {
         onSelectArtist={handleSelectArtist}
         onContextMenu={handleOpenContextMenu}
         onOpenUserManagement={() => setIsUserManagementOpen(true)}
-        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenSettings={(tab) => handleOpenSettings(tab || 'account')}
         canGoBack={canGoBack}
         canGoForward={canGoForward}
         onGoBack={handleGoBack}
@@ -872,6 +879,7 @@ const MainAppContent = () => {
       {/* Settings & Keyboard Shortcuts Modal */}
       <SettingsModal
         isOpen={isSettingsOpen}
+        initialTab={settingsInitialTab}
         onClose={() => setIsSettingsOpen(false)}
         stats={stats}
         onOpenUserManagement={() => {

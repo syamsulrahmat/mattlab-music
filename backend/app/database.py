@@ -102,6 +102,7 @@ def init_db() -> None:
             password_hash TEXT NOT NULL,
             role TEXT DEFAULT 'user',
             display_name TEXT,
+            avatar_url TEXT DEFAULT NULL,
             preferences TEXT DEFAULT '{}',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             last_login TIMESTAMP
@@ -221,6 +222,12 @@ def init_db() -> None:
                 conn.execute("ALTER TABLE users ADD COLUMN preferences TEXT DEFAULT '{}'")
             except Exception as e:
                 print(f"[DB MIGRATION] Error adding preferences to users: {e}")
+
+        if "avatar_url" not in user_cols:
+            try:
+                conn.execute("ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT NULL")
+            except Exception as e:
+                print(f"[DB MIGRATION] Error adding avatar_url to users: {e}")
 
         try:
             conn.execute("CREATE INDEX IF NOT EXISTS idx_playlists_user ON playlists(user_id)")

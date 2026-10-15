@@ -3,7 +3,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: music-app-backend
+    container_name: mattlab-music
     restart: unless-stopped
     volumes:
       - ./backend/app:/app/app
@@ -26,7 +26,7 @@ services:
     build:
       context: ./demucs-service
       dockerfile: Dockerfile
-    container_name: music-app-demucs
+    container_name: mattlab-music-demucs
     restart: unless-stopped
     volumes:
       - /mnt/user/Media/Music:/music:ro

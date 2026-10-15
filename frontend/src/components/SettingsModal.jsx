@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   X, 
   Keyboard, 
@@ -19,9 +19,18 @@ import {
   Tv,
   Zap,
   Gauge,
-  Trash2
+  Trash2,
+  User,
+  Key,
+  Camera,
+  Upload,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { MattLabLogo } from './MattLabLogo';
+import { UserAvatar } from './UserAvatar';
 import { useAuth } from '../context/AuthContext';
 import { usePlayer } from '../context/PlayerContext';
 
@@ -202,11 +211,19 @@ const SHORTCUTS_DATA = [
 
 export const SettingsModal = ({
   isOpen,
+  initialTab = 'account',
   onClose,
   stats,
   onOpenUserManagement,
 }) => {
-  const { user, isAdmin } = useAuth();
+  const { 
+    user, 
+    isAdmin, 
+    updateProfile, 
+    changeOwnPassword, 
+    uploadAvatar, 
+    removeAvatar 
+  } = useAuth();
   const { 
     preloadCount, 
     setPreloadCount, 
@@ -215,9 +232,155 @@ export const SettingsModal = ({
   } = usePlayer();
   const [clearingCache, setClearingCache] = useState(false);
   const [cacheClearedSuccess, setCacheClearedSuccess] = useState(false);
-  const [activeTab, setActiveTab] = useState('shortcuts');
+  const [activeTab, setActiveTab] = useState(initialTab || 'account');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+
+  // Profile fields state
+  const [usernameVal, setUsernameVal] = useState(user?.username || '');
+  const [displayNameVal, setDisplayNameVal] = useState(user?.display_name || '');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState('');
+  const [profileSuccess, setProfileSuccess] = useState('');
+
+  // Avatar state
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarRemoving, setAvatarRemoving] = useState(false);
+  const [avatarError, setAvatarError] = useState('');
+  const [avatarSuccess, setAvatarSuccess] = useState('');
+  const fileInputRef = useRef(null);
+
+  // Password state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordUpdating, setPasswordUpdating] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+
+  // Sync active tab when modal opens or initialTab changes
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialTab || 'account');
+    }
+  }, [isOpen, initialTab]);
+
+  // Sync profile values when user or modal opens
+  useEffect(() => {
+    if (user) {
+      setUsernameVal(user.username || '');
+      setDisplayNameVal(user.display_name || '');
+    }
+  }, [user, isOpen]);
+
+  const handleSaveProfile = async (e) => {
+    e?.preventDefault?.();
+    setProfileError('');
+    setProfileSuccess('');
+
+    if (!usernameVal.trim()) {
+      setProfileError('Username cannot be empty');
+      return;
+    }
+
+    setProfileSaving(true);
+    try {
+      await updateProfile({
+        username: usernameVal.trim(),
+        display_name: displayNameVal.trim() || null,
+      });
+      setProfileSuccess('Profile updated successfully!');
+      setTimeout(() => setProfileSuccess(''), 3000);
+    } catch (err) {
+      setProfileError(err.message || 'Failed to update profile');
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const handleAvatarFileSelected = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    setAvatarError('');
+    setAvatarSuccess('');
+
+    if (!file.type.startsWith('image/')) {
+      setAvatarError('Please select a valid image file (JPG, PNG, or WebP)');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setAvatarError('Image file is too large (maximum 10MB)');
+      return;
+    }
+
+    setAvatarUploading(true);
+    try {
+      await uploadAvatar(file);
+      setAvatarSuccess('Avatar photo updated successfully!');
+      setTimeout(() => setAvatarSuccess(''), 3000);
+    } catch (err) {
+      setAvatarError(err.message || 'Failed to upload photo');
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    setAvatarError('');
+    setAvatarSuccess('');
+    setAvatarRemoving(true);
+    try {
+      await removeAvatar();
+      setAvatarSuccess('Avatar photo removed');
+      setTimeout(() => setAvatarSuccess(''), 3000);
+    } catch (err) {
+      setAvatarError(err.message || 'Failed to remove avatar');
+    } finally {
+      setAvatarRemoving(false);
+    }
+  };
+
+  const handleChangePassword = async (e) => {
+    e?.preventDefault?.();
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    if (!currentPassword) {
+      setPasswordError('Please enter your current password');
+      return;
+    }
+    if (!newPassword || newPassword.length < 6) {
+      setPasswordError('New password must be at least 6 characters');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('New passwords do not match');
+      return;
+    }
+
+    setPasswordUpdating(true);
+    try {
+      await changeOwnPassword({
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+      setPasswordSuccess('Password updated successfully!');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => setPasswordSuccess(''), 3500);
+    } catch (err) {
+      setPasswordError(err.message || 'Failed to change password');
+    } finally {
+      setPasswordUpdating(false);
+    }
+  };
 
   const handleClearCache = async () => {
     try {
@@ -317,6 +480,18 @@ export const SettingsModal = ({
           {/* Navigation Sidebar / Tabs */}
           <div className="w-full md:w-56 bg-[#161616] border-b md:border-b-0 md:border-r border-white/10 p-3 flex md:flex-col gap-1.5 shrink-0 overflow-x-auto">
             <button
+              onClick={() => setActiveTab('account')}
+              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-left shrink-0 md:shrink md:w-full ${
+                activeTab === 'account'
+                  ? 'bg-brand-500 text-black shadow-md font-bold'
+                  : 'text-[#b3b3b3] hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <User size={16} />
+              <span>Profile & Account</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('shortcuts')}
               className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-left shrink-0 md:shrink md:w-full ${
                 activeTab === 'shortcuts'
@@ -370,6 +545,324 @@ export const SettingsModal = ({
 
           {/* Tab Content Stage */}
           <div className="flex-1 min-h-0 overflow-y-auto bg-[#121212] p-4 sm:p-6">
+            {activeTab === 'account' && (
+              <div className="space-y-6 max-w-2xl">
+                {/* 1. Avatar Photo Section */}
+                <div className="p-5 sm:p-6 rounded-2xl bg-[#181818] border border-white/5 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Camera size={16} className="text-brand-500" />
+                    <h3 className="text-sm font-bold text-white tracking-wide uppercase">
+                      Profile Picture
+                    </h3>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 pt-1">
+                    <div className="relative group shrink-0">
+                      <UserAvatar user={user} size="2xl" className="shadow-xl" />
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={avatarUploading || avatarRemoving}
+                        className="absolute inset-0 rounded-full bg-black/60 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center text-white text-[10px] font-semibold gap-1 backdrop-blur-xs cursor-pointer"
+                        title="Upload Photo"
+                      >
+                        <Camera size={18} />
+                        <span>Change</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-3 text-center sm:text-left flex-1 min-w-0">
+                      <div>
+                        <div className="text-sm font-bold text-white">
+                          {user?.display_name || user?.username}
+                        </div>
+                        <p className="text-xs text-[#888] mt-1 leading-relaxed">
+                          Personalize your profile with a custom photo. Supports JPG, PNG, and WebP (up to 10MB). Photos are automatically center-cropped to a square and optimized.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 pt-1">
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="hidden"
+                          onChange={handleAvatarFileSelected}
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={avatarUploading || avatarRemoving}
+                          className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white text-xs font-semibold flex items-center gap-2 transition disabled:opacity-50 cursor-pointer"
+                        >
+                          {avatarUploading ? (
+                            <>
+                              <Loader2 size={14} className="animate-spin text-brand-500" />
+                              <span>Uploading...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Upload size={14} />
+                              <span>Upload Photo</span>
+                            </>
+                          )}
+                        </button>
+
+                        {user?.avatar_url && (
+                          <button
+                            type="button"
+                            onClick={handleRemoveAvatar}
+                            disabled={avatarUploading || avatarRemoving}
+                            className="px-3 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 active:scale-95 text-red-400 hover:text-red-300 text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
+                          >
+                            {avatarRemoving ? (
+                              <>
+                                <Loader2 size={13} className="animate-spin" />
+                                <span>Removing...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Trash2 size={13} />
+                                <span>Remove</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+
+                      {avatarError && (
+                        <div className="flex items-center gap-2 text-xs text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-lg">
+                          <AlertCircle size={14} className="shrink-0" />
+                          <span>{avatarError}</span>
+                        </div>
+                      )}
+
+                      {avatarSuccess && (
+                        <div className="flex items-center gap-2 text-xs text-brand-400 bg-brand-500/10 border border-brand-500/20 px-3 py-2 rounded-lg">
+                          <Check size={14} className="shrink-0 text-brand-500" />
+                          <span>{avatarSuccess}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Account Details Section */}
+                <form onSubmit={handleSaveProfile} className="p-5 sm:p-6 rounded-2xl bg-[#181818] border border-white/5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <User size={16} className="text-brand-500" />
+                      <h3 className="text-sm font-bold text-white tracking-wide uppercase">
+                        Account Details
+                      </h3>
+                    </div>
+
+                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                      isAdmin ? 'bg-brand-500/20 text-brand-500' : 'bg-white/10 text-[#a7a7a7]'
+                    }`}>
+                      {isAdmin ? 'System Administrator' : 'Standard User'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-[#b3b3b3] block">
+                        Display Name
+                      </label>
+                      <input
+                        type="text"
+                        value={displayNameVal}
+                        onChange={(e) => setDisplayNameVal(e.target.value)}
+                        placeholder="e.g. Matt"
+                        maxLength={50}
+                        className="w-full bg-[#121212] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-[#666] outline-none focus:border-brand-500 transition"
+                      />
+                      <p className="text-[10px] text-[#777]">
+                        Friendly name visible in headers and playlists
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-[#b3b3b3] block">
+                        Username
+                      </label>
+                      <input
+                        type="text"
+                        value={usernameVal}
+                        onChange={(e) => setUsernameVal(e.target.value)}
+                        placeholder="e.g. matt"
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        maxLength={32}
+                        required
+                        className="w-full bg-[#121212] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-[#666] outline-none focus:border-brand-500 transition"
+                      />
+                      <p className="text-[10px] text-[#777]">
+                        Unique handle used to sign in
+                      </p>
+                    </div>
+                  </div>
+
+                  {profileError && (
+                    <div className="flex items-center gap-2 text-xs text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-lg">
+                      <AlertCircle size={14} className="shrink-0" />
+                      <span>{profileError}</span>
+                    </div>
+                  )}
+
+                  {profileSuccess && (
+                    <div className="flex items-center gap-2 text-xs text-brand-400 bg-brand-500/10 border border-brand-500/20 px-3 py-2 rounded-lg">
+                      <Check size={14} className="shrink-0 text-brand-500" />
+                      <span>{profileSuccess}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="submit"
+                      disabled={profileSaving}
+                      className="px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-400 active:scale-95 text-black text-xs font-bold transition flex items-center gap-2 disabled:opacity-50 cursor-pointer shadow-md"
+                    >
+                      {profileSaving ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin text-black" />
+                          <span>Saving Changes...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check size={14} />
+                          <span>Save Changes</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+
+                {/* 3. Password & Security Section */}
+                <form onSubmit={handleChangePassword} className="p-5 sm:p-6 rounded-2xl bg-[#181818] border border-white/5 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Key size={16} className="text-brand-500" />
+                    <h3 className="text-sm font-bold text-white tracking-wide uppercase">
+                      Change Password
+                    </h3>
+                  </div>
+                  <p className="text-xs text-[#888] leading-relaxed">
+                    Verify your current password to set a new password. Password must be at least 6 characters long.
+                  </p>
+
+                  <div className="space-y-3 pt-1">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-[#b3b3b3] block">
+                        Current Password
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showCurrentPassword ? 'text' : 'password'}
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          placeholder="Enter your current password"
+                          required
+                          className="w-full bg-[#121212] border border-white/10 rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-white placeholder-[#666] outline-none focus:border-brand-500 transition"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#777] hover:text-white transition"
+                        >
+                          {showCurrentPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-[#b3b3b3] block">
+                          New Password
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showNewPassword ? 'text' : 'password'}
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            placeholder="At least 6 characters"
+                            required
+                            minLength={6}
+                            className="w-full bg-[#121212] border border-white/10 rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-white placeholder-[#666] outline-none focus:border-brand-500 transition"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowNewPassword(!showNewPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#777] hover:text-white transition"
+                          >
+                            {showNewPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-[#b3b3b3] block">
+                          Confirm New Password
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showConfirmPassword ? 'text' : 'password'}
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            placeholder="Repeat new password"
+                            required
+                            minLength={6}
+                            className="w-full bg-[#121212] border border-white/10 rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-white placeholder-[#666] outline-none focus:border-brand-500 transition"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#777] hover:text-white transition"
+                          >
+                            {showConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {passwordError && (
+                    <div className="flex items-center gap-2 text-xs text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-lg">
+                      <AlertCircle size={14} className="shrink-0" />
+                      <span>{passwordError}</span>
+                    </div>
+                  )}
+
+                  {passwordSuccess && (
+                    <div className="flex items-center gap-2 text-xs text-brand-400 bg-brand-500/10 border border-brand-500/20 px-3 py-2 rounded-lg">
+                      <Check size={14} className="shrink-0 text-brand-500" />
+                      <span>{passwordSuccess}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="submit"
+                      disabled={passwordUpdating}
+                      className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white text-xs font-semibold transition flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                    >
+                      {passwordUpdating ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin text-brand-500" />
+                          <span>Updating Password...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Key size={14} />
+                          <span>Update Password</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
             {activeTab === 'shortcuts' && (
               <div className="space-y-6">
                 {/* Search & Category Filter Header */}
@@ -773,9 +1266,7 @@ export const SettingsModal = ({
                 {/* User Session Info Card */}
                 <div className="p-4 rounded-xl bg-[#181818] border border-white/5 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[#242424] border border-white/10 text-brand-500 font-bold text-xs flex items-center justify-center">
-                      {user ? (user.username || 'U').slice(0, 2).toUpperCase() : 'U'}
-                    </div>
+                    <UserAvatar user={user} size="lg" />
                     <div>
                       <div className="text-sm font-bold text-white">
                         {user?.display_name || user?.username}

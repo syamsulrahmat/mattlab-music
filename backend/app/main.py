@@ -48,7 +48,7 @@ async def auth_middleware(request: Request, call_next):
         "/api/auth/login",
         "/api/client-error",
     }
-    if request.url.path in public_paths:
+    if request.url.path in public_paths or request.url.path.startswith("/api/avatars/"):
         return await call_next(request)
 
     # Check authentication
@@ -84,6 +84,7 @@ async def auth_middleware(request: Request, call_next):
 
 # Mount routers
 app.include_router(auth_routes.router, prefix="/api")
+app.include_router(auth_routes.avatar_router, prefix="/api")
 app.include_router(stream.router, prefix="/api")
 app.include_router(library.router, prefix="/api")
 app.include_router(scan.router, prefix="/api")
