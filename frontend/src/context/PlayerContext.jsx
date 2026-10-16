@@ -16,8 +16,12 @@ const loadSavedPlaybackState = () => {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && parsed.track && typeof parsed.track.id === 'number') {
-        const time = typeof parsed.currentTime === 'number' && !isNaN(parsed.currentTime) ? parsed.currentTime : 0;
+        const rawTime = typeof parsed.currentTime === 'number' && !isNaN(parsed.currentTime) ? parsed.currentTime : 0;
         const dur = typeof parsed.duration === 'number' && !isNaN(parsed.duration) ? parsed.duration : (parsed.track.duration_seconds || 0);
+        // If the track was saved at or near the end (within 2 seconds of finishing), reset to 0:00
+        const isAtEnd = dur > 5 && rawTime >= dur - 2.0;
+        const time = isAtEnd ? 0 : Math.max(0, rawTime);
+
         const q = Array.isArray(parsed.queue) && parsed.queue.length > 0 ? parsed.queue : [parsed.track];
         const qIdx = typeof parsed.queueIndex === 'number' && parsed.queueIndex >= 0 && parsed.queueIndex < q.length ? parsed.queueIndex : 0;
         return {
@@ -423,6 +427,12 @@ export const PlayerProvider = ({ children }) => {
 
   const persistState = useCallback((track, time, dur, q, qIdx) => {
     if (!track || !track.id) return;
+    const rawTime = time || 0;
+    const trackDur = dur || track.duration_seconds || 0;
+    // If the track reached the end (within 1.5s of finishing), reset to 0:00
+    const isAtEnd = trackDur > 5 && rawTime >= trackDur - 1.5;
+    const cleanTime = isAtEnd ? 0 : Math.max(0, Math.round(rawTime * 10) / 10);
+
     const stateObj = {
       track: {
         id: track.id,
@@ -435,7 +445,7 @@ export const PlayerProvider = ({ children }) => {
         file_path: track.file_path || '',
         stream_url: track.stream_url || `/api/stream/${track.id}`,
       },
-      currentTime: Math.max(0, Math.round((time || 0) * 10) / 10),
+      currentTime: cleanTime,
       duration: Math.max(0, Math.round((dur || 0) * 10) / 10),
       queue: (q || []).slice(0, 50).map((t) => ({
         id: t.id,
@@ -483,10 +493,15 @@ export const PlayerProvider = ({ children }) => {
       const audio = audioRef.current;
       if (currentTrack && audio) {
         try {
+          const rawTime = audio.currentTime || currentTime || 0;
+          const trackDur = audio.duration || duration || currentTrack.duration_seconds || 0;
+          const isAtEnd = trackDur > 5 && rawTime >= trackDur - 1.5;
+          const cleanTime = isAtEnd ? 0 : Math.max(0, rawTime);
+
           const stateObj = {
             track: currentTrack,
-            currentTime: audio.currentTime || currentTime,
-            duration: audio.duration || duration,
+            currentTime: cleanTime,
+            duration: trackDur,
             queue: (queue || []).slice(0, 50),
             queueIndex: queueIndex,
             savedAt: Date.now(),
@@ -646,6 +661,11 @@ export const PlayerProvider = ({ children }) => {
     const handleEnded = (e) => {
       if (e.target !== audioRef.current || isCrossfadingRef.current) return;
       setIsBuffering(false);
+      setCurrentTime(0);
+      initialSeekTimeRef.current = 0;
+      if (currentTrack) {
+        persistState(currentTrack, 0, duration, queue, queueIndex);
+      }
       handleNextTrackAuto();
     };
 
@@ -928,7 +948,15 @@ export const PlayerProvider = ({ children }) => {
         audio.src = standardUrl;
       }
 
-      if (initialSeekTimeRef.current > 0) {
+      // If at or within 1.5s of the end of the song, restart cleanly from 0:00
+      const trackDur = audio.duration || duration || 0;
+      if (trackDur > 5 && (audio.currentTime >= trackDur - 1.5 || currentTime >= trackDur - 1.5)) {
+        try {
+          audio.currentTime = 0;
+        } catch (_) {}
+        setCurrentTime(0);
+        initialSeekTimeRef.current = 0;
+      } else if (initialSeekTimeRef.current > 0) {
         try {
           audio.currentTime = initialSeekTimeRef.current;
         } catch (_) {}
