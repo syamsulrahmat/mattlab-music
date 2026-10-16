@@ -25,3 +25,8 @@
 2. **`tg-notify` / `tg` Chat Trigger**:
    - When the user sends `tg-notify` or `tg` with no arguments, compile a comprehensive summary of latest changes, server status, and active URLs, and push it to Telegram immediately.
    - When the user includes specific text (e.g. `tg-notify <message>`), send that specified message to the bot.
+
+## Branching & Risk Management
+- **Proactive Feature Branching**: Always suggest and use a dedicated `feature/<name>` branch during planning (`/plan`) or whenever executing risky changes (e.g. database schema migrations, background services/crawlers, audio playback pipeline, authentication overhauls). Keep `main` clean, stable, and operational for daily listening.
+- **Merge After Verification**: Only merge into `main` after the feature has been verified and tested.
+
