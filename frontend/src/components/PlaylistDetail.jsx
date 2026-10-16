@@ -839,15 +839,19 @@ export const PlaylistDetail = ({
   return (
     <div 
       onDragOver={(e) => {
+        e.preventDefault();
         if (playlist?.spotify_id) {
-          e.preventDefault();
           e.dataTransfer.dropEffect = 'none';
+        } else if (isDragEnabled) {
+          e.dataTransfer.dropEffect = 'move';
         }
       }}
       onDragEnter={(e) => {
+        e.preventDefault();
         if (playlist?.spotify_id) {
-          e.preventDefault();
           e.dataTransfer.dropEffect = 'none';
+        } else if (isDragEnabled) {
+          e.dataTransfer.dropEffect = 'move';
         }
       }}
       className={`pb-16 select-none relative w-full ${playlist?.spotify_id && draggedTrackIdx !== null ? 'cursor-not-allowed' : ''}`}
@@ -1228,15 +1232,19 @@ export const PlaylistDetail = ({
           {/* Sticky Tracklist Column Header Row */}
           <div 
             onDragOver={(e) => {
+              e.preventDefault();
               if (playlist?.spotify_id) {
-                e.preventDefault();
                 e.dataTransfer.dropEffect = 'none';
+              } else if (isDragEnabled) {
+                e.dataTransfer.dropEffect = 'move';
               }
             }}
             onDragEnter={(e) => {
+              e.preventDefault();
               if (playlist?.spotify_id) {
-                e.preventDefault();
                 e.dataTransfer.dropEffect = 'none';
+              } else if (isDragEnabled) {
+                e.dataTransfer.dropEffect = 'move';
               }
             }}
             className="sticky top-0 z-30 bg-surface-island/95 backdrop-blur-md mb-2"
@@ -1258,15 +1266,19 @@ export const PlaylistDetail = ({
           {/* Track Rows (Seamless Canvas) */}
           <div 
             onDragOver={(e) => {
+              e.preventDefault();
               if (playlist?.spotify_id) {
-                e.preventDefault();
                 e.dataTransfer.dropEffect = 'none';
+              } else if (isDragEnabled) {
+                e.dataTransfer.dropEffect = 'move';
               }
             }}
             onDragEnter={(e) => {
+              e.preventDefault();
               if (playlist?.spotify_id) {
-                e.preventDefault();
                 e.dataTransfer.dropEffect = 'none';
+              } else if (isDragEnabled) {
+                e.dataTransfer.dropEffect = 'move';
               }
             }}
             className={`space-y-0.5 ${playlist?.spotify_id && draggedTrackIdx !== null ? 'cursor-not-allowed' : ''}`}
@@ -1392,7 +1404,7 @@ export const PlaylistDetail = ({
                       }
                       handleDrop(e, idx);
                     }}
-                    className={`grid grid-cols-[36px_1fr_50px] md:grid-cols-[40px_3fr_2fr_60px] lg:grid-cols-[40px_4fr_3fr_2fr_60px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center select-none ${
+                    className={`grid grid-cols-[36px_1fr_50px] md:grid-cols-[40px_3fr_2fr_60px] lg:grid-cols-[40px_4fr_3fr_2fr_60px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center select-none border-t-2 ${
                       draggedTrackIdx !== null ? '[&_*]:pointer-events-none' : ''
                     } ${
                       isSpotify
@@ -1404,14 +1416,14 @@ export const PlaylistDetail = ({
                       isBeingDragged
                         ? 'opacity-40 border-dashed border-white/20'
                         : isDragOver
-                        ? 'border-t-2 border-brand-500 bg-brand-500/10 shadow-lg'
+                        ? 'border-brand-500 bg-brand-500/10 shadow-lg'
                         : isFocused
-                        ? 'bg-surface-hover ring-1 ring-brand-500/60 shadow-md text-content-primary'
+                        ? 'border-transparent bg-surface-hover ring-1 ring-brand-500/60 shadow-md text-content-primary'
                         : isSelected
-                        ? 'bg-surface-hover ring-1 ring-white/20 text-content-primary'
+                        ? 'border-transparent bg-surface-hover ring-1 ring-white/20 text-content-primary'
                         : track.isSyncPending
-                        ? 'hover:bg-surface-island opacity-85 text-content-primary'
-                        : 'hover:bg-surface-elevated text-content-primary'
+                        ? 'border-transparent hover:bg-surface-island opacity-85 text-content-primary'
+                        : 'border-transparent hover:bg-surface-elevated text-content-primary'
                     }`}
                   >
                     {/* Column 1: Index / Play-Pause / Live Download Spinner */}
