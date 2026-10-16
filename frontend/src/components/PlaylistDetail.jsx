@@ -1212,7 +1212,21 @@ export const PlaylistDetail = ({
       ) : (
         <div className="px-6 sm:px-8">
           {/* Sticky Tracklist Column Header Row */}
-          <div className="sticky top-0 z-30 bg-surface-island/95 backdrop-blur-md mb-2">
+          <div 
+            onDragOver={(e) => {
+              if (playlist?.spotify_id) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'none';
+              }
+            }}
+            onDragEnter={(e) => {
+              if (playlist?.spotify_id) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'none';
+              }
+            }}
+            className="sticky top-0 z-30 bg-surface-island/95 backdrop-blur-md mb-2"
+          >
             <div className="grid grid-cols-[36px_1fr_50px] md:grid-cols-[40px_3fr_2fr_60px] lg:grid-cols-[40px_4fr_3fr_2fr_60px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-content-secondary border-b border-border-medium items-center">
               <span className="text-center">#</span>
               <div className="flex items-center gap-3 truncate pr-3">
@@ -1230,6 +1244,12 @@ export const PlaylistDetail = ({
           {/* Track Rows (Seamless Canvas) */}
           <div 
             onDragOver={(e) => {
+              if (playlist?.spotify_id) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'none';
+              }
+            }}
+            onDragEnter={(e) => {
               if (playlist?.spotify_id) {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'none';
@@ -1317,6 +1337,16 @@ export const PlaylistDetail = ({
                       setDraggedTrackIdx(null);
                       setDragOverTrackIdx(null);
                     }}
+                    onDragEnter={(e) => {
+                      if (playlist?.spotify_id) {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'none';
+                        return;
+                      }
+                      if (!isDragEnabled || track.isSyncPending) return;
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                    }}
                     onDragOver={(e) => {
                       if (playlist?.spotify_id) {
                         e.preventDefault();
@@ -1340,6 +1370,8 @@ export const PlaylistDetail = ({
                       handleDrop(e, idx);
                     }}
                     className={`grid grid-cols-[36px_1fr_50px] md:grid-cols-[40px_3fr_2fr_60px] lg:grid-cols-[40px_4fr_3fr_2fr_60px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center select-none ${
+                      draggedTrackIdx !== null ? '[&_*]:pointer-events-none' : ''
+                    } ${
                       isSpotify
                         ? (isHeld ? 'cursor-not-allowed' : 'cursor-default active:cursor-not-allowed')
                         : (isDragEnabled && !track.isSyncPending)
