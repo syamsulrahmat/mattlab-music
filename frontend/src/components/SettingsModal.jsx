@@ -28,7 +28,11 @@ import {
   EyeOff,
   AlertCircle,
   Loader2,
-  PictureInPicture2
+  PictureInPicture2,
+  Play,
+  Pause,
+  RefreshCw,
+  FileText
 } from 'lucide-react';
 import { MattLabLogo } from './MattLabLogo';
 import { UserAvatar } from './UserAvatar';
@@ -399,6 +403,56 @@ export const SettingsModal = ({
       setClearingCache(false);
     }
   };
+
+  // Automatic Lyrics Search Crawler State & Handlers
+  const [lyricsStatus, setLyricsStatus] = useState(null);
+  const [lyricsActionLoading, setLyricsActionLoading] = useState(false);
+  const [lyricsMessage, setLyricsMessage] = useState('');
+
+  const fetchLyricsStatus = async () => {
+    try {
+      const res = await fetch('/api/lyrics/status');
+      if (res.ok) {
+        const data = await res.json();
+        setLyricsStatus(data);
+      }
+    } catch (err) {
+      console.debug('Failed to fetch lyrics status:', err);
+    }
+  };
+
+  const handleLyricsControl = async (action) => {
+    try {
+      setLyricsActionLoading(true);
+      setLyricsMessage('');
+      const res = await fetch('/api/lyrics/control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setLyricsMessage(data.message || 'Action executed successfully');
+        await fetchLyricsStatus();
+        setTimeout(() => setLyricsMessage(''), 3500);
+      } else {
+        const errData = await res.json();
+        setLyricsMessage(errData.detail || 'Action failed');
+      }
+    } catch (err) {
+      setLyricsMessage(err.message || 'Failed to trigger lyrics control');
+    } finally {
+      setLyricsActionLoading(false);
+    }
+  };
+
+  // Poll lyrics crawler status when playback settings tab is open
+  useEffect(() => {
+    if (!isOpen || activeTab !== 'playback') return;
+    fetchLyricsStatus();
+    const interval = setInterval(fetchLyricsStatus, 3000);
+    return () => clearInterval(interval);
+  }, [isOpen, activeTab]);
 
   // Global ESC shortcut listener
   useEffect(() => {
@@ -1306,6 +1360,201 @@ export const SettingsModal = ({
                       </>
                     )}
                   </button>
+                </div>
+
+                {/* Automatic Lyrics Search Engine Card */}
+                <div className="p-5 rounded-2xl bg-surface-panel border border-border-subtle space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border-subtle">
+                    <div>
+                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                        <FileText size={16} className="text-brand-500" />
+                        <span>Automatic Lyrics Search Engine</span>
+                      </h4>
+                      <p className="text-xs text-content-muted mt-0.5">
+                        Multi-tier background crawler indexing local sidecars, embedded audio tags, and LRCLIB with anti-blocking safeguards.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {lyricsStatus?.is_circuit_broken ? (
+                        <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-1.5">
+                          <AlertCircle size={12} />
+                          <span>Circuit Breaker ({lyricsStatus.circuit_cooldown_seconds}s)</span>
+                        </span>
+                      ) : lyricsStatus?.is_paused ? (
+                        <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 flex items-center gap-1.5">
+                          <Pause size={12} />
+                          <span>Paused</span>
+                        </span>
+                      ) : lyricsStatus?.pending_count > 0 ? (
+                        <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider bg-brand-500/15 text-brand-400 border border-brand-500/30 flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse" />
+                          <span>Indexing ({lyricsStatus.pending_count} Left)</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+                          <Check size={12} />
+                          <span>All Lyrics Up-to-Date</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Statistics Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div className="p-3 rounded-xl bg-surface-island border border-border-subtle">
+                      <div className="text-[10px] uppercase font-bold text-content-subtle tracking-wider">Synced Karaoke</div>
+                      <div className="text-lg font-black text-white font-mono mt-0.5">
+                        {lyricsStatus ? lyricsStatus.synced_count.toLocaleString() : '—'}
+                      </div>
+                      <div className="text-[10px] text-brand-400 font-medium mt-0.5">
+                        {lyricsStatus && lyricsStatus.total_tracks > 0
+                          ? `${((lyricsStatus.synced_count / lyricsStatus.total_tracks) * 100).toFixed(1)}% of library`
+                          : ''}
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-surface-island border border-border-subtle">
+                      <div className="text-[10px] uppercase font-bold text-content-subtle tracking-wider">Plain Text</div>
+                      <div className="text-lg font-black text-white font-mono mt-0.5">
+                        {lyricsStatus ? lyricsStatus.plain_count.toLocaleString() : '—'}
+                      </div>
+                      <div className="text-[10px] text-content-muted mt-0.5">
+                        Static line lyrics
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-surface-island border border-border-subtle">
+                      <div className="text-[10px] uppercase font-bold text-content-subtle tracking-wider">Unmatched / Instrumental</div>
+                      <div className="text-lg font-black text-white font-mono mt-0.5">
+                        {lyricsStatus ? lyricsStatus.not_found_count.toLocaleString() : '—'}
+                      </div>
+                      <div className="text-[10px] text-content-subtle mt-0.5">
+                        Negative cached
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-surface-island border border-border-subtle">
+                      <div className="text-[10px] uppercase font-bold text-content-subtle tracking-wider">Pending Crawl</div>
+                      <div className="text-lg font-black text-white font-mono mt-0.5">
+                        {lyricsStatus ? lyricsStatus.pending_count.toLocaleString() : '—'}
+                      </div>
+                      <div className="text-[10px] text-content-subtle mt-0.5">
+                        {lyricsStatus ? `Queue: ${lyricsStatus.queue_size}` : ''}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Multi-Colored Stacked Progress Bar */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-content-muted font-medium">Library Indexing Coverage</span>
+                      <span className="font-mono text-white font-bold">
+                        {lyricsStatus?.progress_percent ?? 0}% Processed ({lyricsStatus ? (lyricsStatus.total_tracks - lyricsStatus.pending_count).toLocaleString() : 0} / {lyricsStatus?.total_tracks?.toLocaleString() ?? 0})
+                      </span>
+                    </div>
+
+                    <div className="h-2.5 w-full bg-surface-island rounded-full overflow-hidden flex border border-border-subtle">
+                      {lyricsStatus && lyricsStatus.total_tracks > 0 && (
+                        <>
+                          <div
+                            style={{ width: `${(lyricsStatus.synced_count / lyricsStatus.total_tracks) * 100}%` }}
+                            className="bg-brand-500 h-full transition-all duration-500"
+                            title={`Synced Lyrics: ${lyricsStatus.synced_count}`}
+                          />
+                          <div
+                            style={{ width: `${(lyricsStatus.plain_count / lyricsStatus.total_tracks) * 100}%` }}
+                            className="bg-blue-500/80 h-full transition-all duration-500"
+                            title={`Plain Lyrics: ${lyricsStatus.plain_count}`}
+                          />
+                          <div
+                            style={{ width: `${(lyricsStatus.not_found_count / lyricsStatus.total_tracks) * 100}%` }}
+                            className="bg-zinc-600 h-full transition-all duration-500"
+                            title={`Unmatched / Instrumental: ${lyricsStatus.not_found_count}`}
+                          />
+                        </>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-4 text-[10px] text-content-subtle pt-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-brand-500" />
+                        <span>Synced Karaoke</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-blue-500/80" />
+                        <span>Plain Lyrics</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-zinc-600" />
+                        <span>Unmatched / Instrumental</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-surface-island border border-border-subtle" />
+                        <span>Pending</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Active Track / Status Insight */}
+                  {lyricsStatus?.current_track && (
+                    <div className="p-3 rounded-xl bg-surface-island border border-border-subtle flex items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Loader2 size={14} className="text-brand-500 animate-spin shrink-0" />
+                        <span className="text-content-muted shrink-0">Currently Fetching:</span>
+                        <span className="text-white font-medium truncate">{lyricsStatus.current_track}</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-content-subtle shrink-0">2.5s Pacing</span>
+                    </div>
+                  )}
+
+                  {/* Safeguards & Admin Controls */}
+                  <div className="pt-2 border-t border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="text-[11px] text-content-muted leading-relaxed">
+                      <span className="text-white font-medium">Safe Crawl Protocol: </span>
+                      Strict 2.5s pacing, negative 404 cache, and circuit breaker active to prevent external rate-limiting.
+                    </div>
+
+                    {isAdmin && (
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleLyricsControl(lyricsStatus?.is_paused ? 'resume' : 'pause')}
+                          disabled={lyricsActionLoading}
+                          className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-surface-island hover:bg-white/10 text-white border border-border-subtle transition flex items-center gap-1.5"
+                        >
+                          {lyricsStatus?.is_paused ? (
+                            <>
+                              <Play size={13} className="text-brand-500 fill-brand-500" />
+                              <span>Resume</span>
+                            </>
+                          ) : (
+                            <>
+                              <Pause size={13} className="text-yellow-400" />
+                              <span>Pause</span>
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleLyricsControl('rescan_missing')}
+                          disabled={lyricsActionLoading}
+                          className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-brand-500 hover:bg-brand-400 text-black font-bold transition flex items-center gap-1.5 shadow-sm"
+                        >
+                          <RefreshCw size={13} className={lyricsActionLoading ? 'animate-spin' : ''} />
+                          <span>Scan Missing</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {lyricsMessage && (
+                    <div className="p-2.5 rounded-xl bg-brand-500/10 border border-brand-500/30 text-xs text-brand-400 flex items-center gap-2">
+                      <Check size={14} className="shrink-0" />
+                      <span>{lyricsMessage}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

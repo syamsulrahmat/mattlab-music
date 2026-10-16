@@ -29,6 +29,8 @@ def on_startup():
     init_db()
     request_music.start_auto_import_watcher()
     spotify_sync.start_scheduled_spotify_watcher()
+    from app.lyrics_fetcher import start_background_lyrics_fetcher
+    start_background_lyrics_fetcher()
 
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
@@ -78,6 +80,12 @@ async def auth_middleware(request: Request, call_next):
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
             content={"detail": "Admin privileges required to manage music downloads"},
+        )
+
+    if request.url.path.startswith("/api/lyrics/control") and user.get("role") != "admin":
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={"detail": "Admin privileges required to manage lyrics background crawler"},
         )
 
     return await call_next(request)

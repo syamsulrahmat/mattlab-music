@@ -235,6 +235,7 @@ def scan_music_library() -> Dict[str, Any]:
         existing_tracks = {row["file_path"]: row["mtime"] for row in cursor.fetchall()}
 
         active_file_paths = set()
+        new_track_ids = []
         added_count = 0
         updated_count = 0
         unchanged_count = 0
@@ -330,6 +331,10 @@ def scan_music_library() -> Dict[str, Any]:
                     updated_count += 1
                 else:
                     added_count += 1
+                    cursor.execute("SELECT id FROM tracks WHERE file_path = ?", (full_path_str,))
+                    t_row = cursor.fetchone()
+                    if t_row:
+                        new_track_ids.append(t_row["id"])
 
                 if (added_count + updated_count) % 50 == 0:
                     conn.commit()
@@ -351,6 +356,15 @@ def scan_music_library() -> Dict[str, Any]:
             INSERT INTO scan_runs (completed_at, total_files, added_tracks, updated_tracks, deleted_tracks, status)
             VALUES (CURRENT_TIMESTAMP, ?, ?, ?, ?, 'success')
         """, (len(active_file_paths), added_count, updated_count, deleted_count))
+
+    # Enqueue newly added tracks to background lyrics crawler
+    if new_track_ids:
+        try:
+            from app.lyrics_fetcher import lyrics_fetcher
+            lyrics_fetcher.enqueue_tracks(new_track_ids, high_priority=False)
+            logger.info(f"[LyricsFetcher] Enqueued {len(new_track_ids)} newly discovered tracks for background retrieval.")
+        except Exception as e:
+            logger.debug(f"Could not enqueue tracks to lyrics_fetcher: {e}")
 
     summary = {
         "total_files": len(active_file_paths),
@@ -428,5 +442,15 @@ def index_single_audio_file(file_path: Path) -> Optional[int]:
 
         cursor.execute("SELECT id FROM tracks WHERE file_path = ?", (full_path_str,))
         track_row = cursor.fetchone()
-        return track_row["id"] if track_row else None
+        track_id = track_row["id"] if track_row else None
+
+        if track_id:
+            try:
+                from app.lyrics_fetcher import lyrics_fetcher
+                lyrics_fetcher.enqueue_tracks([track_id], high_priority=True)
+                logger.info(f"[LyricsFetcher] Enqueued newly indexed track {track_id} with high priority.")
+            except Exception as e:
+                logger.debug(f"Could not enqueue single track to lyrics_fetcher: {e}")
+
+        return track_id
 

@@ -56,6 +56,7 @@ def init_db() -> None:
             file_size INTEGER NOT NULL,
             bitrate INTEGER,
             mtime REAL NOT NULL,
+            lyrics_status TEXT DEFAULT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -229,8 +230,63 @@ def init_db() -> None:
             except Exception as e:
                 print(f"[DB MIGRATION] Error adding avatar_url to users: {e}")
 
+        # Migrations for tracks lyrics_status
+        cursor.execute("PRAGMA table_info(tracks)")
+        track_cols = [c["name"] for c in cursor.fetchall()]
+        if "lyrics_status" not in track_cols:
+            try:
+                conn.execute("ALTER TABLE tracks ADD COLUMN lyrics_status TEXT DEFAULT NULL")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_tracks_lyrics_status ON tracks(lyrics_status)")
+                _backfill_existing_lyrics_cache(conn)
+            except Exception as e:
+                print(f"[DB MIGRATION] Error migrating tracks lyrics_status: {e}")
+        else:
+            try:
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_tracks_lyrics_status ON tracks(lyrics_status)")
+                _backfill_existing_lyrics_cache(conn)
+            except Exception:
+                pass
+
         try:
             conn.execute("CREATE INDEX IF NOT EXISTS idx_playlists_user ON playlists(user_id)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_favorites_user ON favorites(user_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_tracks_lyrics_status ON tracks(lyrics_status)")
         except Exception:
             pass
+
+def _backfill_existing_lyrics_cache(conn: sqlite3.Connection):
+    """Scan existing /data/lyrics/*.json files and populate tracks.lyrics_status in SQLite."""
+    try:
+        import json
+        from pathlib import Path
+        from app.config import DATA_DIR
+        lyrics_dir = DATA_DIR / "lyrics"
+        if not lyrics_dir.exists():
+            return
+
+        updates = []
+        for json_file in lyrics_dir.glob("*.json"):
+            stem = json_file.stem
+            if not stem.isdigit():
+                continue
+            track_id = int(stem)
+            try:
+                data = json.loads(json_file.read_text(encoding="utf-8"))
+                if data.get("syncedLyrics"):
+                    status = "synced"
+                elif data.get("plainLyrics"):
+                    status = "plain"
+                elif data.get("notFound"):
+                    status = "not_found"
+                else:
+                    status = "none"
+                updates.append((status, track_id))
+            except Exception:
+                continue
+
+        if updates:
+            conn.executemany("UPDATE tracks SET lyrics_status = ? WHERE id = ? AND (lyrics_status IS NULL OR lyrics_status = 'pending')", updates)
+            print(f"[DB MIGRATION] Backfilled {len(updates)} cached lyrics into tracks.lyrics_status.")
+    except Exception as e:
+        print(f"[DB MIGRATION] Error backfilling lyrics cache: {e}")
+
