@@ -30,3 +30,11 @@
 - **Proactive Feature Branching**: Always suggest and use a dedicated `feature/<name>` branch during planning (`/plan`) or whenever executing risky changes (e.g. database schema migrations, background services/crawlers, audio playback pipeline, authentication overhauls). Keep `main` clean, stable, and operational for daily listening.
 - **Merge After Verification**: Only merge into `main` after the feature has been verified and tested.
 
+## 4-Point Green Light Verification Protocol
+Before merging any feature branch or major update into `main`, always present an interactive 4-point verification checklist tailored specifically to the changes:
+1. **The "Happy Path" (Core Experience)**: Clear step-by-step instructions verifying the primary feature or enhancement works as expected.
+2. **The "Edge Cases" (Unusual Situations)**: Boundary conditions (e.g. empty / incognito localStorage, cold boot, track completion / 0:00 boundary, rapid user interactions).
+3. **The "Regression Checks" (Existing Core Features)**: Verification that critical adjacent features remain completely intact (e.g. queue continuity, new song selection, lyrics sync, scrubber navigation).
+4. **The "Clean Logs Check" (Zero Errors)**: Browser DevTools console inspection (zero uncaught exceptions / red errors) and clean production build verification.
+
+
