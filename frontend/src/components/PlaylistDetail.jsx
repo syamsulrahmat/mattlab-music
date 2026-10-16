@@ -59,6 +59,14 @@ export const PlaylistDetail = ({
   // Drag and drop
   const [draggedTrackIdx, setDraggedTrackIdx] = useState(null);
   const [dragOverTrackIdx, setDragOverTrackIdx] = useState(null);
+  const [heldTrackId, setHeldTrackId] = useState(null);
+  const holdTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+    };
+  }, []);
 
   // In-playlist filter & sort
   const [searchQuery, setSearchQuery] = useState('');
@@ -1224,7 +1232,7 @@ export const PlaylistDetail = ({
             onDragOver={(e) => {
               if (playlist?.spotify_id) {
                 e.preventDefault();
-                e.dataTransfer.dropEffect = 'copy';
+                e.dataTransfer.dropEffect = 'none';
               }
             }}
             className="space-y-0.5"
@@ -1237,12 +1245,30 @@ export const PlaylistDetail = ({
                 const isDragOver = dragOverTrackIdx === idx;
                 const isBeingDragged = draggedTrackIdx === idx;
                 const isFocused = focusedTrackIdx === idx;
+                const isSpotify = !!playlist?.spotify_id;
+                const isHeld = heldTrackId === track.id;
 
                 return (
                   <div
                     key={`${track.id}-${idx}`}
                     data-track-id={track.id}
                     onMouseEnter={() => searchQuery.trim() && setFocusedTrackIdx(idx)}
+                    onMouseDown={(e) => {
+                      if (e.button !== 0) return;
+                      if (e.target.closest('button, a, [data-no-drag]')) return;
+                      if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+                      holdTimerRef.current = setTimeout(() => {
+                        setHeldTrackId(track.id);
+                      }, 200);
+                    }}
+                    onMouseUp={() => {
+                      if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+                      if (heldTrackId) setHeldTrackId(null);
+                    }}
+                    onMouseLeave={() => {
+                      if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+                      if (heldTrackId) setHeldTrackId(null);
+                    }}
                     onClick={(e) => handleRowClick(e, track, idx)}
                     onDoubleClick={() => !track.isSyncPending && handleTrackPlay(track)}
                     onContextMenu={(e) => {
@@ -1259,6 +1285,8 @@ export const PlaylistDetail = ({
                     }}
                     draggable={(!playlist?.spotify_id && isDragEnabled && !track.isSyncPending) || (playlist?.spotify_id && !track.isSyncPending) ? "true" : "false"}
                     onDragStart={(e) => {
+                      if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+                      setHeldTrackId(track.id);
                       if (playlist?.spotify_id) {
                         e.dataTransfer.effectAllowed = 'copy';
                         e.dataTransfer.setData('text/plain', '');
@@ -1266,6 +1294,7 @@ export const PlaylistDetail = ({
                         if (ghost) {
                           e.dataTransfer.setDragImage(ghost, 20, 16);
                         }
+                        setDraggedTrackIdx(idx);
                         return;
                       }
                       if (!isDragEnabled || track.isSyncPending) return;
@@ -1283,13 +1312,15 @@ export const PlaylistDetail = ({
                       setDraggedTrackIdx(idx);
                     }}
                     onDragEnd={() => {
+                      if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+                      setHeldTrackId(null);
                       setDraggedTrackIdx(null);
                       setDragOverTrackIdx(null);
                     }}
                     onDragOver={(e) => {
                       if (playlist?.spotify_id) {
                         e.preventDefault();
-                        e.dataTransfer.dropEffect = 'copy';
+                        e.dataTransfer.dropEffect = 'none';
                         return;
                       }
                       if (!isDragEnabled || track.isSyncPending) return;
@@ -1309,8 +1340,10 @@ export const PlaylistDetail = ({
                       handleDrop(e, idx);
                     }}
                     className={`grid grid-cols-[36px_1fr_50px] md:grid-cols-[40px_3fr_2fr_60px] lg:grid-cols-[40px_4fr_3fr_2fr_60px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center select-none ${
-                      isDragEnabled && !track.isSyncPending
-                        ? 'cursor-grab active:cursor-grabbing'
+                      isSpotify
+                        ? (isHeld ? 'cursor-not-allowed' : 'cursor-default active:cursor-not-allowed')
+                        : (isDragEnabled && !track.isSyncPending)
+                        ? (isHeld ? 'cursor-grabbing' : 'cursor-default active:cursor-grabbing')
                         : 'cursor-default'
                     } ${
                       isBeingDragged
@@ -1448,6 +1481,7 @@ export const PlaylistDetail = ({
 
                         <p className="text-xs text-content-secondary truncate mt-0.5">
                           <span
+                            data-no-drag="true"
                             onClick={(e) => {
                               if (track.isSyncPending) return;
                               e.stopPropagation();
@@ -1465,6 +1499,7 @@ export const PlaylistDetail = ({
                     {/* Column 3: Album (hidden < md) */}
                     <div className="hidden md:block truncate pr-3">
                       <span 
+                        data-no-drag="true"
                         onClick={(e) => {
                           if (track.isSyncPending) return;
                           e.stopPropagation();
