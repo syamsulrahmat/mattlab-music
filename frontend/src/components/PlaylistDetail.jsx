@@ -837,7 +837,21 @@ export const PlaylistDetail = ({
   }
 
   return (
-    <div className="pb-16 select-none relative w-full">
+    <div 
+      onDragOver={(e) => {
+        if (playlist?.spotify_id) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'none';
+        }
+      }}
+      onDragEnter={(e) => {
+        if (playlist?.spotify_id) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'none';
+        }
+      }}
+      className={`pb-16 select-none relative w-full ${playlist?.spotify_id && draggedTrackIdx !== null ? 'cursor-not-allowed' : ''}`}
+    >
       {/* 4. Full-bleed Header Banner taking all the area without back button */}
       <div 
         onContextMenu={(e) => onContextMenu?.(e, 'playlist', playlist)}
@@ -1255,7 +1269,7 @@ export const PlaylistDetail = ({
                 e.dataTransfer.dropEffect = 'none';
               }
             }}
-            className="space-y-0.5"
+            className={`space-y-0.5 ${playlist?.spotify_id && draggedTrackIdx !== null ? 'cursor-not-allowed' : ''}`}
           >
               {tracks.map((track, idx) => {
                 const isThisTrack = currentTrack?.id === track.id;
@@ -1309,7 +1323,16 @@ export const PlaylistDetail = ({
                       setHeldTrackId(track.id);
                       if (playlist?.spotify_id) {
                         e.dataTransfer.effectAllowed = 'copy';
-                        e.dataTransfer.setData('text/plain', '');
+                        e.dataTransfer.setData('text/track-index', String(idx));
+                        e.dataTransfer.setData('application/json', JSON.stringify({
+                          id: track.id,
+                          title: track.title,
+                          artist_name: track.artist_name,
+                          album_id: track.album_id,
+                          album_title: track.album_title,
+                          cover_url: track.cover_url
+                        }));
+                        e.dataTransfer.setData('text/plain', String(track.id));
                         const ghost = document.getElementById('spotify-locked-drag-ghost');
                         if (ghost) {
                           e.dataTransfer.setDragImage(ghost, 20, 16);
@@ -1373,7 +1396,7 @@ export const PlaylistDetail = ({
                       draggedTrackIdx !== null ? '[&_*]:pointer-events-none' : ''
                     } ${
                       isSpotify
-                        ? (isHeld ? 'cursor-not-allowed' : 'cursor-default active:cursor-not-allowed')
+                        ? (draggedTrackIdx !== null || isHeld ? 'cursor-not-allowed' : 'cursor-default active:cursor-not-allowed')
                         : (isDragEnabled && !track.isSyncPending)
                         ? (isHeld ? 'cursor-grabbing' : 'cursor-default active:cursor-grabbing')
                         : 'cursor-default'
