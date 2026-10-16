@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Check, AlertCircle } from 'lucide-react';
 import { TopBar } from './components/TopBar';
 import { LibrarySidebar } from './components/LibrarySidebar';
 import { QueueIsland } from './components/QueueIsland';
@@ -660,13 +661,15 @@ const MainAppContent = () => {
     setSearchRefreshTrigger((prev) => prev + 1);
   }, []);
 
-  const handleAddTrackToPlaylist = async (playlistId, trackId) => {
+  const handleAddTrackToPlaylist = async (playlistId, trackIdOrIds) => {
     try {
+      const isArray = Array.isArray(trackIdOrIds);
+      const payload = isArray ? { track_ids: trackIdOrIds } : { track_id: trackIdOrIds };
       const res = await fetch(`/api/playlists/${playlistId}/tracks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ track_id: trackId }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       
@@ -682,7 +685,7 @@ const MainAppContent = () => {
       await fetchPlaylists();
       return data;
     } catch (err) {
-      console.error('Failed to add track to playlist:', err);
+      console.error('Failed to add track(s) to playlist:', err);
       return null;
     }
   };
@@ -1043,10 +1046,19 @@ const MainAppContent = () => {
         isLoading={isTakingOwnership}
       />
 
-      {/* Floating In-App Toast Notification */}
+      {/* Floating In-App Toast Notification (Spotify-style bottom pill modal) */}
       {toastMessage && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-surface-panel/95 backdrop-blur-md border border-brand-500/40 text-content-primary text-xs font-semibold px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-3 duration-200">
-          <span>{toastMessage}</span>
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-surface-panel/95 backdrop-blur-md border border-border-strong text-content-primary text-xs font-semibold px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-3 duration-200 pointer-events-none select-none">
+          {typeof toastMessage === 'string' && toastMessage.startsWith('⚠️') ? (
+            <AlertCircle size={15} className="text-amber-400 shrink-0" />
+          ) : (
+            <Check size={15} className="text-brand-500 shrink-0" />
+          )}
+          <span>
+            {typeof toastMessage === 'string' && toastMessage.startsWith('⚠️')
+              ? toastMessage.replace(/^⚠️\s*/, '')
+              : toastMessage}
+          </span>
         </div>
       )}
     </div>

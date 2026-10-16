@@ -98,6 +98,9 @@ export const PlaylistDetail = ({
 
   // Delete modal
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+  const [isTakeOwnershipOfferOpen, setIsTakeOwnershipOfferOpen] = useState(false);
+  const [isTakeOwnershipConfirmOpen, setIsTakeOwnershipConfirmOpen] = useState(false);
+  const [isTakingOwnership, setIsTakingOwnership] = useState(false);
 
   const { 
     currentTrack, 
@@ -380,17 +383,22 @@ export const PlaylistDetail = ({
         .map((t) => ({ ...t, playlist_id: playlistId }));
       if (playableTracks.length === 0) return;
 
-      // If a search query is active and has matches, start from the first matching track
-      const firstPlayable = tracks.find((t) => !t.isSyncPending) || playableTracks[0];
-      const startTrackWithPl = { ...firstPlayable, playlist_id: playlistId };
+      // Candidate pool respects active search filter if matches exist, otherwise uses all playable tracks
+      const candidateTracks = tracks
+        .filter((t) => !t.isSyncPending)
+        .map((t) => ({ ...t, playlist_id: playlistId }));
+      const pool = candidateTracks.length > 0 ? candidateTracks : playableTracks;
 
       if (isShuffle) {
         if (playableTracks.length > 1) {
+          const randomIndex = Math.floor(Math.random() * pool.length);
+          const startTrackWithPl = pool[randomIndex];
           playTrack(startTrackWithPl, shuffledQueueStartingWith(startTrackWithPl, playableTracks));
         } else {
-          playTrack(startTrackWithPl, playableTracks);
+          playTrack(pool[0], playableTracks);
         }
       } else {
+        const startTrackWithPl = pool[0];
         playTrack(startTrackWithPl, playableTracks);
       }
     }
@@ -707,6 +715,10 @@ export const PlaylistDetail = ({
 
   const handleRemoveTrack = async (e, trackId) => {
     if (e?.stopPropagation) e.stopPropagation();
+    if (playlist?.spotify_id) {
+      setIsTakeOwnershipOfferOpen(true);
+      return;
+    }
     try {
       await fetch(`/api/playlists/${playlistId}/tracks/${trackId}`, { method: 'DELETE', credentials: 'include' });
       setPlaylist((prev) => (prev ? {
@@ -725,6 +737,10 @@ export const PlaylistDetail = ({
   };
 
   const handleBulkRemoveSelected = async () => {
+    if (playlist?.spotify_id) {
+      setIsTakeOwnershipOfferOpen(true);
+      return;
+    }
     const ids = Array.from(selectedTrackIds);
     if (ids.length === 0) return;
     try {
@@ -742,6 +758,37 @@ export const PlaylistDetail = ({
       if (onPlaylistUpdated) onPlaylistUpdated();
     } catch (err) {
       console.error('Failed to remove selected tracks:', err);
+    }
+  };
+
+  const handleExecuteTakeOwnership = async () => {
+    if (!playlist) return;
+    setIsTakingOwnership(true);
+    try {
+      const res = await fetch(`/api/playlists/${playlist.id}/take-ownership`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        setPlaylist((prev) => (prev ? { ...prev, spotify_id: null } : prev));
+        if (showToast) {
+          showToast(`✨ You now own “${playlist.name}”. Unlinked from Spotify.`);
+        }
+        if (onPlaylistUpdated) onPlaylistUpdated();
+        setIsTakeOwnershipConfirmOpen(false);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        if (showToast) {
+          showToast(`⚠️ ${errData.detail || 'Failed to take ownership of playlist'}`);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to take ownership:', err);
+      if (showToast) {
+        showToast('⚠️ Failed to take ownership of playlist');
+      }
+    } finally {
+      setIsTakingOwnership(false);
     }
   };
 
@@ -806,9 +853,22 @@ export const PlaylistDetail = ({
     setDraggedTrackIdx(null);
     if (fromIdx === null || isNaN(fromIdx) || fromIdx === dropIdx) return;
 
-    const newTracks = [...rawTracks];
-    const [moved] = newTracks.splice(fromIdx, 1);
-    newTracks.splice(dropIdx, 0, moved);
+    const fromTrack = rawTracks[fromIdx];
+    const isMultiMove = fromTrack && selectedTrackIds.has(fromTrack.id) && selectedTrackIds.size > 1;
+
+    let newTracks;
+    if (isMultiMove) {
+      const selectedList = rawTracks.filter((t) => selectedTrackIds.has(t.id));
+      const remaining = rawTracks.filter((t) => !selectedTrackIds.has(t.id));
+      const targetTrack = rawTracks[dropIdx];
+      let insertIdx = remaining.findIndex((t) => t.id === targetTrack?.id);
+      if (insertIdx === -1) insertIdx = remaining.length;
+      newTracks = [...remaining.slice(0, insertIdx), ...selectedList, ...remaining.slice(insertIdx)];
+    } else {
+      newTracks = [...rawTracks];
+      const [moved] = newTracks.splice(fromIdx, 1);
+      newTracks.splice(dropIdx, 0, moved);
+    }
 
     rawTracksRef.current = newTracks;
     setPlaylist((prev) => (prev ? { ...prev, tracks: newTracks } : prev));
@@ -1320,8 +1380,14 @@ export const PlaylistDetail = ({
                     onContextMenu={(e) => {
                       if (onContextMenu && !track.isSyncPending) {
                         e.preventDefault();
+                        const isMulti = selectedTrackIds.has(track.id) && selectedTrackIds.size > 1;
+                        const orderedTracks = isMulti
+                          ? tracks.filter((t) => selectedTrackIds.has(t.id) && !t.isSyncPending)
+                          : [track];
                         onContextMenu(e, 'track', {
                           ...track,
+                          selectedTracks: orderedTracks,
+                          track_ids: orderedTracks.map((t) => t.id),
                           playlist_id: playlistId,
                           deleteLabel: 'Remove from this playlist',
                           onDelete: () => handleRemoveTrack(e, track.id),
@@ -1333,18 +1399,36 @@ export const PlaylistDetail = ({
                     onDragStart={(e) => {
                       if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
                       setHeldTrackId(track.id);
+
+                      const isMulti = selectedTrackIds.has(track.id) && selectedTrackIds.size > 1;
+                      const orderedTracks = isMulti
+                        ? tracks.filter((t) => selectedTrackIds.has(t.id) && !t.isSyncPending)
+                        : [track];
+                      const trackIds = orderedTracks.map((t) => t.id);
+
+                      const payload = {
+                        id: track.id,
+                        track_ids: trackIds,
+                        tracks: orderedTracks.map((t) => ({
+                          id: t.id,
+                          title: t.title,
+                          artist_name: t.artist_name,
+                          album_id: t.album_id,
+                          album_title: t.album_title,
+                          cover_url: t.cover_url,
+                        })),
+                        title: track.title,
+                        artist_name: track.artist_name,
+                        album_id: track.album_id,
+                        album_title: track.album_title,
+                        cover_url: track.cover_url,
+                      };
+
                       if (playlist?.spotify_id) {
                         e.dataTransfer.effectAllowed = 'copy';
                         e.dataTransfer.setData('text/track-index', String(idx));
-                        e.dataTransfer.setData('application/json', JSON.stringify({
-                          id: track.id,
-                          title: track.title,
-                          artist_name: track.artist_name,
-                          album_id: track.album_id,
-                          album_title: track.album_title,
-                          cover_url: track.cover_url
-                        }));
-                        e.dataTransfer.setData('text/plain', String(track.id));
+                        e.dataTransfer.setData('application/json', JSON.stringify(payload));
+                        e.dataTransfer.setData('text/plain', trackIds.join(','));
                         const ghost = document.getElementById('spotify-locked-drag-ghost');
                         if (ghost) {
                           e.dataTransfer.setDragImage(ghost, 20, 16);
@@ -1354,15 +1438,8 @@ export const PlaylistDetail = ({
                       }
                       if (!isDragEnabled || track.isSyncPending) return;
                       e.dataTransfer.setData('text/track-index', String(idx));
-                      e.dataTransfer.setData('application/json', JSON.stringify({
-                        id: track.id,
-                        title: track.title,
-                        artist_name: track.artist_name,
-                        album_id: track.album_id,
-                        album_title: track.album_title,
-                        cover_url: track.cover_url
-                      }));
-                      e.dataTransfer.setData('text/plain', String(track.id));
+                      e.dataTransfer.setData('application/json', JSON.stringify(payload));
+                      e.dataTransfer.setData('text/plain', trackIds.join(','));
                       e.dataTransfer.effectAllowed = 'copyMove';
                       setDraggedTrackIdx(idx);
                     }}
@@ -1408,9 +1485,9 @@ export const PlaylistDetail = ({
                       draggedTrackIdx !== null ? '[&_*]:pointer-events-none' : ''
                     } ${
                       isSpotify
-                        ? (draggedTrackIdx !== null || isHeld ? 'cursor-not-allowed' : 'cursor-default active:cursor-not-allowed')
+                        ? (draggedTrackIdx !== null || isHeld ? 'cursor-not-allowed' : 'cursor-default')
                         : (isDragEnabled && !track.isSyncPending)
-                        ? (isHeld ? 'cursor-grabbing' : 'cursor-default active:cursor-grabbing')
+                        ? (isHeld ? 'cursor-grabbing' : 'cursor-default')
                         : 'cursor-default'
                     } ${
                       isBeingDragged
@@ -1703,6 +1780,34 @@ export const PlaylistDetail = ({
         confirmText="Delete"
         onConfirm={handleDeletePlaylist}
         onClose={() => setIsConfirmDeleteOpen(false)}
+      />
+
+      {/* Step 1: Spotify Playlist Track Removal Intercept (Take Ownership Offer) */}
+      <ConfirmModal
+        isOpen={isTakeOwnershipOfferOpen}
+        title={`Take ownership of “${playlist?.name}”?`}
+        message={`"${playlist?.name}" is synced with Spotify. Tracks cannot be removed from live Spotify charts. To edit, add, or remove tracks, you can take full local ownership of this playlist.`}
+        confirmText="Take Ownership"
+        cancelText="Keep Synced"
+        variant="primary"
+        onConfirm={() => {
+          setIsTakeOwnershipOfferOpen(false);
+          setIsTakeOwnershipConfirmOpen(true);
+        }}
+        onClose={() => setIsTakeOwnershipOfferOpen(false)}
+      />
+
+      {/* Step 2: Final Take Ownership Confirmation */}
+      <ConfirmModal
+        isOpen={isTakeOwnershipConfirmOpen}
+        title="Confirm: Unlink from Spotify?"
+        message={`Are you sure you want to take ownership? This will permanently unlink "${playlist?.name}" from Spotify sync and turn it into a standard local playlist. All downloaded tracks will remain in your library.`}
+        confirmText="Yes, Take Ownership"
+        cancelText="Go Back"
+        variant="primary"
+        isLoading={isTakingOwnership}
+        onConfirm={handleExecuteTakeOwnership}
+        onClose={() => setIsTakeOwnershipConfirmOpen(false)}
       />
     </div>
   );

@@ -338,20 +338,37 @@ export const ArtistDetail = ({
                   onContextMenu={(e) => {
                     if (onContextMenu) {
                       e.preventDefault();
-                      onContextMenu(e, 'track', track);
+                      const isMulti = selectedTrackIds.has(track.id) && selectedTrackIds.size > 1;
+                      const orderedTracks = isMulti
+                        ? tracks.filter((t) => selectedTrackIds.has(t.id))
+                        : [track];
+                      onContextMenu(e, 'track', {
+                        ...track,
+                        selectedTracks: orderedTracks,
+                        track_ids: orderedTracks.map((t) => t.id),
+                        artist_name: track.artist_name || artist.name,
+                      });
                     }
                   }}
                   draggable="true"
                   onDragStart={(e) => {
+                    const isMulti = selectedTrackIds.has(track.id) && selectedTrackIds.size > 1;
+                    const orderedTracks = isMulti
+                      ? tracks.filter((t) => selectedTrackIds.has(t.id))
+                      : [track];
+                    const trackIds = orderedTracks.map((t) => t.id);
+
                     e.dataTransfer.setData('application/json', JSON.stringify({
                       id: track.id,
+                      track_ids: trackIds,
+                      tracks: orderedTracks,
                       title: track.title,
                       artist_name: track.artist_name || artist.name,
                       album_id: track.album_id,
                       album_title: track.album_title,
                       cover_url: track.cover_url
                     }));
-                    e.dataTransfer.setData('text/plain', String(track.id));
+                    e.dataTransfer.setData('text/plain', trackIds.join(','));
                     e.dataTransfer.effectAllowed = 'copy';
                   }}
                   className={`grid grid-cols-[36px_1fr_36px_50px] md:grid-cols-[40px_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center cursor-default select-none ${

@@ -378,8 +378,14 @@ export const AlbumDetail = ({
                 onContextMenu={(e) => {
                   if (onContextMenu) {
                     e.preventDefault();
+                    const isMulti = selectedTrackIds.has(track.id) && selectedTrackIds.size > 1;
+                    const orderedTracks = isMulti
+                      ? tracks.filter((t) => selectedTrackIds.has(t.id))
+                      : [track];
                     onContextMenu(e, 'track', {
                       ...track,
+                      selectedTracks: orderedTracks,
+                      track_ids: orderedTracks.map((t) => t.id),
                       album_id: album.id,
                       album_title: album.title,
                       cover_url: album.cover_url,
@@ -388,15 +394,23 @@ export const AlbumDetail = ({
                 }}
                 draggable="true"
                 onDragStart={(e) => {
+                  const isMulti = selectedTrackIds.has(track.id) && selectedTrackIds.size > 1;
+                  const orderedTracks = isMulti
+                    ? tracks.filter((t) => selectedTrackIds.has(t.id))
+                    : [track];
+                  const trackIds = orderedTracks.map((t) => t.id);
+
                   e.dataTransfer.setData('application/json', JSON.stringify({
                     id: track.id,
+                    track_ids: trackIds,
+                    tracks: orderedTracks,
                     title: track.title,
                     artist_name: track.artist_name || album.artist_name,
                     album_id: album.id,
                     album_title: album.title,
                     cover_url: album.cover_url,
                   }));
-                  e.dataTransfer.setData('text/plain', String(track.id));
+                  e.dataTransfer.setData('text/plain', trackIds.join(','));
                   e.dataTransfer.effectAllowed = 'copy';
                 }}
                 className={`grid grid-cols-[36px_1fr_36px_36px_60px] md:grid-cols-[40px_1fr_40px_40px_70px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center cursor-default select-none ${

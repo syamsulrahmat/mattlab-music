@@ -20,7 +20,6 @@ export const LibrarySidebar = ({
   onContextMenu,
 }) => {
   const [dragOverId, setDragOverId] = useState(null);
-  const [dropFeedback, setDropFeedback] = useState(null);
   const [draggedPlaylistIdx, setDraggedPlaylistIdx] = useState(null);
   const [playlistDropTarget, setPlaylistDropTarget] = useState(null);
   
@@ -31,7 +30,7 @@ export const LibrarySidebar = ({
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const sortMenuRef = useRef(null);
 
-  const { toggleFavorite, currentTrack, isPlaying } = usePlayer();
+  const { toggleFavorite, currentTrack, isPlaying, showToast } = usePlayer();
 
   // Close sort menu on click outside
   useEffect(() => {
@@ -360,18 +359,37 @@ export const LibrarySidebar = ({
               onDrop={(e) => {
                 e.preventDefault();
                 setDragOverId(null);
-                let trackId = null;
+                let trackData = null;
                 try {
                   const json = e.dataTransfer.getData('application/json');
-                  if (json) trackId = JSON.parse(json).id;
+                  if (json) trackData = JSON.parse(json);
                 } catch (_) {}
-                if (!trackId) {
-                  trackId = parseInt(e.dataTransfer.getData('text/plain'), 10);
+
+                let trackIds = [];
+                if (Array.isArray(trackData?.track_ids) && trackData.track_ids.length > 0) {
+                  trackIds = trackData.track_ids;
+                } else if (trackData?.id) {
+                  trackIds = [trackData.id];
+                } else {
+                  const plain = e.dataTransfer.getData('text/plain');
+                  if (plain) {
+                    trackIds = plain
+                      .split(',')
+                      .map((s) => parseInt(s.trim(), 10))
+                      .filter((n) => !isNaN(n));
+                  }
                 }
-                if (trackId) {
-                  toggleFavorite(trackId);
-                  setDropFeedback({ id: 'favorites', message: 'Added to Liked Songs!' });
-                  setTimeout(() => setDropFeedback(null), 2500);
+
+                if (trackIds.length > 0) {
+                  for (const id of trackIds) {
+                    toggleFavorite(id);
+                  }
+                  if (showToast) {
+                    const msg = trackIds.length > 1
+                      ? `Added ${trackIds.length} songs to Liked Songs`
+                      : `Added “${trackData?.title || 'Song'}” to Liked Songs`;
+                    showToast(msg);
+                  }
                 }
               }}
               className={`flex items-center gap-3 p-2 rounded-md cursor-pointer transition border relative ${
@@ -415,12 +433,7 @@ export const LibrarySidebar = ({
                       </div>
                     )}
                   </div>
-                  {dropFeedback?.id === 'favorites' && (
-                    <span className="text-[10px] text-brand-500 font-bold flex items-center gap-0.5">
-                      <Check size={11} /> Added!
-                    </span>
-                  )}
-                  {dragOverId === 'favorites' && !dropFeedback && (
+                  {dragOverId === 'favorites' && (
                     <span className="text-[10px] text-brand-500 font-bold">
                       + Drop to save
                     </span>
@@ -439,7 +452,6 @@ export const LibrarySidebar = ({
           const isSelected = activeTab === 'playlist-detail' && pl.id === selectedPlaylistId;
           const isPlayingThis = isPlaying && currentTrack?.playlist_id === pl.id;
           const isDragOverTrack = dragOverId === pl.id;
-          const hasFeedback = dropFeedback?.id === pl.id;
           const isTargetAbove = playlistDropTarget?.idx === idx && playlistDropTarget?.position === 'above';
           const isTargetBelow = playlistDropTarget?.idx === idx && playlistDropTarget?.position === 'below';
           const isBeingDragged = draggedPlaylistIdx === idx;
@@ -528,15 +540,46 @@ export const LibrarySidebar = ({
                     const json = e.dataTransfer.getData('application/json');
                     if (json) trackData = JSON.parse(json);
                   } catch (_) {}
-                  const trackId = trackData?.id || parseInt(e.dataTransfer.getData('text/plain'), 10);
-                  if (trackId && onAddTrackToPlaylist) {
-                    const res = await onAddTrackToPlaylist(pl.id, trackId);
-                    if (res?.already_exists) {
-                      setDropFeedback({ id: pl.id, error: true, message: '⚠️ Already exists' });
-                    } else {
-                      setDropFeedback({ id: pl.id, message: `Added to ${pl.name}!` });
+
+                  let trackIds = [];
+                  if (Array.isArray(trackData?.track_ids) && trackData.track_ids.length > 0) {
+                    trackIds = trackData.track_ids;
+                  } else if (trackData?.id) {
+                    trackIds = [trackData.id];
+                  } else {
+                    const plain = e.dataTransfer.getData('text/plain');
+                    if (plain) {
+                      trackIds = plain
+                        .split(',')
+                        .map((s) => parseInt(s.trim(), 10))
+                        .filter((n) => !isNaN(n));
                     }
-                    setTimeout(() => setDropFeedback(null), 3000);
+                  }
+
+                  if (trackIds.length > 0 && onAddTrackToPlaylist) {
+                    const res = await onAddTrackToPlaylist(pl.id, trackIds.length === 1 ? trackIds[0] : trackIds);
+                    if (showToast) {
+                      if (res?.already_exists) {
+                        const title = trackData?.title;
+                        const msg = title
+                          ? `⚠️ “${title}” is already in ${pl.name}`
+                          : `⚠️ Songs are already in ${pl.name}`;
+                        showToast(msg);
+                      } else if (res?.added_count !== undefined) {
+                        if (res.added_count === 1) {
+                          const title = trackData?.title;
+                          showToast(title ? `Added “${title}” to ${pl.name}` : `Added 1 song to ${pl.name}`);
+                        } else {
+                          const msg = res.already_exists_count > 0
+                            ? `Added ${res.added_count} songs to ${pl.name} (${res.already_exists_count} already existed)`
+                            : `Added ${res.added_count} songs to ${pl.name}`;
+                          showToast(msg);
+                        }
+                      } else {
+                        const title = trackData?.title;
+                        showToast(title ? `Added “${title}” to ${pl.name}` : `Added to ${pl.name}`);
+                      }
+                    }
                   }
                 }}
                 className={`flex items-center gap-2.5 p-2 rounded-md cursor-pointer group transition border relative ${
@@ -587,14 +630,7 @@ export const LibrarySidebar = ({
                         </div>
                       )}
                     </div>
-                    {hasFeedback && (
-                      <span className={`text-[10px] font-bold flex items-center gap-0.5 ${
-                        dropFeedback?.error ? 'text-amber-400' : 'text-brand-500'
-                      }`}>
-                        {dropFeedback?.error ? dropFeedback.message : <><Check size={11} /> Added!</>}
-                      </span>
-                    )}
-                    {isDragOverTrack && !hasFeedback && (
+                    {isDragOverTrack && (
                       <span className="text-[10px] text-brand-500 font-bold animate-pulse">
                         + Drop here
                       </span>

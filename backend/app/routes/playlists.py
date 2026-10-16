@@ -11,7 +11,8 @@ class PlaylistCreate(BaseModel):
     description: Optional[str] = ""
 
 class AddTrackRequest(BaseModel):
-    track_id: int
+    track_id: Optional[int] = None
+    track_ids: Optional[List[int]] = None
 
 class ReorderPlaylistsRequest(BaseModel):
     playlist_ids: List[int]
@@ -249,49 +250,79 @@ async def bulk_remove_tracks(playlist_id: int, payload: BulkRemoveRequest, curre
 
 @router.post("/playlists/{playlist_id}/tracks")
 async def add_track_to_playlist(playlist_id: int, payload: AddTrackRequest, current_user: Dict[str, Any] = Depends(get_current_user)):
-    """Add a track to a playlist, checking for duplicates."""
+    """Add one or more tracks to a playlist, checking for duplicates."""
+    target_ids = []
+    if payload.track_ids:
+        target_ids = [t for t in payload.track_ids if isinstance(t, int)]
+    elif payload.track_id is not None:
+        target_ids = [payload.track_id]
+
+    if not target_ids:
+        raise HTTPException(status_code=400, detail="No track_id or track_ids provided")
+
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT id FROM playlists WHERE id = ? AND user_id = ?", (playlist_id, current_user["id"]))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="Playlist not found")
 
-        cursor.execute("SELECT id FROM tracks WHERE id = ?", (payload.track_id,))
-        if not cursor.fetchone():
-            raise HTTPException(status_code=404, detail="Track not found")
-
-        # Check if already in playlist
+        placeholders = ",".join("?" for _ in target_ids)
         cursor.execute(
-            "SELECT id FROM playlist_tracks WHERE playlist_id = ? AND track_id = ?",
-            (playlist_id, payload.track_id)
+            f"SELECT id FROM tracks WHERE id IN ({placeholders})",
+            (*target_ids,)
         )
-        if cursor.fetchone():
-            return {
-                "status": "exists",
-                "already_exists": True,
-                "message": "Song is already in this playlist",
-                "playlist_id": playlist_id,
-                "track_id": payload.track_id
-            }
+        valid_track_ids = {row["id"] for row in cursor.fetchall()}
 
-        cursor.execute("SELECT COALESCE(MAX(position), 0) + 1 AS next_pos FROM playlist_tracks WHERE playlist_id = ?", (playlist_id,))
-        next_pos = cursor.fetchone()["next_pos"]
+        cursor.execute(
+            f"SELECT track_id FROM playlist_tracks WHERE playlist_id = ? AND track_id IN ({placeholders})",
+            (playlist_id, *target_ids)
+        )
+        existing_in_playlist = {row["track_id"] for row in cursor.fetchall()}
 
-        cursor.execute("""
-            INSERT INTO playlist_tracks (playlist_id, track_id, position)
-            VALUES (?, ?, ?)
-        """, (playlist_id, payload.track_id, next_pos))
+        cursor.execute("SELECT COALESCE(MAX(position), 0) AS max_pos FROM playlist_tracks WHERE playlist_id = ?", (playlist_id,))
+        cur_pos = cursor.fetchone()["max_pos"]
 
-        cursor.execute("UPDATE playlists SET updated_at = CURRENT_TIMESTAMP WHERE id = ?", (playlist_id,))
+        added_ids = []
+        already_exists_ids = []
+
+        for tid in target_ids:
+            if tid not in valid_track_ids:
+                continue
+            if tid in existing_in_playlist:
+                already_exists_ids.append(tid)
+            else:
+                cur_pos += 1
+                cursor.execute("""
+                    INSERT INTO playlist_tracks (playlist_id, track_id, position)
+                    VALUES (?, ?, ?)
+                """, (playlist_id, tid, cur_pos))
+                added_ids.append(tid)
+                existing_in_playlist.add(tid)
+
+        if added_ids:
+            cursor.execute("UPDATE playlists SET updated_at = CURRENT_TIMESTAMP WHERE id = ?", (playlist_id,))
 
         cursor.execute("SELECT COUNT(id) AS cnt FROM playlist_tracks WHERE playlist_id = ?", (playlist_id,))
         new_cnt = cursor.fetchone()["cnt"]
 
+    if len(target_ids) == 1 and not added_ids and already_exists_ids:
+        return {
+            "status": "exists",
+            "already_exists": True,
+            "message": "Song is already in this playlist",
+            "playlist_id": playlist_id,
+            "track_id": target_ids[0],
+            "track_count": new_cnt
+        }
+
     return {
-        "status": "added",
-        "already_exists": False,
+        "status": "added" if added_ids else "exists",
+        "already_exists": len(added_ids) == 0 and len(already_exists_ids) > 0,
         "playlist_id": playlist_id,
-        "track_id": payload.track_id,
+        "track_id": target_ids[0] if target_ids else None,
+        "added_count": len(added_ids),
+        "already_exists_count": len(already_exists_ids),
+        "track_ids": added_ids,
         "track_count": new_cnt
     }
 
