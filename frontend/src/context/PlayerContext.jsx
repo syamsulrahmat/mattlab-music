@@ -8,10 +8,44 @@ import { DESIGN_TOKENS } from '../config/designTokens';
 
 const PlayerContext = createContext(null);
 
+const LAST_PLAYBACK_STATE_KEY = 'mattlab_playback_state';
+
+const loadSavedPlaybackState = () => {
+  try {
+    const raw = localStorage.getItem(LAST_PLAYBACK_STATE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.track && typeof parsed.track.id === 'number') {
+        const time = typeof parsed.currentTime === 'number' && !isNaN(parsed.currentTime) ? parsed.currentTime : 0;
+        const dur = typeof parsed.duration === 'number' && !isNaN(parsed.duration) ? parsed.duration : (parsed.track.duration_seconds || 0);
+        const q = Array.isArray(parsed.queue) && parsed.queue.length > 0 ? parsed.queue : [parsed.track];
+        const qIdx = typeof parsed.queueIndex === 'number' && parsed.queueIndex >= 0 && parsed.queueIndex < q.length ? parsed.queueIndex : 0;
+        return {
+          track: parsed.track,
+          currentTime: time,
+          duration: dur,
+          queue: q,
+          queueIndex: qIdx,
+        };
+      }
+    }
+  } catch (err) {
+    console.debug('[PlayerContext] Failed to load saved playback state:', err);
+  }
+  return null;
+};
+
 export const PlayerProvider = ({ children }) => {
   const { user, isAuthenticated } = useAuth();
   const loadedUserIdRef = useRef(null);
   const debouncePrefTimerRef = useRef(null);
+
+  // Restore saved playback state on initial mount
+  const savedState = useMemo(() => loadSavedPlaybackState(), []);
+  const initialSeekTimeRef = useRef(savedState?.currentTime || 0);
+  const hasRestoredAudioRef = useRef(false);
+  const lastSavedTimeRef = useRef(0);
+  const debouncePrefSaveRef = useRef(null);
 
   const audioRef = useRef(null);
   const standbyAudioRef = useRef(null);
@@ -29,18 +63,18 @@ export const PlayerProvider = ({ children }) => {
     standbyAudioRef.current = b;
   }
 
-  const [currentTrack, setCurrentTrack] = useState(null);
+  const [currentTrack, setCurrentTrack] = useState(() => savedState?.track || null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(() => savedState?.currentTime || 0);
+  const [duration, setDuration] = useState(() => savedState?.duration || 0);
   const [volume, setVolume] = useState(() => {
     const saved = localStorage.getItem('music_volume');
     return saved !== null ? parseFloat(saved) : 0.8;
   });
   const [isMuted, setIsMuted] = useState(false);
-  const [queue, setQueue] = useState([]);
-  const [queueIndex, setQueueIndex] = useState(-1);
+  const [queue, setQueue] = useState(() => savedState?.queue || []);
+  const [queueIndex, setQueueIndex] = useState(() => (savedState?.track ? (savedState.queueIndex ?? 0) : -1));
   const [isShuffle, setIsShuffle] = useState(false);
   const [repeatMode, setRepeatMode] = useState('off'); // 'off' | 'all' | 'one'
   const [favoriteIds, setFavoriteIds] = useState(new Set());
@@ -387,6 +421,88 @@ export const PlayerProvider = ({ children }) => {
     }, 500);
   }, [isAuthenticated, user?.id]);
 
+  const persistState = useCallback((track, time, dur, q, qIdx) => {
+    if (!track || !track.id) return;
+    const stateObj = {
+      track: {
+        id: track.id,
+        title: track.title,
+        artist_name: track.artist_name || track.artist || '',
+        album_title: track.album_title || '',
+        duration_seconds: track.duration_seconds || dur || 0,
+        cover_path: track.cover_path || null,
+        cover_url: track.cover_url || null,
+        file_path: track.file_path || '',
+        stream_url: track.stream_url || `/api/stream/${track.id}`,
+      },
+      currentTime: Math.max(0, Math.round((time || 0) * 10) / 10),
+      duration: Math.max(0, Math.round((dur || 0) * 10) / 10),
+      queue: (q || []).slice(0, 50).map((t) => ({
+        id: t.id,
+        title: t.title,
+        artist_name: t.artist_name || t.artist || '',
+        album_title: t.album_title || '',
+        duration_seconds: t.duration_seconds || 0,
+        cover_url: t.cover_url || null,
+        stream_url: t.stream_url || `/api/stream/${t.id}`,
+      })),
+      queueIndex: typeof qIdx === 'number' ? qIdx : 0,
+      savedAt: Date.now(),
+    };
+
+    try {
+      localStorage.setItem(LAST_PLAYBACK_STATE_KEY, JSON.stringify(stateObj));
+    } catch (_) {}
+
+    if (debouncePrefSaveRef.current) {
+      clearTimeout(debouncePrefSaveRef.current);
+    }
+    debouncePrefSaveRef.current = setTimeout(() => {
+      saveUserPreference({ playbackState: stateObj });
+    }, 6000);
+  }, [saveUserPreference]);
+
+  // On startup: pre-attach stream URL to audio element and prefetch lyrics if restoring saved track
+  useEffect(() => {
+    if (!hasRestoredAudioRef.current && savedState?.track) {
+      hasRestoredAudioRef.current = true;
+      const audio = audioRef.current;
+      if (audio && (!audio.src || audio.src === '' || audio.src === window.location.href)) {
+        const preloadedAudio = audioPreloader.getPreloadedAudio(savedState.track.id);
+        const standardUrl = preloadedAudio || savedState.track.stream_url || `/api/stream/${savedState.track.id}`;
+        audio.preload = 'metadata';
+        audio.src = standardUrl;
+      }
+      fetchTrackLyrics(savedState.track.id);
+    }
+  }, [savedState, fetchTrackLyrics]);
+
+  // Flush latest playback position to localStorage when window unloads or pagehides
+  useEffect(() => {
+    const handleBeforeUnloadState = () => {
+      const audio = audioRef.current;
+      if (currentTrack && audio) {
+        try {
+          const stateObj = {
+            track: currentTrack,
+            currentTime: audio.currentTime || currentTime,
+            duration: audio.duration || duration,
+            queue: (queue || []).slice(0, 50),
+            queueIndex: queueIndex,
+            savedAt: Date.now(),
+          };
+          localStorage.setItem(LAST_PLAYBACK_STATE_KEY, JSON.stringify(stateObj));
+        } catch (_) {}
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnloadState);
+    window.addEventListener('pagehide', handleBeforeUnloadState);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnloadState);
+      window.removeEventListener('pagehide', handleBeforeUnloadState);
+    };
+  }, [currentTrack, currentTime, duration, queue, queueIndex]);
+
   const handleSetVolume = useCallback((val) => {
     setVolume((prev) => {
       const nextVol = typeof val === 'function' ? val(prev) : val;
@@ -452,6 +568,27 @@ export const PlayerProvider = ({ children }) => {
           } catch (_) {}
         }
 
+        // Restore server-saved playback state if client has no current track
+        if (!currentTrack && prefs.playbackState && prefs.playbackState.track) {
+          const pb = prefs.playbackState;
+          setCurrentTrack(pb.track);
+          if (typeof pb.currentTime === 'number') {
+            setCurrentTime(pb.currentTime);
+            initialSeekTimeRef.current = pb.currentTime;
+          }
+          if (typeof pb.duration === 'number') {
+            setDuration(pb.duration);
+          }
+          if (Array.isArray(pb.queue) && pb.queue.length > 0) {
+            setQueue(pb.queue);
+            setQueueIndex(typeof pb.queueIndex === 'number' ? pb.queueIndex : 0);
+          }
+          try {
+            localStorage.setItem(LAST_PLAYBACK_STATE_KEY, JSON.stringify(pb));
+          } catch (_) {}
+          fetchTrackLyrics(pb.track.id);
+        }
+
         // Fetch user-scoped favorites
         fetch('/api/favorites/ids', { credentials: 'include' })
           .then((res) => res.json())
@@ -477,15 +614,33 @@ export const PlayerProvider = ({ children }) => {
 
     const handleTimeUpdate = (e) => {
       if (e.target !== audioRef.current) return;
-      setCurrentTime(e.target.currentTime);
-      if (!e.target.paused && e.target.currentTime > 0) {
+      // Guard: do not let an uninitialized paused audio element overwrite restored currentTime
+      if (initialSeekTimeRef.current > 0 && e.target.paused && e.target.currentTime === 0) {
+        return;
+      }
+      const t = e.target.currentTime;
+      setCurrentTime(t);
+      if (!e.target.paused && t > 0) {
         setIsBuffering(false);
+      }
+      // Periodically persist playback position every 2.5s while playing
+      if (Math.abs(t - lastSavedTimeRef.current) >= 2.5 && !e.target.paused) {
+        lastSavedTimeRef.current = t;
+        persistState(currentTrack, t, e.target.duration || duration, queue, queueIndex);
       }
     };
 
     const handleLoadedMetadata = (e) => {
       if (e.target !== audioRef.current) return;
-      setDuration(e.target.duration || 0);
+      const d = e.target.duration || 0;
+      if (d > 0) setDuration(d);
+
+      if (initialSeekTimeRef.current > 0) {
+        try {
+          e.target.currentTime = initialSeekTimeRef.current;
+        } catch (_) {}
+        initialSeekTimeRef.current = 0;
+      }
     };
 
     const handleEnded = (e) => {
@@ -503,6 +658,9 @@ export const PlayerProvider = ({ children }) => {
       if (e.target !== audioRef.current || isCrossfadingRef.current) return;
       setIsPlaying(false);
       setIsBuffering(false);
+      if (currentTrack) {
+        persistState(currentTrack, e.target.currentTime, duration, queue, queueIndex);
+      }
     };
 
     const handleWaiting = (e) => {
@@ -523,6 +681,12 @@ export const PlayerProvider = ({ children }) => {
 
     const handleCanPlay = (e) => {
       if (e.target !== audioRef.current) return;
+      if (initialSeekTimeRef.current > 0) {
+        try {
+          e.target.currentTime = initialSeekTimeRef.current;
+        } catch (_) {}
+        initialSeekTimeRef.current = 0;
+      }
       if (!e.target.paused && e.target.currentTime > 0) {
         setIsBuffering(false);
       }
@@ -562,7 +726,7 @@ export const PlayerProvider = ({ children }) => {
         el.removeEventListener('error', handleError);
       });
     };
-  }, [queue, queueIndex, repeatMode, isShuffle, isKaraokeMode]);
+  }, [queue, queueIndex, repeatMode, isShuffle, isKaraokeMode, currentTrack, duration, persistState]);
 
   // Sync volume to audio element
   useEffect(() => {
@@ -687,6 +851,12 @@ export const PlayerProvider = ({ children }) => {
     setCurrentTrack(track);
     setIsBuffering(true);
 
+    initialSeekTimeRef.current = 0;
+    lastSavedTimeRef.current = 0;
+    const activeQueue = newQueue || queue;
+    const activeIdx = newQueue ? (isShuffle ? 0 : newQueue.findIndex((t) => t.id === track.id)) : queueIndex;
+    persistState(track, 0, track.duration_seconds || 0, activeQueue, activeIdx !== -1 ? activeIdx : 0);
+
     // Fetch stem info
     let stemInfo = karaokeStemStatus[track.id];
     if (stemInfo === undefined) {
@@ -752,6 +922,23 @@ export const PlayerProvider = ({ children }) => {
         standbyAudioRef.current.pause();
       }
     } else {
+      if (!audio.src || audio.src === '' || audio.src === window.location.href) {
+        const preloadedAudio = audioPreloader.getPreloadedAudio(currentTrack.id);
+        const standardUrl = preloadedAudio || currentTrack.stream_url || `/api/stream/${currentTrack.id}`;
+        audio.src = standardUrl;
+      }
+
+      if (initialSeekTimeRef.current > 0) {
+        try {
+          audio.currentTime = initialSeekTimeRef.current;
+        } catch (_) {}
+        initialSeekTimeRef.current = 0;
+      } else if (currentTime > 0 && Math.abs(audio.currentTime - currentTime) > 0.5) {
+        try {
+          audio.currentTime = currentTime;
+        } catch (_) {}
+      }
+
       if (audio.readyState < 3) {
         setIsBuffering(true);
       }
@@ -769,11 +956,23 @@ export const PlayerProvider = ({ children }) => {
 
   const seek = (time) => {
     const audio = audioRef.current;
-    audio.currentTime = time;
+    if (!audio) return;
+    if (!audio.src || audio.src === '' || audio.src === window.location.href) {
+      if (currentTrack) {
+        const preloadedAudio = audioPreloader.getPreloadedAudio(currentTrack.id);
+        const standardUrl = preloadedAudio || currentTrack.stream_url || `/api/stream/${currentTrack.id}`;
+        audio.src = standardUrl;
+      }
+    }
+    initialSeekTimeRef.current = 0;
+    try {
+      audio.currentTime = time;
+    } catch (_) {}
     if (isCrossfadingRef.current && standbyAudioRef.current) {
       standbyAudioRef.current.currentTime = time;
     }
     setCurrentTime(time);
+    persistState(currentTrack, time, duration, queue, queueIndex);
   };
 
   const handleNextTrackAuto = () => {
@@ -875,7 +1074,13 @@ export const PlayerProvider = ({ children }) => {
   };
 
   const addToQueue = (track) => {
-    setQueue((prev) => [...prev, track]);
+    setQueue((prev) => {
+      const nextQueue = [...prev, track];
+      if (currentTrack) {
+        persistState(currentTrack, currentTime, duration, nextQueue, queueIndex);
+      }
+      return nextQueue;
+    });
     if (!currentTrack) {
       playTrack(track);
     }
@@ -886,6 +1091,9 @@ export const PlayerProvider = ({ children }) => {
       const nextQueue = [...prev];
       const insertIdx = queueIndex >= 0 ? queueIndex + 1 : 0;
       nextQueue.splice(insertIdx, 0, track);
+      if (currentTrack) {
+        persistState(currentTrack, currentTime, duration, nextQueue, queueIndex);
+      }
       return nextQueue;
     });
     if (!currentTrack) {
@@ -895,19 +1103,24 @@ export const PlayerProvider = ({ children }) => {
 
   const reorderQueue = (fromIndex, toIndex) => {
     if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
+    let nextIdx = queueIndex;
     setQueue((prev) => {
       if (fromIndex >= prev.length || toIndex >= prev.length) return prev;
       const updated = [...prev];
       const [moved] = updated.splice(fromIndex, 1);
       updated.splice(toIndex, 0, moved);
+      if (currentTrack) {
+        persistState(currentTrack, currentTime, duration, updated, nextIdx);
+      }
       return updated;
     });
 
     setQueueIndex((prevIdx) => {
-      if (prevIdx === fromIndex) return toIndex;
-      if (prevIdx > fromIndex && prevIdx <= toIndex) return prevIdx - 1;
-      if (prevIdx < fromIndex && prevIdx >= toIndex) return prevIdx + 1;
-      return prevIdx;
+      if (prevIdx === fromIndex) nextIdx = toIndex;
+      else if (prevIdx > fromIndex && prevIdx <= toIndex) nextIdx = prevIdx - 1;
+      else if (prevIdx < fromIndex && prevIdx >= toIndex) nextIdx = prevIdx + 1;
+      else nextIdx = prevIdx;
+      return nextIdx;
     });
   };
 
