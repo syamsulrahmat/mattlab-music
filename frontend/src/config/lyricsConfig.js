@@ -14,10 +14,18 @@ export const LYRICS_CONFIG = {
   // ─── 1. TYPOGRAPHY & WEIGHTS ─────────────────────────────────────────
   typography: {
     // Tailwind font weight classes: 'font-light' (300), 'font-normal' (400), 'font-medium' (500), 'font-semibold' (600), 'font-bold' (700)
-    activeWeightClass: DESIGN_TOKENS.font.normal,
-    upcomingWeightClass: DESIGN_TOKENS.font.normal,
-    pastWeightClass: DESIGN_TOKENS.font.normal,
-    canvasWeight: 'normal', // 'normal' | '300' | '500' | '600' | 'bold'
+    activeWeightClass: DESIGN_TOKENS.font.bold,
+    upcomingWeightClass: DESIGN_TOKENS.font.bold,
+    pastWeightClass: DESIGN_TOKENS.font.bold,
+    // Dynamic Canvas weight (Video PiP automatically syncs with activeWeightClass)
+    get canvasWeight() {
+      const cls = String(this.activeWeightClass || '');
+      if (cls.includes('bold')) return '700';
+      if (cls.includes('semibold')) return '600';
+      if (cls.includes('medium')) return '500';
+      if (cls.includes('light')) return '300';
+      return 'normal';
+    },
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   },
 
