@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { 
   Play, Pause, Trash2, Clock, Music, Shuffle, 
-  Search, X, Pencil, ArrowUpDown, GripVertical, Calendar, 
+  Search, X, Pencil, ArrowUpDown, Calendar, 
   CheckSquare, Square, Check, AlertTriangle, RefreshCw, ExternalLink, UserCheck, Lock,
   Type, Mic2, Disc3, ChevronDown, ListOrdered
 } from 'lucide-react';
@@ -1205,7 +1205,7 @@ export const PlaylistDetail = ({
         <div className="px-6 sm:px-8">
           {/* Sticky Tracklist Column Header Row */}
           <div className="sticky top-0 z-30 bg-surface-island/95 backdrop-blur-md mb-2">
-            <div className="grid grid-cols-[36px_1fr_36px_50px] md:grid-cols-[40px_3fr_2fr_36px_60px] lg:grid-cols-[40px_4fr_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-content-secondary border-b border-border-medium items-center">
+            <div className="grid grid-cols-[36px_1fr_50px] md:grid-cols-[40px_3fr_2fr_60px] lg:grid-cols-[40px_4fr_3fr_2fr_60px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-content-secondary border-b border-border-medium items-center">
               <span className="text-center">#</span>
               <div className="flex items-center gap-3 truncate pr-3">
                 <span className="w-10 shrink-0" />
@@ -1213,7 +1213,6 @@ export const PlaylistDetail = ({
               </div>
               <span className="hidden md:block truncate pr-3">Album</span>
               <span className="hidden lg:block truncate pr-3">Date added</span>
-              <span />
               <span className="text-right flex items-center justify-end">
                 <Clock size={14} />
               </span>
@@ -1309,7 +1308,11 @@ export const PlaylistDetail = ({
                       }
                       handleDrop(e, idx);
                     }}
-                    className={`grid grid-cols-[36px_1fr_36px_50px] md:grid-cols-[40px_3fr_2fr_36px_60px] lg:grid-cols-[40px_4fr_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center cursor-default select-none ${
+                    className={`grid grid-cols-[36px_1fr_50px] md:grid-cols-[40px_3fr_2fr_60px] lg:grid-cols-[40px_4fr_3fr_2fr_60px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center select-none ${
+                      isDragEnabled && !track.isSyncPending
+                        ? 'cursor-grab active:cursor-grabbing'
+                        : 'cursor-default'
+                    } ${
                       isBeingDragged
                         ? 'opacity-40 border-dashed border-white/20'
                         : isDragOver
@@ -1478,39 +1481,7 @@ export const PlaylistDetail = ({
                       {track.isSyncPending ? (track.syncStatus === 'downloading' ? 'Downloading...' : 'Queued') : formatAddedAt(track.added_at)}
                     </span>
 
-                    {/* Column 5: Action (Drag Handle) */}
-                    <div className="flex items-center justify-center">
-                      {isDragEnabled && !track.isSyncPending && (
-                        <div
-                          draggable="true"
-                          onDragStart={(e) => {
-                            e.stopPropagation();
-                            e.dataTransfer.setData('text/track-index', String(idx));
-                            e.dataTransfer.setData('application/json', JSON.stringify({
-                              id: track.id,
-                              title: track.title,
-                              artist_name: track.artist_name,
-                              album_id: track.album_id,
-                              album_title: track.album_title,
-                              cover_url: track.cover_url
-                            }));
-                            e.dataTransfer.setData('text/plain', String(track.id));
-                            e.dataTransfer.effectAllowed = 'move';
-                            setDraggedTrackIdx(idx);
-                          }}
-                          onDragEnd={() => {
-                            setDraggedTrackIdx(null);
-                            setDragOverTrackIdx(null);
-                          }}
-                          className="p-1 cursor-grab active:cursor-grabbing text-white/20 group-hover:text-white/60 hover:!text-white transition rounded hover:bg-white/10"
-                          title="Drag to rearrange track order (or use Alt+Up/Down)"
-                        >
-                          <GripVertical size={15} />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Column 6: Duration */}
+                    {/* Column 5: Duration */}
                     <span className="text-right text-xs font-mono text-content-secondary">
                       {formatDuration(track.duration_seconds)}
                     </span>
