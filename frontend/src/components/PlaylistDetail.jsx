@@ -698,7 +698,7 @@ export const PlaylistDetail = ({
   };
 
   const handleRemoveTrack = async (e, trackId) => {
-    if (e) e.stopPropagation();
+    if (e?.stopPropagation) e.stopPropagation();
     try {
       await fetch(`/api/playlists/${playlistId}/tracks/${trackId}`, { method: 'DELETE', credentials: 'include' });
       setPlaylist((prev) => (prev ? {
@@ -1205,7 +1205,7 @@ export const PlaylistDetail = ({
         <div className="px-6 sm:px-8">
           {/* Sticky Tracklist Column Header Row */}
           <div className="sticky top-0 z-30 bg-surface-island/95 backdrop-blur-md mb-2">
-            <div className="grid grid-cols-[36px_1fr_56px_50px] md:grid-cols-[40px_3fr_2fr_56px_60px] lg:grid-cols-[40px_4fr_3fr_2fr_56px_60px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-content-secondary border-b border-border-medium items-center">
+            <div className="grid grid-cols-[36px_1fr_36px_50px] md:grid-cols-[40px_3fr_2fr_36px_60px] lg:grid-cols-[40px_4fr_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-content-secondary border-b border-border-medium items-center">
               <span className="text-center">#</span>
               <div className="flex items-center gap-3 truncate pr-3">
                 <span className="w-10 shrink-0" />
@@ -1309,7 +1309,7 @@ export const PlaylistDetail = ({
                       }
                       handleDrop(e, idx);
                     }}
-                    className={`grid grid-cols-[36px_1fr_56px_50px] md:grid-cols-[40px_3fr_2fr_56px_60px] lg:grid-cols-[40px_4fr_3fr_2fr_56px_60px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center cursor-default select-none ${
+                    className={`grid grid-cols-[36px_1fr_36px_50px] md:grid-cols-[40px_3fr_2fr_36px_60px] lg:grid-cols-[40px_4fr_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center cursor-default select-none ${
                       isBeingDragged
                         ? 'opacity-40 border-dashed border-white/20'
                         : isDragOver
@@ -1478,8 +1478,8 @@ export const PlaylistDetail = ({
                       {track.isSyncPending ? (track.syncStatus === 'downloading' ? 'Downloading...' : 'Queued') : formatAddedAt(track.added_at)}
                     </span>
 
-                    {/* Column 5: Actions (Drag Handle & Trash) */}
-                    <div className="flex items-center justify-center gap-1">
+                    {/* Column 5: Action (Drag Handle) */}
+                    <div className="flex items-center justify-center">
                       {isDragEnabled && !track.isSyncPending && (
                         <div
                           draggable="true"
@@ -1507,15 +1507,6 @@ export const PlaylistDetail = ({
                         >
                           <GripVertical size={15} />
                         </div>
-                      )}
-                      {!track.isSyncPending && (
-                        <button
-                          onClick={(e) => handleRemoveTrack(e, track.id)}
-                          className="opacity-0 group-hover:opacity-100 p-1 text-content-muted hover:text-red-400 transition rounded hover:bg-white/10"
-                          title="Remove from playlist"
-                        >
-                          <Trash2 size={15} />
-                        </button>
                       )}
                     </div>
 
