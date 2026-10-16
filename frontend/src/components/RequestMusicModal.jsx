@@ -4,6 +4,7 @@ import {
   Loader2, ArrowRight, Activity, HardDrive, Sparkles, Check, Play, Pause, Volume2 
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
+import { useAuth } from '../context/AuthContext';
 
 export const RequestMusicModal = ({ 
   isOpen, 
@@ -13,6 +14,7 @@ export const RequestMusicModal = ({
   initialQuery = '' 
 }) => {
   const { isPlaying, fadePause, fadeResume } = usePlayer();
+  const { isAdmin } = useAuth();
   const pausedByPreviewRef = useRef(false);
 
   const [query, setQuery] = useState('');
@@ -111,8 +113,10 @@ export const RequestMusicModal = ({
 
   // Hoisted fetchActivity so handleDownload can refresh live downloads safely
   const fetchActivity = useCallback(async () => {
+    if (!isAdmin) return;
     try {
       const res = await fetch('/api/request/activity');
+      if (!res.ok) return;
       const data = await res.json();
       const activeList = data.active_downloads || [];
       

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Home, Search, X, RefreshCw, HardDrive, DownloadCloud, Users, LogOut, Settings, User } from 'lucide-react';
+import { Home, Search, X, RefreshCw, HardDrive, DownloadCloud, Users, LogOut, Settings, User, Bug } from 'lucide-react';
 import { MattLabLogo } from './MattLabLogo';
 import { SearchFloatingModal } from './SearchFloatingModal';
 import { UserAvatar } from './UserAvatar';
@@ -20,6 +20,11 @@ export const TopBar = ({
   onContextMenu,
   onOpenUserManagement,
   onOpenSettings,
+  canGoBack,
+  canGoForward,
+  onGoBack,
+  onGoForward,
+  hasNotifications = false,
 }) => {
     const { user, isAdmin, logout } = useAuth();
   const { currentTrack, playTrack, togglePlay } = usePlayer();
@@ -292,10 +297,13 @@ export const TopBar = ({
         <div className="relative">
           <button
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-            className="rounded-full hover:scale-105 active:scale-95 transition cursor-pointer"
+            className="relative rounded-full hover:scale-105 active:scale-95 transition cursor-pointer"
             title={user ? `${user.display_name || user.username} (${user.role})` : 'Account'}
           >
             <UserAvatar user={user} size="md" />
+            {hasNotifications && (
+              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-surface-base animate-pulse" />
+            )}
           </button>
 
           {isUserMenuOpen && (
@@ -332,6 +340,24 @@ export const TopBar = ({
                 >
                   <User size={15} className="text-brand-500" />
                   <span>Profile & Account</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    onOpenSettings?.('issues');
+                  }}
+                  className="w-full text-left px-3 py-2 text-content-primary hover:bg-white/10 flex items-center justify-between transition"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Bug size={15} className="text-amber-400" />
+                    <span>Issues & Notes</span>
+                  </div>
+                  {hasNotifications && (
+                    <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      Update
+                    </span>
+                  )}
                 </button>
 
                 <button

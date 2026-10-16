@@ -128,6 +128,23 @@ def init_db() -> None:
             UNIQUE(playlist_id, spotify_track_id)
         );
 
+        CREATE TABLE IF NOT EXISTS bug_reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            type TEXT DEFAULT 'bug',
+            title TEXT NOT NULL,
+            category TEXT DEFAULT 'general',
+            priority TEXT DEFAULT 'medium',
+            description TEXT NOT NULL,
+            status TEXT DEFAULT 'open',
+            client_context TEXT DEFAULT '{}',
+            admin_notes TEXT DEFAULT '',
+            seen_by_user INTEGER DEFAULT 0,
+            user_deleted INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE INDEX IF NOT EXISTS idx_tracks_album ON tracks(album_id);
         CREATE INDEX IF NOT EXISTS idx_tracks_artist ON tracks(artist_id);
         CREATE INDEX IF NOT EXISTS idx_albums_artist ON albums(artist_id);
@@ -135,6 +152,8 @@ def init_db() -> None:
         CREATE INDEX IF NOT EXISTS idx_playlist_tracks ON playlist_tracks(playlist_id, position);
         CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
         CREATE INDEX IF NOT EXISTS idx_spotify_sync_playlist ON spotify_sync_tracks(playlist_id, position);
+        CREATE INDEX IF NOT EXISTS idx_bug_reports_user ON bug_reports(user_id);
+        CREATE INDEX IF NOT EXISTS idx_bug_reports_status ON bug_reports(status);
         """)
 
         cursor = conn.cursor()
@@ -246,6 +265,23 @@ def init_db() -> None:
                 _backfill_existing_lyrics_cache(conn)
             except Exception:
                 pass
+
+        # Migrations for bug_reports (seen_by_user, user_deleted)
+        cursor.execute("PRAGMA table_info(bug_reports)")
+        bug_cols = [c["name"] for c in cursor.fetchall()]
+        if "seen_by_user" not in bug_cols:
+            try:
+                conn.execute("ALTER TABLE bug_reports ADD COLUMN seen_by_user INTEGER DEFAULT 0")
+                print("[DB MIGRATION] Added seen_by_user column to bug_reports.")
+            except Exception as e:
+                print(f"[DB MIGRATION] Error adding seen_by_user to bug_reports: {e}")
+
+        if "user_deleted" not in bug_cols:
+            try:
+                conn.execute("ALTER TABLE bug_reports ADD COLUMN user_deleted INTEGER DEFAULT 0")
+                print("[DB MIGRATION] Added user_deleted column to bug_reports.")
+            except Exception as e:
+                print(f"[DB MIGRATION] Error adding user_deleted to bug_reports: {e}")
 
         try:
             conn.execute("CREATE INDEX IF NOT EXISTS idx_playlists_user ON playlists(user_id)")

@@ -27,6 +27,8 @@ import { UserManagementModal } from './components/UserManagementModal';
 import { SettingsModal } from './components/SettingsModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { PromptModal } from './components/PromptModal';
+import { Footer } from './components/Footer';
+import { BugReportModal } from './components/BugReportModal';
 import { MattLabLogo } from './components/MattLabLogo';
 import { PlayerProvider, usePlayer } from './context/PlayerContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -58,6 +60,7 @@ const MainAppContent = () => {
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState('account');
+  const [isBugReportModalOpen, setIsBugReportModalOpen] = useState(false);
 
   const handleOpenSettings = (tab = 'account') => {
     setSettingsInitialTab(tab);
@@ -170,6 +173,44 @@ const MainAppContent = () => {
       }
     }
   }, [isAuthenticated, user?.id, activeTab]);
+
+  // Resolved Issue Notification State & Checker
+  const [hasResolvedNotifications, setHasResolvedNotifications] = useState(false);
+  const [resolvedNotificationCount, setResolvedNotificationCount] = useState(0);
+
+  const checkResolvedIssues = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try {
+      const res = await fetch('/api/bug-reports/notifications', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setResolvedNotificationCount(data.unseen_count || 0);
+        setHasResolvedNotifications(Boolean(data.has_notifications));
+      }
+    } catch {
+      // ignore
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    checkResolvedIssues();
+    const interval = setInterval(checkResolvedIssues, 15000);
+    return () => clearInterval(interval);
+  }, [checkResolvedIssues]);
+
+  const handleMarkResolvedSeen = useCallback(async () => {
+    try {
+      await fetch('/api/bug-reports/mark-seen', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      setHasResolvedNotifications(false);
+      setResolvedNotificationCount(0);
+      showToast('✨ All notifications marked as read');
+    } catch (err) {
+      console.error('Failed to mark resolved notifications seen:', err);
+    }
+  }, [showToast]);
 
   // Centralized Navigation Dispatcher
   const navigateTo = useCallback((nextState) => {
@@ -574,6 +615,7 @@ const MainAppContent = () => {
       const data = await res.json();
       await fetchPlaylists();
       handleSelectPlaylist(data.id);
+      showToast(`✨ Created playlist "${name.trim()}"`);
     } catch (err) {
       console.error('Failed to create playlist:', err);
     }
@@ -588,11 +630,13 @@ const MainAppContent = () => {
 
   const handleConfirmDeletePlaylist = async () => {
     if (!playlistToDelete) return;
+    const deletedName = playlistToDelete.name;
     try {
       setIsDeletingPlaylist(true);
       const res = await fetch(`/api/playlists/${playlistToDelete.id}`, { method: 'DELETE', credentials: 'include' });
       if (res.ok) {
         handlePlaylistDeleted(playlistToDelete.id);
+        showToast(`🗑️ Deleted playlist "${deletedName}"`);
       }
     } catch (err) {
       console.error('Failed to delete playlist:', err);
@@ -614,6 +658,7 @@ const MainAppContent = () => {
       });
       if (res.ok) {
         await fetchPlaylists();
+        showToast(`✏️ Renamed playlist to "${newName.trim()}"`);
       }
     } catch (err) {
       console.error('Failed to rename playlist:', err);
@@ -736,6 +781,7 @@ const MainAppContent = () => {
         canGoForward={canGoForward}
         onGoBack={handleGoBack}
         onGoForward={handleGoForward}
+        hasNotifications={hasResolvedNotifications}
       />
 
       {/* 2. Three Floating Islands Body (grid: 280px 1fr 300px, gap: 8px, padding: 8px) */}
@@ -870,6 +916,7 @@ const MainAppContent = () => {
                       onSelectArtist={handleSelectArtist}
                       onContextMenu={handleOpenContextMenu}
                       onPromptTakeOwnership={(pl) => setPlaylistToTakeOwnership(pl)}
+                      showToast={showToast}
                     />
                   ) : (
                     <div className="p-8 text-center text-content-secondary">
@@ -881,6 +928,16 @@ const MainAppContent = () => {
                   )}
                 </div>
               )}
+
+              {/* Universal Informational & Action Footer */}
+              <Footer
+                stats={stats}
+                onOpenBugReport={() => setIsBugReportModalOpen(true)}
+                onRequestMusic={() => handleOpenRequestMusic('')}
+                onOpenShortcuts={() => handleOpenSettings('shortcuts')}
+                onRefreshScan={handleRefreshScan}
+                hasResolvedIssues={hasResolvedNotifications}
+              />
             </>
           )}
         </main>
@@ -1009,6 +1066,25 @@ const MainAppContent = () => {
           setIsSettingsOpen(false);
           setIsUserManagementOpen(true);
         }}
+        onOpenBugReport={() => {
+          setIsSettingsOpen(false);
+          setIsBugReportModalOpen(true);
+        }}
+        hasResolvedIssues={hasResolvedNotifications}
+        onMarkSeen={handleMarkResolvedSeen}
+        onIssuesChanged={checkResolvedIssues}
+        showToast={showToast}
+      />
+
+      {/* In-App Bug & Issue Reporting Modal */}
+      <BugReportModal
+        isOpen={isBugReportModalOpen}
+        onClose={() => setIsBugReportModalOpen(false)}
+        showToast={showToast}
+        activeRoute={activeTab}
+        hasResolvedIssues={hasResolvedNotifications}
+        onMarkSeen={handleMarkResolvedSeen}
+        onIssuesChanged={checkResolvedIssues}
       />
 
       {/* In-App Delete Playlist Confirmation Modal */}
@@ -1048,13 +1124,13 @@ const MainAppContent = () => {
 
       {/* Floating In-App Toast Notification (Spotify-style bottom pill modal) */}
       {toastMessage && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-surface-panel/95 backdrop-blur-md border border-border-strong text-content-primary text-xs font-semibold px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-3 duration-200 pointer-events-none select-none">
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] bg-neutral-900/95 text-white border border-white/20 shadow-[0_12px_40px_rgba(0,0,0,0.7)] backdrop-blur-md text-xs font-semibold px-4 py-2.5 rounded-full flex items-center gap-2 animate-in fade-in slide-in-from-bottom-3 duration-200 pointer-events-none select-none ring-1 ring-white/10">
           {typeof toastMessage === 'string' && toastMessage.startsWith('⚠️') ? (
             <AlertCircle size={15} className="text-amber-400 shrink-0" />
-          ) : (
+          ) : typeof toastMessage === 'string' && /^(✅|🔄|🗑|✨|✏️|❤️|💔)/u.test(toastMessage) ? null : (
             <Check size={15} className="text-brand-500 shrink-0" />
           )}
-          <span>
+          <span className="tracking-wide">
             {typeof toastMessage === 'string' && toastMessage.startsWith('⚠️')
               ? toastMessage.replace(/^⚠️\s*/, '')
               : toastMessage}

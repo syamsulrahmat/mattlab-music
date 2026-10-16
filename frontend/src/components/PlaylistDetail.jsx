@@ -731,6 +731,9 @@ export const PlaylistDetail = ({
         return next;
       });
       if (onPlaylistUpdated) onPlaylistUpdated();
+      if (showToast) {
+        showToast('🗑️ Track removed from playlist');
+      }
     } catch (err) {
       console.error('Failed to remove track:', err);
     }
@@ -756,6 +759,9 @@ export const PlaylistDetail = ({
       } : prev));
       setSelectedTrackIds(new Set());
       if (onPlaylistUpdated) onPlaylistUpdated();
+      if (showToast) {
+        showToast(`🗑️ ${ids.length} track${ids.length > 1 ? 's' : ''} removed from playlist`);
+      }
     } catch (err) {
       console.error('Failed to remove selected tracks:', err);
     }
@@ -826,6 +832,9 @@ export const PlaylistDetail = ({
       setPlaylist((prev) => ({ ...prev, ...updated }));
       setIsEditingDetails(false);
       if (onPlaylistUpdated) onPlaylistUpdated();
+      if (showToast) {
+        showToast('✨ Playlist details updated');
+      }
     } catch (err) {
       console.error('Failed to update playlist:', err);
     } finally {
@@ -837,6 +846,9 @@ export const PlaylistDetail = ({
     try {
       await fetch(`/api/playlists/${playlistId}`, { method: 'DELETE', credentials: 'include' });
       setIsConfirmDeleteOpen(false);
+      if (showToast) {
+        showToast(`🗑️ Deleted playlist "${playlist?.name || ''}"`);
+      }
       onPlaylistDeleted(playlistId);
     } catch (err) {
       console.error('Failed to delete playlist:', err);
@@ -1709,8 +1721,14 @@ export const PlaylistDetail = ({
 
       {/* Edit Playlist Details Modal */}
       {isEditingDetails && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-surface-elevated2 border border-border-medium rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150 cursor-pointer"
+          onClick={() => setIsEditingDetails(false)}
+        >
+          <div 
+            className="bg-surface-elevated2 border border-border-medium rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4 cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-content-primary">Edit Playlist Details</h3>
               <button

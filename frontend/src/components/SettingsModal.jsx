@@ -32,7 +32,11 @@ import {
   Play,
   Pause,
   RefreshCw,
-  FileText
+  FileText,
+  Bug,
+  CheckCircle2,
+  Circle,
+  Plus
 } from 'lucide-react';
 import { MattLabLogo } from './MattLabLogo';
 import { UserAvatar } from './UserAvatar';
@@ -220,6 +224,11 @@ export const SettingsModal = ({
   onClose,
   stats,
   onOpenUserManagement,
+  onOpenBugReport,
+  hasResolvedIssues = false,
+  onMarkSeen,
+  onIssuesChanged,
+  showToast,
 }) => {
   const { 
     user, 
@@ -244,6 +253,72 @@ export const SettingsModal = ({
   const [activeTab, setActiveTab] = useState(initialTab || 'account');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+
+  // Issues & Notes state
+  const [issues, setIssues] = useState([]);
+  const [isLoadingIssues, setIsLoadingIssues] = useState(false);
+  const [issuesFilter, setIssuesFilter] = useState('all');
+
+  const fetchIssues = async () => {
+    setIsLoadingIssues(true);
+    try {
+      const url = `/api/bug-reports${issuesFilter !== 'all' ? `?status_filter=${issuesFilter}` : ''}`;
+      const res = await fetch(url, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setIssues(data);
+      }
+    } catch (err) {
+      console.error('Failed to load issues:', err);
+    } finally {
+      setIsLoadingIssues(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen && activeTab === 'issues') {
+      fetchIssues();
+    }
+  }, [isOpen, activeTab, issuesFilter]);
+
+  const handleToggleIssueStatus = async (issue) => {
+    const nextStatus = issue.status === 'resolved' ? 'open' : 'resolved';
+    try {
+      const res = await fetch(`/api/bug-reports/${issue.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      if (res.ok) {
+        setIssues((prev) =>
+          prev.map((i) => (i.id === issue.id ? { ...i, status: nextStatus } : i))
+        );
+        showToast?.(nextStatus === 'resolved' ? '✅ Marked as resolved' : '🔄 Reopened issue');
+        onIssuesChanged?.();
+      }
+    } catch (err) {
+      console.error('Failed to update issue status:', err);
+      showToast?.('⚠️ Failed to update issue status');
+    }
+  };
+
+  const handleDeleteIssue = async (issueId) => {
+    try {
+      const res = await fetch(`/api/bug-reports/${issueId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        setIssues((prev) => prev.filter((i) => i.id !== issueId));
+        showToast?.(isAdmin ? '🗑️ Issue permanently deleted' : '🗑️ Issue removed from your log');
+        onIssuesChanged?.();
+      }
+    } catch (err) {
+      console.error('Failed to delete issue:', err);
+      showToast?.('⚠️ Failed to delete issue');
+    }
+  };
 
   // Profile fields state
   const [usernameVal, setUsernameVal] = useState(user?.username || '');
@@ -572,6 +647,28 @@ export const SettingsModal = ({
             >
               <Volume2 size={16} />
               <span>Audio & Playback</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('issues')}
+              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-left shrink-0 md:shrink md:w-full ${
+                activeTab === 'issues'
+                  ? 'bg-brand-500 text-black shadow-md font-bold'
+                  : 'text-content-secondary hover:text-content-primary hover:bg-white/5'
+              }`}
+            >
+              <div className="relative">
+                <Bug size={16} />
+                {hasResolvedIssues && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 animate-pulse ring-2 ring-surface-panel" />
+                )}
+              </div>
+              <span className="flex-1">Issues & Notes</span>
+              {hasResolvedIssues && (
+                <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  Update
+                </span>
+              )}
             </button>
 
             <button
@@ -1556,6 +1653,206 @@ export const SettingsModal = ({
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {activeTab === 'issues' && (
+              <div className="space-y-4 max-w-3xl">
+                {/* Header & New Issue Action */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-surface-panel border border-border-subtle">
+                  <div>
+                    <h3 className="text-sm font-bold text-content-primary flex items-center gap-2">
+                      <Bug size={16} className="text-amber-400" />
+                      <span>Issue Log & Notes</span>
+                    </h3>
+                    <p className="text-[11px] text-content-secondary mt-0.5">
+                      Your in-app backlog of bugs, glitches, and feature notes
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {onOpenBugReport && (
+                      <button
+                        onClick={() => {
+                          onClose();
+                          onOpenBugReport();
+                        }}
+                        className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-brand-500 hover:bg-brand-400 text-black flex items-center gap-1.5 transition active:scale-95"
+                      >
+                        <Plus size={14} />
+                        <span>Log New Issue</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Filter Pills */}
+                <div className="flex items-center justify-between px-1">
+                  <div className="flex items-center gap-1.5">
+                    {['all', 'open', 'resolved'].map((st) => (
+                      <button
+                        key={st}
+                        onClick={() => setIssuesFilter(st)}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold capitalize transition ${
+                          issuesFilter === st
+                            ? 'bg-white/15 text-white shadow-sm'
+                            : 'text-content-secondary hover:text-content-primary hover:bg-white/5'
+                        }`}
+                      >
+                        {st}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {hasResolvedIssues && (
+                      <button
+                        type="button"
+                        onClick={() => onMarkSeen?.()}
+                        className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/20 transition flex items-center gap-1 cursor-pointer"
+                        title="Mark all notifications as read"
+                      >
+                        <Check size={12} className="stroke-[2.5]" />
+                        <span>Mark as read</span>
+                      </button>
+                    )}
+                    <button
+                      onClick={fetchIssues}
+                      disabled={isLoadingIssues}
+                      className="text-xs text-content-secondary hover:text-brand-500 transition"
+                    >
+                      Refresh
+                    </button>
+                  </div>
+                </div>
+
+                {hasResolvedIssues && (
+                  <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center justify-between gap-3 shadow-sm mb-4">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <CheckCircle2 size={16} className="shrink-0 text-emerald-400" />
+                      <span className="leading-snug">
+                        Your reported issue has been marked as <strong>Resolved</strong>!
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => onMarkSeen?.()}
+                      className="px-3 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-[11px] transition shrink-0 cursor-pointer shadow active:scale-95"
+                    >
+                      Mark as Read
+                    </button>
+                  </div>
+                )}
+
+                {/* Issues List */}
+                {isLoadingIssues ? (
+                  <div className="py-16 flex flex-col items-center justify-center text-content-secondary gap-2">
+                    <Loader2 size={20} className="animate-spin text-brand-500" />
+                    <span className="text-xs">Loading issues...</span>
+                  </div>
+                ) : issues.length === 0 ? (
+                  <div className="py-16 text-center text-content-secondary p-6 rounded-2xl bg-surface-panel/40 border border-border-subtle">
+                    <CheckCircle2 size={28} className="mx-auto mb-2 text-content-subtle" />
+                    <p className="text-xs font-semibold text-content-primary">No issues found</p>
+                    <p className="text-[11px] text-content-subtle mt-1">
+                      Everything looks clear! Click "Log New Issue" to record any bugs or ideas.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {issues.map((issue) => {
+                      const isResolved = issue.status === 'resolved';
+                      return (
+                        <div
+                          key={issue.id}
+                          className={`p-4 rounded-xl border transition ${
+                            isResolved
+                              ? 'bg-surface-panel/40 border-border-subtle opacity-70'
+                              : 'bg-surface-panel border-border-subtle hover:border-border-medium'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-start gap-3 flex-1 min-w-0">
+                              {isAdmin ? (
+                                <button
+                                  onClick={() => handleToggleIssueStatus(issue)}
+                                  className={`mt-0.5 shrink-0 transition ${
+                                    isResolved ? 'text-emerald-400 hover:text-emerald-300' : 'text-content-subtle hover:text-brand-500'
+                                  } cursor-pointer`}
+                                  title={isResolved ? 'Mark as Open' : 'Mark as Resolved'}
+                                >
+                                  {isResolved ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                                </button>
+                              ) : (
+                                <div
+                                  className={`mt-0.5 shrink-0 ${
+                                    isResolved ? 'text-emerald-400' : 'text-content-subtle'
+                                  }`}
+                                  title={isResolved ? 'Status: Resolved' : 'Status: Open'}
+                                >
+                                  {isResolved ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                                </div>
+                              )}
+
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className={`text-xs font-bold ${isResolved ? 'line-through text-content-secondary' : 'text-content-primary'}`}>
+                                    {issue.title}
+                                  </span>
+                                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                    issue.type === 'feature'
+                                      ? 'bg-brand-500/10 text-brand-400'
+                                      : 'bg-amber-500/10 text-amber-400'
+                                  }`}>
+                                    {issue.type === 'feature' ? 'Idea' : 'Bug'}
+                                  </span>
+                                  {isResolved && (
+                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400">
+                                      Resolved
+                                    </span>
+                                  )}
+                                  {isAdmin && Boolean(issue.user_deleted) && (
+                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-white/10 text-content-subtle" title="User cleared this from their personal log">
+                                      Archived by user
+                                    </span>
+                                  )}
+                                  <span className="text-[10px] text-content-subtle px-1.5 py-0.5 rounded bg-white/5 uppercase font-medium">
+                                    {issue.priority}
+                                  </span>
+                                </div>
+
+                                <p className="text-xs text-content-secondary mt-1.5 whitespace-pre-wrap leading-relaxed">
+                                  {issue.description}
+                                </p>
+
+                                <div className="flex items-center gap-3 mt-2.5 text-[11px] text-content-subtle flex-wrap">
+                                  <span>{new Date(issue.created_at).toLocaleDateString()}</span>
+                                  <span>•</span>
+                                  <span className="capitalize">{issue.category}</span>
+                                  {isAdmin && issue.username && (
+                                    <>
+                                      <span>•</span>
+                                      <span>@{issue.username}</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {(isAdmin || (user && issue.user_id === user.id)) && (
+                              <button
+                                onClick={() => handleDeleteIssue(issue.id)}
+                                className="p-1.5 text-content-subtle hover:text-red-400 hover:bg-white/5 rounded-lg transition shrink-0 cursor-pointer"
+                                title="Delete issue"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
