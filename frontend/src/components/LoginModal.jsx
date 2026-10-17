@@ -120,15 +120,15 @@ export const LoginModal = () => {
       </div>
 
       {/* Login Modal Card */}
-      <div className="relative z-10 w-full max-w-sm min-h-[530px] bg-surface-island/92 backdrop-blur-2xl border border-white/10 rounded-2xl p-7 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] flex flex-col justify-between animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative z-10 w-full max-w-sm h-[540px] max-h-[92vh] bg-surface-island/92 backdrop-blur-2xl border border-white/10 rounded-2xl p-7 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] flex flex-col justify-between animate-in fade-in zoom-in-95 duration-200">
         <div>
           {/* Header */}
-          <div className="flex flex-col items-center text-center mb-6">
+          <div className="flex flex-col items-center text-center mb-4">
             <MattLabLogo
               variant="badge"
               bgColor="var(--brand-primary)"
               color="var(--surface-base)"
-              className="w-14 h-14 rounded-full shadow-lg mb-3"
+              className="w-14 h-14 rounded-full shadow-lg mb-2.5"
             />
             <h1 className="text-2xl font-black tracking-tight text-content-primary">
               Log in to MattLab Music
@@ -138,15 +138,17 @@ export const LoginModal = () => {
             </p>
           </div>
 
-          {/* Error Alert */}
-          {error && (
-            <div className="mb-4 p-3 bg-red-500/15 border border-red-500/30 rounded-xl flex items-center gap-2.5 text-red-400 text-xs">
-              <AlertCircle size={16} className="shrink-0 text-red-400" />
-              <span>{error}</span>
-            </div>
-          )}
+          {/* Error Alert Slot (Stationary Reserved Height) */}
+          <div className="min-h-[42px] mb-3 flex items-center">
+            {error && (
+              <div className="w-full p-2.5 px-3 bg-red-500/15 border border-red-500/30 rounded-xl flex items-center gap-2.5 text-red-400 text-xs animate-in fade-in slide-in-from-top-1 duration-150 shadow-sm">
+                <AlertCircle size={15} className="shrink-0 text-red-400" />
+                <span className="font-medium">{error}</span>
+              </div>
+            )}
+          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3.5">
             {/* Username */}
             <div>
               <label className="block text-xs font-semibold text-content-secondary mb-1.5">
@@ -237,7 +239,7 @@ export const LoginModal = () => {
           </form>
         </div>
 
-        <div className="mt-6 text-center text-xs text-content-subtle">
+        <div className="mt-4 text-center text-xs text-content-subtle">
           MattLab Unraid Music Platform
         </div>
       </div>
