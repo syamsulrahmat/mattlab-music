@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LogIn, User, Lock, AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
+import { LogIn, User, Lock, AlertCircle, Loader2, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { MattLabLogo } from './MattLabLogo';
 import { useAuth } from '../context/AuthContext';
 
@@ -10,6 +10,15 @@ export const LoginModal = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCapsLockOn, setIsCapsLockOn] = useState(false);
+  const [activeField, setActiveField] = useState('username'); // 'username' | 'password' | null
+
+  const checkCapsLock = (e) => {
+    if (e?.getModifierState) {
+      const caps = e.getModifierState('CapsLock');
+      setIsCapsLockOn(Boolean(caps));
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -71,6 +80,14 @@ export const LoginModal = () => {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                onKeyDown={checkCapsLock}
+                onKeyUp={checkCapsLock}
+                onClick={checkCapsLock}
+                onFocus={(e) => {
+                  setActiveField('username');
+                  checkCapsLock(e);
+                }}
+                onBlur={() => setActiveField((prev) => (prev === 'username' ? null : prev))}
                 placeholder="Username"
                 required
                 autoFocus
@@ -78,6 +95,12 @@ export const LoginModal = () => {
                 className="w-full bg-surface-elevated border border-border-medium rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-content-primary placeholder:text-content-subtle outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition"
               />
             </div>
+            {isCapsLockOn && activeField === 'username' && (
+              <div className="mt-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/25 rounded-xl flex items-center gap-2 text-amber-400 text-xs animate-in fade-in slide-in-from-top-1 duration-150 shadow-sm">
+                <AlertTriangle size={13} className="shrink-0 text-amber-400" />
+                <span className="font-semibold">Caps Lock is on</span>
+              </div>
+            )}
           </div>
 
           {/* Password */}
@@ -93,6 +116,14 @@ export const LoginModal = () => {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={checkCapsLock}
+                onKeyUp={checkCapsLock}
+                onClick={checkCapsLock}
+                onFocus={(e) => {
+                  setActiveField('password');
+                  checkCapsLock(e);
+                }}
+                onBlur={() => setActiveField((prev) => (prev === 'password' ? null : prev))}
                 placeholder="Password"
                 required
                 autoComplete="current-password"
@@ -107,6 +138,12 @@ export const LoginModal = () => {
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
+            {isCapsLockOn && activeField === 'password' && (
+              <div className="mt-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/25 rounded-xl flex items-center gap-2 text-amber-400 text-xs animate-in fade-in slide-in-from-top-1 duration-150 shadow-sm">
+                <AlertTriangle size={13} className="shrink-0 text-amber-400" />
+                <span className="font-semibold">Caps Lock is on</span>
+              </div>
+            )}
           </div>
 
           {/* Submit Button */}
