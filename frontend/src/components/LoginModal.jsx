@@ -39,8 +39,24 @@ export const LoginModal = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 select-none">
-      <div className="w-full max-w-sm min-h-[530px] bg-surface-island border border-border-medium rounded-2xl p-7 shadow-2xl flex flex-col justify-between animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 select-none overflow-hidden">
+      {/* Ambient Aurora Orbs Background (Pure GPU-accelerated CSS) */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        {/* Orb 1: MattLab Signature Emerald (Top-Left to Center Orbit) */}
+        <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[380px] h-[380px] sm:w-[480px] sm:h-[480px] rounded-full bg-emerald-500/22 blur-[110px] animate-aurora-1" />
+
+        {/* Orb 2: Server Cyan (Bottom-Right to Center Orbit) */}
+        <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-[400px] h-[400px] sm:w-[500px] sm:h-[500px] rounded-full bg-cyan-500/18 blur-[120px] animate-aurora-2" />
+
+        {/* Orb 3: Central Deep Teal Pulsing Core */}
+        <div className="absolute top-1/2 left-1/2 w-[300px] h-[300px] sm:w-[380px] sm:h-[380px] rounded-full bg-teal-500/15 blur-[90px] animate-aurora-core" />
+
+        {/* Subtle Dark Radial Vignette for Contrast */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60" />
+      </div>
+
+      {/* Login Modal Card */}
+      <div className="relative z-10 w-full max-w-sm min-h-[530px] bg-surface-island/90 backdrop-blur-xl border border-white/10 rounded-2xl p-7 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] flex flex-col justify-between animate-in fade-in zoom-in-95 duration-200">
         <div>
           {/* Header */}
           <div className="flex flex-col items-center text-center mb-6">
