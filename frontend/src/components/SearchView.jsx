@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, X, Play, Pause, Disc3, Mic2, Music, Heart, Plus, DownloadCloud, Sparkles } from 'lucide-react';
+import { Search, X, Play, Pause, Disc3, Mic2, Music, Heart, Plus, DownloadCloud, Sparkles, ChevronRight } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 
 export const SearchView = ({ 
@@ -137,10 +137,62 @@ export const SearchView = ({
             </div>
           )}
 
+          {/* Top Result / Primary Artist Card */}
+          {results.primary_artist && (
+            <div
+              onClick={() => onSelectArtist && onSelectArtist(results.primary_artist.id)}
+              className="relative overflow-hidden bg-gradient-to-r from-surface-elevated via-surface-elevated/80 to-surface-panel border border-border-subtle hover:border-brand-500/40 p-5 rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-xl group flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5"
+            >
+              <div className="flex items-center gap-5 min-w-0 flex-1">
+                <div className="relative shrink-0">
+                  <img
+                    src={results.primary_artist.image_url || `/api/artists/${results.primary_artist.id}/image`}
+                    alt={results.primary_artist.name}
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = '/api/covers/0';
+                    }}
+                    className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover shadow-2xl bg-surface-elevated2 border-2 border-white/10 group-hover:scale-105 group-hover:border-brand-500/50 transition duration-300"
+                  />
+                  <div className="absolute inset-0 rounded-full bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Play size={24} className="text-white fill-white ml-0.5" />
+                  </div>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="inline-block text-[11px] font-bold uppercase tracking-wider text-brand-400 bg-brand-500/10 px-2.5 py-0.5 rounded-full mb-1 border border-brand-500/20">
+                    Artist
+                  </span>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-white truncate group-hover:text-brand-400 transition">
+                    {results.primary_artist.name}
+                  </h2>
+                  <p className="text-xs sm:text-sm text-content-secondary mt-1 flex items-center gap-2">
+                    <span>{results.primary_artist.track_count || results.tracks?.length || 0} songs</span>
+                    <span>•</span>
+                    <span>{results.primary_artist.album_count || results.albums?.length || 0} albums</span>
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onSelectArtist) onSelectArtist(results.primary_artist.id);
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-brand-500 hover:text-black text-white text-xs font-bold rounded-full transition duration-200 group/btn shadow-md"
+                >
+                  <span>View Artist</span>
+                  <ChevronRight size={14} className="group-hover/btn:translate-x-0.5 transition-transform" />
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Tracks Section */}
           {results.tracks && results.tracks.length > 0 && (
             <section>
-              <h2 className="text-xl font-bold text-content-primary mb-4">Songs</h2>
+              <h2 className="text-xl font-bold text-content-primary mb-4">
+                {results.primary_artist ? `Songs by ${results.primary_artist.name}` : 'Songs'}
+              </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {results.tracks.map((track) => {
                   const isCurrentTrack = currentTrack?.id === track.id;
@@ -268,7 +320,9 @@ export const SearchView = ({
           {/* Albums Section */}
           {results.albums && results.albums.length > 0 && (
             <section>
-              <h2 className="text-xl font-bold text-white mb-4">Albums</h2>
+              <h2 className="text-xl font-bold text-white mb-4">
+                {results.primary_artist ? `Albums by ${results.primary_artist.name}` : 'Albums'}
+              </h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {results.albums.map((album) => (
                   <div
@@ -311,39 +365,43 @@ export const SearchView = ({
           )}
 
           {/* Artists Section */}
-          {results.artists && results.artists.length > 0 && (
+          {results.artists && results.artists.filter((a) => !results.primary_artist || a.id !== results.primary_artist.id).length > 0 && (
             <section>
-              <h2 className="text-xl font-bold text-content-primary mb-4">Artists</h2>
+              <h2 className="text-xl font-bold text-content-primary mb-4">
+                {results.primary_artist ? 'Other Artists' : 'Artists'}
+              </h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {results.artists.map((artist) => (
-                  <div
-                    key={artist.id}
-                    onClick={() => onSelectArtist && onSelectArtist(artist.id)}
-                    onContextMenu={(e) => {
-                      if (onContextMenu) {
-                        e.preventDefault();
-                        onContextMenu(e, 'artist', artist);
-                      }
-                    }}
-                    className="bg-surface-elevated hover:bg-surface-hover p-4 rounded-lg cursor-pointer transition text-center group flex flex-col items-center justify-between"
-                  >
-                    <img
-                      src={artist.image_url || `/api/artists/${artist.id}/image`}
-                      alt={artist.name}
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = '/api/covers/0';
+                {results.artists
+                  .filter((a) => !results.primary_artist || a.id !== results.primary_artist.id)
+                  .map((artist) => (
+                    <div
+                      key={artist.id}
+                      onClick={() => onSelectArtist && onSelectArtist(artist.id)}
+                      onContextMenu={(e) => {
+                        if (onContextMenu) {
+                          e.preventDefault();
+                          onContextMenu(e, 'artist', artist);
+                        }
                       }}
-                      className="w-20 h-20 sm:w-24 sm:h-24 mx-auto rounded-full object-cover mb-3 shadow-lg bg-surface-elevated2 group-hover:scale-105 transition duration-300 border border-border-subtle"
-                    />
-                    <div className="w-full">
-                      <h4 className="font-bold text-sm text-content-primary truncate group-hover:text-brand-400 transition">
-                        {artist.name}
-                      </h4>
-                      <p className="text-xs text-content-secondary mt-1">{artist.track_count} tracks</p>
+                      className="bg-surface-elevated hover:bg-surface-hover p-4 rounded-lg cursor-pointer transition text-center group flex flex-col items-center justify-between"
+                    >
+                      <img
+                        src={artist.image_url || `/api/artists/${artist.id}/image`}
+                        alt={artist.name}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = '/api/covers/0';
+                        }}
+                        className="w-20 h-20 sm:w-24 sm:h-24 mx-auto rounded-full object-cover mb-3 shadow-lg bg-surface-elevated2 group-hover:scale-105 transition duration-300 border border-border-subtle"
+                      />
+                      <div className="w-full">
+                        <h4 className="font-bold text-sm text-content-primary truncate group-hover:text-brand-400 transition">
+                          {artist.name}
+                        </h4>
+                        <p className="text-xs text-content-secondary mt-1">{artist.track_count} tracks</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </section>
           )}

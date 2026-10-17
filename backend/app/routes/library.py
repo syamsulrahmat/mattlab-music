@@ -550,44 +550,373 @@ async def search_library(q: str = Query(..., min_length=1), limit: int = Query(2
             for row in cursor.fetchall()
         ]
 
-        # 5. Smart canonical typo / lyric resolution fallback if 0 local results
+        primary_artist = None
+        match_type = "general"
         corrected_query = None
         did_you_mean = None
-        if len(tracks) == 0 and len(lyrics_matches) == 0 and len(albums) == 0 and len(artists) == 0:
-            try:
-                canonical = resolve_smart_canonical_query(cleaned_q)
-                if canonical:
-                    c_track = canonical.get("track")
-                    c_artist = canonical.get("artist")
-                    corrected_query = f"{c_artist} - {c_track}"
-                    did_you_mean = {"track": c_track, "artist": c_artist}
 
-                    # Check if local library has this track under canonical name
+        # Check if an exact artist match was found
+        exact_artist = next((a for a in artists if a["name"].strip().lower() == cleaned_q.lower()), None)
+        if not exact_artist and len(artists) == 1 and len(cleaned_q) >= 4 and artists[0]["name"].lower().startswith(cleaned_q.lower()):
+            exact_artist = artists[0]
+
+        if exact_artist:
+            primary_artist = exact_artist
+            match_type = "artist"
+        elif len(artists) == 0:
+            from app.fuzzy_search import ensure_catalog_loaded, find_matched_artist, find_matched_track
+            ensure_catalog_loaded(conn)
+            art_match = find_matched_artist(cleaned_q, threshold=0.80)
+            if art_match:
+                a_dict, score = art_match
+                trk_match = find_matched_track(cleaned_q, threshold=0.80)
+                if not trk_match or score >= trk_match[1]:
                     cursor.execute("""
-                        SELECT 
-                            t.id, t.title, t.track_number, t.duration_seconds,
-                            a.id AS album_id, a.title AS album_title,
-                            ar.id AS artist_id, ar.name AS artist_name
+                        SELECT ar.id, ar.name, COUNT(DISTINCT al.id) AS album_count, COUNT(DISTINCT t.id) AS track_count
+                        FROM artists ar
+                        LEFT JOIN albums al ON al.artist_id = ar.id
+                        LEFT JOIN tracks t ON t.artist_id = ar.id
+                        WHERE ar.id = ?
+                        GROUP BY ar.id
+                    """, (a_dict["id"],))
+                    art_row = cursor.fetchone()
+                    if art_row:
+                        primary_artist = {**dict(art_row), "image_url": f"/api/artists/{art_row['id']}/image"}
+                        artists = [primary_artist]
+                        match_type = "artist"
+                        corrected_query = a_dict["name"]
+
+                        cursor.execute("""
+                            SELECT t.id, t.title, t.track_number, t.duration_seconds, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                            FROM tracks t
+                            JOIN albums a ON t.album_id = a.id
+                            JOIN artists ar ON t.artist_id = ar.id
+                            WHERE ar.id = ?
+                            ORDER BY t.title COLLATE NOCASE ASC
+                            LIMIT 30
+                        """, (a_dict["id"],))
+                        tracks = [
+                            {
+                                **dict(r),
+                                "cover_url": f"/api/covers/{r['album_id']}",
+                                "stream_url": f"/api/stream/{r['id']}",
+                                "matched_in": "artist_catalog",
+                            }
+                            for r in cursor.fetchall()
+                        ]
+
+                        cursor.execute("""
+                            SELECT a.id, a.title, a.year, a.artist_id, ar.name AS artist_name, COUNT(t.id) AS track_count
+                            FROM albums a
+                            JOIN artists ar ON a.artist_id = ar.id
+                            LEFT JOIN tracks t ON t.album_id = a.id
+                            WHERE a.artist_id = ?
+                            GROUP BY a.id
+                            ORDER BY a.year DESC, a.title ASC
+                            LIMIT 15
+                        """, (a_dict["id"],))
+                        albums = [{**dict(r), "cover_url": f"/api/covers/{r['id']}"} for r in cursor.fetchall()]
+
+        # 5. Intelligent local fuzzy matching & general word spell correction fallback
+        if not primary_artist and len(tracks) == 0 and len(lyrics_matches) == 0 and len(artists) == 0 and len(albums) == 0:
+            from app.fuzzy_search import ensure_catalog_loaded, resolve_fuzzy_query
+            ensure_catalog_loaded(conn)
+
+            fuzzy_res = resolve_fuzzy_query(cleaned_q)
+            res_type = fuzzy_res.get("type")
+
+            # A. Compound Artist + Track (e.g. 'katy pery firwork')
+            if res_type == "compound":
+                compound = fuzzy_res["compound"]
+                c_art = compound["artist"]
+                c_trk = compound["track"]
+                corrected_query = f"{compound['canonical_artist']} - {compound['canonical_track']}"
+                match_type = "compound"
+
+                cursor.execute("""
+                    SELECT ar.id, ar.name, COUNT(DISTINCT al.id) AS album_count, COUNT(DISTINCT t.id) AS track_count
+                    FROM artists ar
+                    LEFT JOIN albums al ON al.artist_id = ar.id
+                    LEFT JOIN tracks t ON t.artist_id = ar.id
+                    WHERE ar.id = ?
+                    GROUP BY ar.id
+                """, (c_art["id"],))
+                art_row = cursor.fetchone()
+                if art_row:
+                    primary_artist = {**dict(art_row), "image_url": f"/api/artists/{art_row['id']}/image"}
+                    artists = [primary_artist]
+
+                # Specific matched track first
+                cursor.execute("""
+                    SELECT t.id, t.title, t.track_number, t.duration_seconds, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                    FROM tracks t
+                    JOIN albums a ON t.album_id = a.id
+                    JOIN artists ar ON t.artist_id = ar.id
+                    WHERE t.id = ?
+                """, (c_trk["id"],))
+                target_row = cursor.fetchone()
+                if target_row:
+                    tracks.append({
+                        **dict(target_row),
+                        "cover_url": f"/api/covers/{target_row['album_id']}",
+                        "stream_url": f"/api/stream/{target_row['id']}",
+                        "matched_in": "fuzzy_compound",
+                    })
+
+                # Additional tracks by this artist
+                cursor.execute("""
+                    SELECT t.id, t.title, t.track_number, t.duration_seconds, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                    FROM tracks t
+                    JOIN albums a ON t.album_id = a.id
+                    JOIN artists ar ON t.artist_id = ar.id
+                    WHERE ar.id = ? AND t.id != ?
+                    ORDER BY t.title COLLATE NOCASE ASC
+                    LIMIT 20
+                """, (c_art["id"], c_trk["id"]))
+                for row in cursor.fetchall():
+                    tracks.append({
+                        **dict(row),
+                        "cover_url": f"/api/covers/{row['album_id']}",
+                        "stream_url": f"/api/stream/{row['id']}",
+                        "matched_in": "artist_catalog",
+                    })
+
+                # Artist albums
+                cursor.execute("""
+                    SELECT a.id, a.title, a.year, a.artist_id, ar.name AS artist_name, COUNT(t.id) AS track_count
+                    FROM albums a
+                    JOIN artists ar ON a.artist_id = ar.id
+                    LEFT JOIN tracks t ON t.album_id = a.id
+                    WHERE a.artist_id = ?
+                    GROUP BY a.id
+                    ORDER BY a.year DESC, a.title ASC
+                    LIMIT 15
+                """, (c_art["id"],))
+                albums = [{**dict(r), "cover_url": f"/api/covers/{r['id']}"} for r in cursor.fetchall()]
+
+            # B. Artist match (e.g. 'Tylor switf' -> 'Taylor Swift')
+            elif res_type == "artist":
+                a_dict = fuzzy_res["artist"]
+                corrected_query = a_dict["name"]
+                match_type = "artist"
+
+                cursor.execute("""
+                    SELECT ar.id, ar.name, COUNT(DISTINCT al.id) AS album_count, COUNT(DISTINCT t.id) AS track_count
+                    FROM artists ar
+                    LEFT JOIN albums al ON al.artist_id = ar.id
+                    LEFT JOIN tracks t ON t.artist_id = ar.id
+                    WHERE ar.id = ?
+                    GROUP BY ar.id
+                """, (a_dict["id"],))
+                art_row = cursor.fetchone()
+                if art_row:
+                    primary_artist = {**dict(art_row), "image_url": f"/api/artists/{art_row['id']}/image"}
+                    artists = [primary_artist]
+
+                # Fetch artist's library songs
+                cursor.execute("""
+                    SELECT t.id, t.title, t.track_number, t.duration_seconds, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                    FROM tracks t
+                    JOIN albums a ON t.album_id = a.id
+                    JOIN artists ar ON t.artist_id = ar.id
+                    WHERE ar.id = ?
+                    ORDER BY t.title COLLATE NOCASE ASC
+                    LIMIT 30
+                """, (a_dict["id"],))
+                tracks = [
+                    {
+                        **dict(r),
+                        "cover_url": f"/api/covers/{r['album_id']}",
+                        "stream_url": f"/api/stream/{r['id']}",
+                        "matched_in": "artist_catalog",
+                    }
+                    for r in cursor.fetchall()
+                ]
+
+                # Fetch artist's library albums
+                cursor.execute("""
+                    SELECT a.id, a.title, a.year, a.artist_id, ar.name AS artist_name, COUNT(t.id) AS track_count
+                    FROM albums a
+                    JOIN artists ar ON a.artist_id = ar.id
+                    LEFT JOIN tracks t ON t.album_id = a.id
+                    WHERE a.artist_id = ?
+                    GROUP BY a.id
+                    ORDER BY a.year DESC, a.title ASC
+                    LIMIT 15
+                """, (a_dict["id"],))
+                albums = [{**dict(r), "cover_url": f"/api/covers/{r['id']}"} for r in cursor.fetchall()]
+
+            # C. Track match (e.g. 'blanck space' -> 'Blank Space', 'love stroy' -> 'Love Story')
+            elif res_type == "track":
+                t_dict = fuzzy_res["track"]
+                corrected_query = t_dict["title"]
+                match_type = "track"
+
+                cursor.execute("""
+                    SELECT t.id, t.title, t.track_number, t.duration_seconds, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                    FROM tracks t
+                    JOIN albums a ON t.album_id = a.id
+                    JOIN artists ar ON t.artist_id = ar.id
+                    WHERE t.id = ?
+                """, (t_dict["id"],))
+                target_row = cursor.fetchone()
+                if target_row:
+                    tracks.append({
+                        **dict(target_row),
+                        "cover_url": f"/api/covers/{target_row['album_id']}",
+                        "stream_url": f"/api/stream/{target_row['id']}",
+                        "matched_in": "fuzzy_track",
+                    })
+
+                # Also fetch other tracks sharing base title or artist
+                cursor.execute("""
+                    SELECT t.id, t.title, t.track_number, t.duration_seconds, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                    FROM tracks t
+                    JOIN albums a ON t.album_id = a.id
+                    JOIN artists ar ON t.artist_id = ar.id
+                    WHERE (t.artist_id = ? OR t.title LIKE ?) AND t.id != ?
+                    ORDER BY t.title COLLATE NOCASE ASC
+                    LIMIT 15
+                """, (t_dict["artist_id"], f"%{t_dict['title'][:5]}%", t_dict["id"]))
+                for r in cursor.fetchall():
+                    tracks.append({
+                        **dict(r),
+                        "cover_url": f"/api/covers/{r['album_id']}",
+                        "stream_url": f"/api/stream/{r['id']}",
+                        "matched_in": "related_track",
+                    })
+
+            # D. General Word Spell Correction (e.g. 'burnin flams' -> 'burning flames')
+            elif res_type == "sentence":
+                corrected_sentence = fuzzy_res["corrected_sentence"]
+                corr_tokens = [t.strip() for t in corrected_sentence.split() if t.strip()]
+                if corr_tokens:
+                    c_where = ["(t.title LIKE ? OR ar.name LIKE ? OR a.title LIKE ?)" for _ in corr_tokens]
+                    c_params = []
+                    for tok in corr_tokens:
+                        c_params.extend([f"%{tok}%", f"%{tok}%", f"%{tok}%"])
+                    cursor.execute(f"""
+                        SELECT t.id, t.title, t.track_number, t.duration_seconds, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
                         FROM tracks t
                         JOIN albums a ON t.album_id = a.id
                         JOIN artists ar ON t.artist_id = ar.id
-                        WHERE t.title LIKE ? AND ar.name LIKE ?
+                        WHERE {' AND '.join(c_where)}
                         ORDER BY t.title COLLATE NOCASE ASC
-                        LIMIT 10
-                    """, (f"%{c_track}%", f"%{c_artist}%"))
-                    extra_tracks = [
+                        LIMIT {limit}
+                    """, tuple(c_params))
+                    c_tracks = [
                         {
-                            **dict(row),
-                            "cover_url": f"/api/covers/{row['album_id']}",
-                            "stream_url": f"/api/stream/{row['id']}",
-                            "matched_in": "canonical_lookup",
+                            **dict(r),
+                            "cover_url": f"/api/covers/{r['album_id']}",
+                            "stream_url": f"/api/stream/{r['id']}",
+                            "matched_in": "spellcheck_corrected",
                         }
-                        for row in cursor.fetchall()
+                        for r in cursor.fetchall()
                     ]
-                    if extra_tracks:
-                        tracks.extend(extra_tracks)
-            except Exception as e:
-                logger.warning(f"[Search] Canonical typo check error: {e}")
+                    if c_tracks:
+                        tracks.extend(c_tracks)
+                        corrected_query = corrected_sentence
+                        match_type = "song"
+
+                    # Also search FTS5 lyrics for corrected sentence
+                    c_fts = sanitize_fts5_query(corrected_sentence)
+                    if c_fts:
+                        try:
+                            cursor.execute("""
+                                SELECT t.id, t.title, t.track_number, t.duration_seconds, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name,
+                                       bm25(tracks_lyrics_fts) AS rank
+                                FROM tracks_lyrics_fts fts
+                                JOIN tracks t ON fts.track_id = t.id
+                                JOIN albums a ON t.album_id = a.id
+                                JOIN artists ar ON t.artist_id = ar.id
+                                WHERE tracks_lyrics_fts MATCH ?
+                                ORDER BY rank ASC
+                                LIMIT 20
+                            """, (c_fts,))
+                            existing_ids = {t["id"] for t in tracks}
+                            for r in cursor.fetchall():
+                                if r["id"] not in existing_ids:
+                                    tracks.append({
+                                        **dict(r),
+                                        "cover_url": f"/api/covers/{r['album_id']}",
+                                        "stream_url": f"/api/stream/{r['id']}",
+                                        "matched_in": "lyrics",
+                                    })
+                                    existing_ids.add(r["id"])
+                            if tracks:
+                                corrected_query = corrected_sentence
+                        except Exception:
+                            pass
+
+            # E. Remote canonical fallback if still 0
+            if len(tracks) == 0 and len(artists) == 0 and len(albums) == 0:
+                try:
+                    canonical = resolve_smart_canonical_query(cleaned_q)
+                    if canonical:
+                        c_track = canonical.get("track")
+                        c_artist = canonical.get("artist")
+                        corrected_query = f"{c_artist} - {c_track}"
+                        did_you_mean = {"track": c_track, "artist": c_artist}
+
+                        # Check if artist exists in local library
+                        cursor.execute("""
+                            SELECT ar.id, ar.name, COUNT(DISTINCT al.id) AS album_count, COUNT(DISTINCT t.id) AS track_count
+                            FROM artists ar
+                            LEFT JOIN albums al ON al.artist_id = ar.id
+                            LEFT JOIN tracks t ON t.artist_id = ar.id
+                            WHERE ar.name LIKE ?
+                            GROUP BY ar.id
+                        """, (f"%{c_artist}%",))
+                        art_row = cursor.fetchone()
+                        if art_row:
+                            primary_artist = {**dict(art_row), "image_url": f"/api/artists/{art_row['id']}/image"}
+                            artists = [primary_artist]
+                            match_type = "artist"
+                            corrected_query = art_row["name"]
+
+                            # Fetch artist's library songs
+                            cursor.execute("""
+                                SELECT t.id, t.title, t.track_number, t.duration_seconds, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                                FROM tracks t
+                                JOIN albums a ON t.album_id = a.id
+                                JOIN artists ar ON t.artist_id = ar.id
+                                WHERE ar.id = ?
+                                ORDER BY t.title COLLATE NOCASE ASC
+                                LIMIT 25
+                            """, (art_row["id"],))
+                            tracks = [
+                                {
+                                    **dict(r),
+                                    "cover_url": f"/api/covers/{r['album_id']}",
+                                    "stream_url": f"/api/stream/{r['id']}",
+                                    "matched_in": "artist_catalog",
+                                }
+                                for r in cursor.fetchall()
+                            ]
+
+                        # Check if specific track exists in local library
+                        cursor.execute("""
+                            SELECT t.id, t.title, t.track_number, t.duration_seconds, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                            FROM tracks t
+                            JOIN albums a ON t.album_id = a.id
+                            JOIN artists ar ON t.artist_id = ar.id
+                            WHERE t.title LIKE ? AND ar.name LIKE ?
+                            ORDER BY t.title COLLATE NOCASE ASC
+                            LIMIT 10
+                        """, (f"%{c_track}%", f"%{c_artist}%"))
+                        extra_tracks = [
+                            {
+                                **dict(row),
+                                "cover_url": f"/api/covers/{row['album_id']}",
+                                "stream_url": f"/api/stream/{row['id']}",
+                                "matched_in": "canonical_lookup",
+                            }
+                            for row in cursor.fetchall()
+                        ]
+                        if extra_tracks:
+                            tracks.extend(extra_tracks)
+                except Exception as e:
+                    logger.warning(f"[Search] Canonical typo check error: {e}")
 
     resp = {
         "query": q,
@@ -595,6 +924,8 @@ async def search_library(q: str = Query(..., min_length=1), limit: int = Query(2
         "lyrics_matches": lyrics_matches,
         "albums": albums,
         "artists": artists,
+        "primary_artist": primary_artist,
+        "match_type": match_type,
     }
     if corrected_query:
         resp["corrected_query"] = corrected_query

@@ -66,6 +66,8 @@ export const TopBar = ({
             tracks: Array.isArray(data.tracks) ? data.tracks.slice(0, 6) : [],
             albums: Array.isArray(data.albums) ? data.albums.slice(0, 4) : [],
             artists: Array.isArray(data.artists) ? data.artists.slice(0, 4) : [],
+            primary_artist: data.primary_artist || null,
+            match_type: data.match_type || 'general',
             correctedQuery: data.corrected_query || null,
           });
           setSelectedIndex(0);
@@ -85,9 +87,16 @@ export const TopBar = ({
   // Linear list of navigable items for Up/Down arrow selection
   const navigableItems = useMemo(() => {
     const items = [];
+    if (searchResults.primary_artist) {
+      items.push({ type: 'artist', data: searchResults.primary_artist });
+    }
     searchResults.tracks?.forEach((t) => items.push({ type: 'track', data: t }));
     searchResults.albums?.forEach((a) => items.push({ type: 'album', data: a }));
-    searchResults.artists?.forEach((ar) => items.push({ type: 'artist', data: ar }));
+    searchResults.artists?.forEach((ar) => {
+      if (!searchResults.primary_artist || ar.id !== searchResults.primary_artist.id) {
+        items.push({ type: 'artist', data: ar });
+      }
+    });
     if (searchQuery?.trim()) {
       items.push({
         type: 'request',
