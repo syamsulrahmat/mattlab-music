@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { LogIn, User, Lock, AlertCircle, Loader2, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { MattLabLogo } from './MattLabLogo';
 import { useAuth } from '../context/AuthContext';
@@ -11,6 +11,41 @@ export const LoginModal = () => {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCapsLockOn, setIsCapsLockOn] = useState(false);
+  const [coverUrls, setCoverUrls] = useState([]);
+
+  // Fetch sample album covers from user's music library for the background wall
+  useEffect(() => {
+    let isMounted = true;
+    const fetchCovers = async () => {
+      try {
+        const res = await fetch('/api/covers-sample?limit=30');
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && Array.isArray(data.covers) && data.covers.length > 0) {
+            setCoverUrls(data.covers);
+          }
+        }
+      } catch {
+        // Fall back gracefully to clean background
+      }
+    };
+    fetchCovers();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Split into 5 vertical columns, duplicated for seamless infinite -50% marquee loop
+  const columns = useMemo(() => {
+    if (!coverUrls.length) return [];
+    const cols = [[], [], [], [], []];
+    coverUrls.forEach((url, idx) => {
+      cols[idx % 5].push(url);
+    });
+    return cols
+      .filter((col) => col.length > 0)
+      .map((col) => [...col, ...col]);
+  }, [coverUrls]);
 
   const checkCapsLock = (e) => {
     if (e?.getModifierState) {
@@ -39,24 +74,53 @@ export const LoginModal = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 select-none overflow-hidden">
-      {/* Ambient Aurora Orbs Background (Pure GPU-accelerated CSS) */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-        {/* Orb 1: MattLab Signature Emerald (Top-Left to Center Orbit) */}
-        <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[380px] h-[380px] sm:w-[480px] sm:h-[480px] rounded-full bg-emerald-500/22 blur-[110px] animate-aurora-1" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 select-none overflow-hidden">
+      {/* Animated Album Art Grid (Angled Parallax Columns) */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none select-none z-0">
+        {columns.length > 0 && (
+          <div className="absolute -inset-[35%] flex justify-center gap-4 sm:gap-6 md:gap-8 rotate-[-12deg] scale-105 opacity-[0.22] transition-opacity duration-1000">
+            {columns.map((colCovers, colIdx) => {
+              // Alternate vertical scrolling directions & varied speeds for natural parallax
+              const animClass =
+                colIdx % 2 === 0
+                  ? colIdx === 2
+                    ? 'animate-marquee-up-slower'
+                    : 'animate-marquee-up-slow'
+                  : colIdx === 3
+                    ? 'animate-marquee-down-slower'
+                    : 'animate-marquee-down-slow';
 
-        {/* Orb 2: Server Cyan (Bottom-Right to Center Orbit) */}
-        <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-[400px] h-[400px] sm:w-[500px] sm:h-[500px] rounded-full bg-cyan-500/18 blur-[120px] animate-aurora-2" />
+              return (
+                <div key={colIdx} className={`flex flex-col gap-4 sm:gap-6 md:gap-8 shrink-0 ${animClass}`}>
+                  {colCovers.map((url, imgIdx) => (
+                    <div
+                      key={imgIdx}
+                      className="w-32 h-32 sm:w-44 sm:h-44 md:w-52 md:h-52 rounded-2xl overflow-hidden shadow-2xl bg-surface-island/70 border border-white/5 shrink-0"
+                    >
+                      <img
+                        src={url}
+                        alt=""
+                        loading="lazy"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
-        {/* Orb 3: Central Deep Teal Pulsing Core */}
-        <div className="absolute top-1/2 left-1/2 w-[300px] h-[300px] sm:w-[380px] sm:h-[380px] rounded-full bg-teal-500/15 blur-[90px] animate-aurora-core" />
-
-        {/* Subtle Dark Radial Vignette for Contrast */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60" />
+        {/* Cinematic Vignette & Radial Contrast Gradients for Razor-sharp Card Focus */}
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-black/80" />
       </div>
 
       {/* Login Modal Card */}
-      <div className="relative z-10 w-full max-w-sm min-h-[530px] bg-surface-island/90 backdrop-blur-xl border border-white/10 rounded-2xl p-7 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] flex flex-col justify-between animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative z-10 w-full max-w-sm min-h-[530px] bg-surface-island/92 backdrop-blur-2xl border border-white/10 rounded-2xl p-7 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] flex flex-col justify-between animate-in fade-in zoom-in-95 duration-200">
         <div>
           {/* Header */}
           <div className="flex flex-col items-center text-center mb-6">

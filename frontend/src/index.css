@@ -130,67 +130,50 @@
   animation-delay: 0.54s;
 }
 
-/* Ambient Aurora Orb Animations (Pure CSS, GPU-accelerated organic drift) */
-@keyframes aurora-orbit-1 {
+/* Animated Album Art Grid Marquee (Angled Parallax Columns) */
+@keyframes marquee-scroll-up {
   0% {
-    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
-  }
-  33% {
-    transform: translate3d(120px, 70px, 0) rotate(120deg) scale(1.12);
-  }
-  66% {
-    transform: translate3d(-70px, 110px, 0) rotate(240deg) scale(0.92);
+    transform: translate3d(0, 0, 0);
   }
   100% {
-    transform: translate3d(0, 0, 0) rotate(360deg) scale(1);
+    transform: translate3d(0, -50%, 0);
   }
 }
 
-@keyframes aurora-orbit-2 {
+@keyframes marquee-scroll-down {
   0% {
-    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
-  }
-  33% {
-    transform: translate3d(-110px, -80px, 0) rotate(-120deg) scale(0.88);
-  }
-  66% {
-    transform: translate3d(70px, -100px, 0) rotate(-240deg) scale(1.1);
+    transform: translate3d(0, -50%, 0);
   }
   100% {
-    transform: translate3d(0, 0, 0) rotate(-360deg) scale(1);
+    transform: translate3d(0, 0, 0);
   }
 }
 
-@keyframes aurora-pulse-core {
-  0%, 100% {
-    transform: translate3d(-50%, -50%, 0) scale(0.92);
-    opacity: 0.5;
-  }
-  50% {
-    transform: translate3d(-50%, -50%, 0) scale(1.15);
-    opacity: 0.85;
-  }
-}
-
-.animate-aurora-1 {
-  animation: aurora-orbit-1 18s ease-in-out infinite;
+.animate-marquee-up-slow {
+  animation: marquee-scroll-up 50s linear infinite;
   will-change: transform;
 }
 
-.animate-aurora-2 {
-  animation: aurora-orbit-2 22s ease-in-out infinite;
+.animate-marquee-down-slow {
+  animation: marquee-scroll-down 54s linear infinite;
   will-change: transform;
 }
 
-.animate-aurora-core {
-  animation: aurora-pulse-core 14s ease-in-out infinite;
-  will-change: transform, opacity;
+.animate-marquee-up-slower {
+  animation: marquee-scroll-up 60s linear infinite;
+  will-change: transform;
+}
+
+.animate-marquee-down-slower {
+  animation: marquee-scroll-down 64s linear infinite;
+  will-change: transform;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-aurora-1,
-  .animate-aurora-2,
-  .animate-aurora-core {
-    animation: none !important;
+  .animate-marquee-up-slow,
+  .animate-marquee-down-slow,
+  .animate-marquee-up-slower,
+  .animate-marquee-down-slower {
+    animation-play-state: paused !important;
   }
 }

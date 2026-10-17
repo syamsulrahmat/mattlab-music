@@ -105,6 +105,25 @@ async def stream_track(track_id: int, request: Request):
         media_type=media_type,
     )
 
+@router.get("/covers-sample")
+async def get_sample_album_covers(limit: int = 30):
+    """Retrieve sample album covers for landing/login background grid."""
+    safe_limit = max(10, min(limit, 50))
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id FROM albums 
+            WHERE cover_path IS NOT NULL AND cover_path != ''
+            ORDER BY RANDOM()
+            LIMIT ?
+        """, (safe_limit,))
+        rows = cursor.fetchall()
+
+    album_ids = [r["id"] for r in rows]
+    return {
+        "covers": [f"/api/covers/{aid}" for aid in album_ids]
+    }
+
 @router.get("/covers/{album_id}")
 async def get_album_cover(album_id: int):
     """Serve album artwork with disk caching and fallback SVG placeholder."""

@@ -49,8 +49,13 @@ async def auth_middleware(request: Request, call_next):
         "/api/auth/setup",
         "/api/auth/login",
         "/api/client-error",
+        "/api/covers-sample",
     }
-    if request.url.path in public_paths or request.url.path.startswith("/api/avatars/"):
+    if (
+        request.url.path in public_paths
+        or request.url.path.startswith("/api/avatars/")
+        or request.url.path.startswith("/api/covers/")
+    ):
         return await call_next(request)
 
     # Check authentication
