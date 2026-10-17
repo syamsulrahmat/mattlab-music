@@ -153,7 +153,7 @@ export const LibrarySidebar = ({
     }
   };
 
-  const isCustomOrder = playlistSort === 'custom' && !librarySearchQuery.trim();
+  const canReorder = !librarySearchQuery.trim();
 
   const content = (
     <div className="flex flex-col h-full min-h-0 bg-surface-island rounded-lg overflow-hidden select-none">
@@ -318,12 +318,7 @@ export const LibrarySidebar = ({
                   playlistSort === 'recent' ? 'text-brand-500 font-bold' : 'text-white'
                 }`}
               >
-                <div className="flex items-center gap-1.5">
-                  <span>Recently added</span>
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30">
-                    DEFAULT
-                  </span>
-                </div>
+                <span>Recently added</span>
                 {playlistSort === 'recent' && <Check size={13} />}
               </button>
               <button
@@ -483,7 +478,7 @@ export const LibrarySidebar = ({
 
           return (
             <React.Fragment key={pl.id}>
-              {isCustomOrder && isTargetAbove && (
+              {canReorder && isTargetAbove && (
                 <div className="h-0.5 w-full bg-brand-500 rounded-full my-1 shadow-sm shadow-brand-500/50" />
               )}
               <div
@@ -500,7 +495,7 @@ export const LibrarySidebar = ({
                 }}
                 onDragOver={(e) => {
                   e.preventDefault();
-                  if (isCustomOrder && draggedPlaylistIdx !== null) {
+                  if (canReorder && draggedPlaylistIdx !== null) {
                     e.dataTransfer.dropEffect = 'move';
                     const rect = e.currentTarget.getBoundingClientRect();
                     const midY = rect.top + rect.height / 2;
@@ -520,8 +515,8 @@ export const LibrarySidebar = ({
                   e.preventDefault();
                   setDragOverId(null);
 
-                  // 1. If dragging a playlist to reorder (only in custom order mode)
-                  if (isCustomOrder && draggedPlaylistIdx !== null) {
+                  // 1. If dragging a playlist to reorder
+                  if (canReorder && draggedPlaylistIdx !== null) {
                     const fromIdx = draggedPlaylistIdx;
                     let toIdx = idx;
                     if (playlistDropTarget?.position === 'below' && fromIdx > idx) {
@@ -529,16 +524,19 @@ export const LibrarySidebar = ({
                     } else if (playlistDropTarget?.position === 'above' && fromIdx < idx) {
                       toIdx = idx - 1;
                     }
-                    toIdx = Math.max(0, Math.min(playlists.length - 1, toIdx));
+                    toIdx = Math.max(0, Math.min(displayPlaylists.length - 1, toIdx));
 
                     setDraggedPlaylistIdx(null);
                     setPlaylistDropTarget(null);
 
                     if (fromIdx === toIdx) return;
 
-                    const newPlaylists = [...playlists];
+                    const newPlaylists = [...displayPlaylists];
                     const [moved] = newPlaylists.splice(fromIdx, 1);
                     newPlaylists.splice(toIdx, 0, moved);
+
+                    // Automatically switch to custom order mode when user reorders
+                    handleSetPlaylistSort('custom');
 
                     if (onReorderPlaylists) {
                       onReorderPlaylists(newPlaylists);
@@ -668,7 +666,7 @@ export const LibrarySidebar = ({
                     <span>Playlist • {pl.track_count} {pl.track_count === 1 ? 'song' : 'songs'}</span>
                   </p>
                 </div>
-                {isCustomOrder && (
+                {canReorder && (
                   <div 
                     draggable="true"
                     onDragStart={(e) => {
@@ -690,7 +688,7 @@ export const LibrarySidebar = ({
                   </div>
                 )}
               </div>
-              {isCustomOrder && isTargetBelow && (
+              {canReorder && isTargetBelow && (
                 <div className="h-0.5 w-full bg-brand-500 rounded-full my-1 shadow-sm shadow-brand-500/50" />
               )}
             </React.Fragment>
