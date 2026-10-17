@@ -780,12 +780,12 @@ def import_spotify_playlist(
                 WHERE id = ? AND user_id = ?
             """, (name, description, 1 if data.auto_sync else 0, playlist_id, current_user["id"]))
         else:
-            cursor.execute("SELECT COALESCE(MAX(position), 0) + 1 AS next_pos FROM playlists WHERE user_id = ?", (current_user["id"],))
-            next_pos = cursor.fetchone()["next_pos"]
+            # Shift existing playlists down so the newly imported playlist is placed at the top (position 0)
+            cursor.execute("UPDATE playlists SET position = position + 1 WHERE user_id = ?", (current_user["id"],))
             cursor.execute("""
                 INSERT INTO playlists (name, description, spotify_id, spotify_url, auto_sync, last_synced_at, user_id, position)
-                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?)
-            """, (name, description, spotify_id, spotify_url, 1 if data.auto_sync else 0, current_user["id"], next_pos))
+                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, 0)
+            """, (name, description, spotify_id, spotify_url, 1 if data.auto_sync else 0, current_user["id"]))
             playlist_id = cursor.lastrowid
 
     sync_result = sync_single_spotify_playlist(playlist_id, playlist_data=playlist_data)

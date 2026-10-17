@@ -23,9 +23,22 @@ export const LibrarySidebar = ({
   const [draggedPlaylistIdx, setDraggedPlaylistIdx] = useState(null);
   const [playlistDropTarget, setPlaylistDropTarget] = useState(null);
   
-  // Library search and sorting states
+  // Library search and sorting states (default: 'recent', persisted in localStorage)
   const [librarySearchQuery, setLibrarySearchQuery] = useState('');
-  const [playlistSort, setPlaylistSort] = useState('custom'); // 'custom', 'name_asc', 'name_desc', 'recent', 'tracks'
+  const [playlistSort, setPlaylistSort] = useState(() => {
+    try {
+      return localStorage.getItem('library_playlist_sort') || 'recent';
+    } catch (_) {
+      return 'recent';
+    }
+  });
+
+  const handleSetPlaylistSort = (mode) => {
+    setPlaylistSort(mode);
+    try {
+      localStorage.setItem('library_playlist_sort', mode);
+    } catch (_) {}
+  };
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const sortMenuRef = useRef(null);
@@ -57,7 +70,12 @@ export const LibrarySidebar = ({
     } else if (playlistSort === 'name_desc') {
       list.sort((a, b) => b.name.localeCompare(a.name));
     } else if (playlistSort === 'recent') {
-      list.sort((a, b) => new Date(b.created_at || b.added_at || 0) - new Date(a.created_at || a.added_at || 0));
+      list.sort((a, b) => {
+        const timeA = new Date((a.created_at || '').replace(' ', 'T') + (a.created_at?.includes('Z') ? '' : 'Z')).getTime() || 0;
+        const timeB = new Date((b.created_at || '').replace(' ', 'T') + (b.created_at?.includes('Z') ? '' : 'Z')).getTime() || 0;
+        if (timeB !== timeA) return timeB - timeA;
+        return (b.id || 0) - (a.id || 0);
+      });
     } else if (playlistSort === 'tracks') {
       list.sort((a, b) => (b.track_count || 0) - (a.track_count || 0));
     }
@@ -257,7 +275,7 @@ export const LibrarySidebar = ({
               </div>
               <button
                 onClick={() => {
-                  setPlaylistSort('custom');
+                  handleSetPlaylistSort('custom');
                   setIsSortMenuOpen(false);
                 }}
                 className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-white/10 transition ${
@@ -269,7 +287,7 @@ export const LibrarySidebar = ({
               </button>
               <button
                 onClick={() => {
-                  setPlaylistSort('name_asc');
+                  handleSetPlaylistSort('name_asc');
                   setIsSortMenuOpen(false);
                 }}
                 className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-white/10 transition ${
@@ -281,7 +299,7 @@ export const LibrarySidebar = ({
               </button>
               <button
                 onClick={() => {
-                  setPlaylistSort('name_desc');
+                  handleSetPlaylistSort('name_desc');
                   setIsSortMenuOpen(false);
                 }}
                 className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-white/10 transition ${
@@ -293,19 +311,24 @@ export const LibrarySidebar = ({
               </button>
               <button
                 onClick={() => {
-                  setPlaylistSort('recent');
+                  handleSetPlaylistSort('recent');
                   setIsSortMenuOpen(false);
                 }}
                 className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-white/10 transition ${
                   playlistSort === 'recent' ? 'text-brand-500 font-bold' : 'text-white'
                 }`}
               >
-                <span>Recently added</span>
+                <div className="flex items-center gap-1.5">
+                  <span>Recently added</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30">
+                    DEFAULT
+                  </span>
+                </div>
                 {playlistSort === 'recent' && <Check size={13} />}
               </button>
               <button
                 onClick={() => {
-                  setPlaylistSort('tracks');
+                  handleSetPlaylistSort('tracks');
                   setIsSortMenuOpen(false);
                 }}
                 className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-white/10 transition ${

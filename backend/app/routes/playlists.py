@@ -104,7 +104,7 @@ async def list_playlists(current_user: Dict[str, Any] = Depends(get_current_user
             LEFT JOIN tracks t ON pt.track_id = t.id
             WHERE p.user_id = ?
             GROUP BY p.id
-            ORDER BY p.position ASC, p.updated_at DESC
+            ORDER BY p.position ASC, p.created_at DESC, p.id DESC
         """, (current_user["id"],))
         playlists = [dict(row) for row in cursor.fetchall()]
 
@@ -134,11 +134,11 @@ async def create_playlist(payload: PlaylistCreate, current_user: Dict[str, Any] 
 
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT COALESCE(MAX(position), 0) + 1 AS next_pos FROM playlists WHERE user_id = ?", (current_user["id"],))
-        next_pos = cursor.fetchone()["next_pos"]
+        # Shift existing playlists down so the newly added playlist is placed at the top (position 0)
+        cursor.execute("UPDATE playlists SET position = position + 1 WHERE user_id = ?", (current_user["id"],))
         cursor.execute(
-            "INSERT INTO playlists (name, description, user_id, position) VALUES (?, ?, ?, ?)",
-            (clean_name, payload.description or "", current_user["id"], next_pos)
+            "INSERT INTO playlists (name, description, user_id, position) VALUES (?, ?, ?, 0)",
+            (clean_name, payload.description or "", current_user["id"])
         )
         playlist_id = cursor.lastrowid
 
@@ -395,12 +395,11 @@ async def create_playlist_from_album(album_id: int, current_user: Dict[str, Any]
 
         playlist_name = f"{album['artist_name']} - {album['album_title']}"
         
-        cursor.execute("SELECT COALESCE(MAX(position), 0) + 1 AS next_pos FROM playlists WHERE user_id = ?", (current_user["id"],))
-        next_pl_pos = cursor.fetchone()["next_pos"]
-
+        # Shift existing playlists down so the newly added playlist is placed at the top (position 0)
+        cursor.execute("UPDATE playlists SET position = position + 1 WHERE user_id = ?", (current_user["id"],))
         cursor.execute(
-            "INSERT INTO playlists (name, description, position, user_id) VALUES (?, ?, ?, ?)",
-            (playlist_name, f"Album: {album['album_title']} by {album['artist_name']}", next_pl_pos, current_user["id"])
+            "INSERT INTO playlists (name, description, position, user_id) VALUES (?, ?, 0, ?)",
+            (playlist_name, f"Album: {album['album_title']} by {album['artist_name']}", current_user["id"])
         )
         playlist_id = cursor.lastrowid
 
