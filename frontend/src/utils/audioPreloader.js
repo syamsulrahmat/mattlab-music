@@ -186,7 +186,7 @@ class AudioPreloader {
       try {
         await this.preloadSingleTrack(track, signal);
       } catch (err) {
-        if (signal.aborted) break;
+        if (signal.aborted || err?.name === 'AbortError') break;
         console.warn(`[AudioPreloader] Failed to preload track ${track.id} (${track.title}):`, err);
       }
     }
@@ -195,6 +195,7 @@ class AudioPreloader {
   }
 
   async preloadSingleTrack(track, signal) {
+    if (signal.aborted) return;
     const streamUrl = track.stream_url || `/api/stream/${track.id}`;
     let audioBlob = null;
 
@@ -223,6 +224,7 @@ class AudioPreloader {
 
     // If not cached, fetch from network
     if (!audioBlob) {
+      if (signal.aborted) return;
       const response = await fetch(streamUrl, {
         signal,
         headers: { Accept: '*/*' },
@@ -233,11 +235,13 @@ class AudioPreloader {
       }
 
       // If cache is enabled, store response
-      if (cache) {
+      if (cache && !signal.aborted) {
         try {
           await cache.put(streamUrl, response.clone());
         } catch (e) {
-          console.warn('[AudioPreloader] Cache.put failed:', e);
+          if (!signal.aborted && e?.name !== 'AbortError') {
+            console.warn('[AudioPreloader] Cache.put failed:', e);
+          }
         }
       }
 
