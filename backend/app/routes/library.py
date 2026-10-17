@@ -1,7 +1,11 @@
+import re
+import logging
 from typing import Optional, List
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Query
 from app.database import get_db
+
+logger = logging.getLogger("library_routes")
 
 router = APIRouter(tags=["Library & Catalog"])
 
@@ -401,15 +405,28 @@ async def list_tracks(
 
     return {"items": tracks, "limit": limit, "offset": offset}
 
+def sanitize_fts5_query(user_query: str) -> str:
+    """Sanitize arbitrary user input into a safe, syntax-valid SQLite FTS5 query."""
+    cleaned = re.sub(r"[^\w\s]", " ", user_query).strip()
+    words = [w for w in cleaned.split() if w]
+    if not words:
+        return ""
+    if len(words) == 1:
+        return f'"{words[0]}"*'
+    phrase = '"' + " ".join(words) + '"'
+    tokens = " AND ".join([f'"{w}"*' if i == len(words) - 1 else f'"{w}"' for i, w in enumerate(words)])
+    return f"{phrase} OR ({tokens})"
+
+
 @router.get("/search")
-async def search_library(q: str = Query(..., min_length=1)):
-    """Search across tracks, artists, and albums simultaneously with smart typo resolution."""
+async def search_library(q: str = Query(..., min_length=1), limit: int = Query(25, ge=1, le=100)):
+    """Search across tracks, lyrics, artists, and albums simultaneously with FTS5 and smart typo resolution."""
     from app.routes.request_music import resolve_smart_canonical_query
 
     cleaned_q = q.strip()
     tokens = [t.strip() for t in cleaned_q.split() if t.strip()]
     if not tokens:
-        return {"query": q, "tracks": [], "albums": [], "artists": []}
+        return {"query": q, "tracks": [], "lyrics_matches": [], "albums": [], "artists": []}
 
     with get_db() as conn:
         cursor = conn.cursor()
@@ -430,18 +447,61 @@ async def search_library(q: str = Query(..., min_length=1)):
             JOIN artists ar ON t.artist_id = ar.id
             WHERE {' AND '.join(track_where_clauses)}
             ORDER BY t.title COLLATE NOCASE ASC
-            LIMIT 25
+            LIMIT {limit}
         """, tuple(track_params))
         tracks = [
             {
                 **dict(row),
                 "cover_url": f"/api/covers/{row['album_id']}",
                 "stream_url": f"/api/stream/{row['id']}",
+                "matched_in": "metadata",
             }
             for row in cursor.fetchall()
         ]
 
-        # 2. Search albums matching tokens
+        # 2. Search SQLite FTS5 for matches across indexed song lyrics
+        lyrics_matches = []
+        fts_q = sanitize_fts5_query(cleaned_q)
+        if fts_q:
+            try:
+                cursor.execute("""
+                    SELECT 
+                        t.id, t.title, t.track_number, t.duration_seconds,
+                        a.id AS album_id, a.title AS album_title,
+                        ar.id AS artist_id, ar.name AS artist_name,
+                        snippet(tracks_lyrics_fts, 4, '<mark class="bg-brand-500/25 text-brand-300 font-semibold px-0.5 rounded">', '</mark>', '...', 10) AS lyric_snippet,
+                        bm25(tracks_lyrics_fts) AS rank
+                    FROM tracks_lyrics_fts fts
+                    JOIN tracks t ON fts.track_id = t.id
+                    JOIN albums a ON t.album_id = a.id
+                    JOIN artists ar ON t.artist_id = ar.id
+                    WHERE tracks_lyrics_fts MATCH ?
+                    ORDER BY rank ASC
+                    LIMIT 20
+                """, (fts_q,))
+                for row in cursor.fetchall():
+                    item = {
+                        **dict(row),
+                        "cover_url": f"/api/covers/{row['album_id']}",
+                        "stream_url": f"/api/stream/{row['id']}",
+                        "matched_in": "lyrics",
+                    }
+                    lyrics_matches.append(item)
+            except Exception as e:
+                logger.warning(f"[Search] FTS5 lyrics search error: {e}")
+
+        # Smart merge of metadata matches and lyrics matches
+        tracks_by_id = {t["id"]: t for t in tracks}
+        for lm in lyrics_matches:
+            if lm["id"] in tracks_by_id:
+                # Track matched both title/artist and lyrics
+                tracks_by_id[lm["id"]]["lyric_snippet"] = lm["lyric_snippet"]
+                tracks_by_id[lm["id"]]["matched_in"] = "title_and_lyrics"
+            else:
+                # Track matched specifically by lyrics - append to general tracks list as well
+                tracks.append(lm)
+
+        # 3. Search albums matching tokens
         album_where_clauses = ["(a.title LIKE ? OR ar.name LIKE ?)" for _ in tokens]
         album_params = []
         for tok in tokens:
@@ -468,7 +528,7 @@ async def search_library(q: str = Query(..., min_length=1)):
             for row in cursor.fetchall()
         ]
 
-        # 3. Search artists matching query
+        # 4. Search artists matching query
         cursor.execute("""
             SELECT 
                 ar.id, ar.name,
@@ -490,10 +550,10 @@ async def search_library(q: str = Query(..., min_length=1)):
             for row in cursor.fetchall()
         ]
 
-        # 4. Smart canonical typo resolution fallback if 0 local results or few results
+        # 5. Smart canonical typo / lyric resolution fallback if 0 local results
         corrected_query = None
         did_you_mean = None
-        if len(tracks) == 0 and len(albums) == 0 and len(artists) == 0:
+        if len(tracks) == 0 and len(lyrics_matches) == 0 and len(albums) == 0 and len(artists) == 0:
             try:
                 canonical = resolve_smart_canonical_query(cleaned_q)
                 if canonical:
@@ -520,17 +580,19 @@ async def search_library(q: str = Query(..., min_length=1)):
                             **dict(row),
                             "cover_url": f"/api/covers/{row['album_id']}",
                             "stream_url": f"/api/stream/{row['id']}",
+                            "matched_in": "canonical_lookup",
                         }
                         for row in cursor.fetchall()
                     ]
                     if extra_tracks:
                         tracks.extend(extra_tracks)
             except Exception as e:
-                print(f"[Search] Canonical typo check error: {e}")
+                logger.warning(f"[Search] Canonical typo check error: {e}")
 
     resp = {
         "query": q,
         "tracks": tracks,
+        "lyrics_matches": lyrics_matches,
         "albums": albums,
         "artists": artists,
     }
@@ -539,3 +601,4 @@ async def search_library(q: str = Query(..., min_length=1)):
         resp["did_you_mean"] = did_you_mean
 
     return resp
+

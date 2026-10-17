@@ -16,7 +16,7 @@ from mutagen.flac import FLAC
 from mutagen.mp4 import MP4
 
 from app.config import DATA_DIR
-from app.database import get_db
+from app.database import get_db, sync_track_to_lyrics_fts, remove_track_from_lyrics_fts
 
 logger = logging.getLogger("lyrics_fetcher")
 logger.setLevel(logging.INFO)
@@ -279,6 +279,7 @@ class LyricsBackgroundFetcher:
         # Delete negative cache files
         deleted_count = 0
         for tid in reset_ids:
+            remove_track_from_lyrics_fts(tid)
             cache_file = LYRICS_DIR / f"{tid}.json"
             if cache_file.exists():
                 try:
@@ -323,6 +324,7 @@ class LyricsBackgroundFetcher:
 
         status = "synced" if is_synced else "plain"
         self._update_db_lyrics_status(track_id, status)
+        sync_track_to_lyrics_fts(track_id, text)
 
         # Attempt to save .lrc sidecar file next to audio file on disk
         try:
@@ -403,6 +405,7 @@ class LyricsBackgroundFetcher:
                     }
                     cache_file.write_text(json.dumps(result), encoding="utf-8")
                     self._update_db_lyrics_status(track_id, "synced")
+                    sync_track_to_lyrics_fts(track_id, lrc_text)
                     return result
             except Exception as e:
                 logger.debug(f"Error reading local .lrc for {track_id}: {e}")
@@ -420,6 +423,7 @@ class LyricsBackgroundFetcher:
                 cache_file.write_text(json.dumps(result), encoding="utf-8")
                 status = "synced" if embedded.get("syncedLyrics") else "plain"
                 self._update_db_lyrics_status(track_id, status)
+                sync_track_to_lyrics_fts(track_id, embedded.get("syncedLyrics") or embedded.get("plainLyrics"))
                 return result
 
         # ─── TIER 3 & 4: Outbound APIs (LRCLIB & Lyrics.ovh) ─────────────────
@@ -516,6 +520,7 @@ class LyricsBackgroundFetcher:
             cache_file.write_text(json.dumps(result), encoding="utf-8")
             status = "synced" if lrclib_data.get("syncedLyrics") else "plain"
             self._update_db_lyrics_status(track_id, status)
+            sync_track_to_lyrics_fts(track_id, lrclib_data.get("syncedLyrics") or lrclib_data.get("plainLyrics"))
             return result
 
         # ─── TIER 4: Secondary Provider Fallback: Lyrics.ovh (Plain) ─────────
@@ -534,6 +539,7 @@ class LyricsBackgroundFetcher:
                         }
                         cache_file.write_text(json.dumps(result), encoding="utf-8")
                         self._update_db_lyrics_status(track_id, "plain")
+                        sync_track_to_lyrics_fts(track_id, sanitized_ovh)
                         return result
             except urllib.error.HTTPError as http_err:
                 if http_err.code in (500, 502, 503, 504):

@@ -178,13 +178,13 @@ export const SearchView = ({
                           : 'hover:bg-surface-elevated text-content-primary'
                       }`}
                     >
-                      <div className="flex items-center gap-3 truncate">
+                      <div className="flex items-center gap-3 truncate min-w-0 flex-1 mr-3">
                         <img
                           src={track.cover_url}
                           alt={track.title}
                           className="w-11 h-11 rounded object-cover bg-surface-elevated2 shrink-0"
                         />
-                        <div className="truncate">
+                        <div className="truncate min-w-0 flex-1">
                           <p className={`text-sm font-medium truncate ${isCurrentTrack ? 'text-brand-500' : 'text-content-primary'}`}>
                             {track.title}
                           </p>

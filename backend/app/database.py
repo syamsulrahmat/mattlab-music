@@ -290,6 +290,8 @@ def init_db() -> None:
         except Exception:
             pass
 
+        _init_lyrics_fts(conn)
+
 def _backfill_existing_lyrics_cache(conn: sqlite3.Connection):
     """Scan existing /data/lyrics/*.json files and populate tracks.lyrics_status in SQLite."""
     try:
@@ -325,4 +327,113 @@ def _backfill_existing_lyrics_cache(conn: sqlite3.Connection):
             print(f"[DB MIGRATION] Backfilled {len(updates)} cached lyrics into tracks.lyrics_status.")
     except Exception as e:
         print(f"[DB MIGRATION] Error backfilling lyrics cache: {e}")
+
+
+def _init_lyrics_fts(conn: sqlite3.Connection):
+    """Initialize and populate SQLite FTS5 virtual table for lightning-fast lyrics searching."""
+    try:
+        conn.execute("""
+            CREATE VIRTUAL TABLE IF NOT EXISTS tracks_lyrics_fts USING fts5(
+                track_id UNINDEXED,
+                title,
+                artist_name,
+                album_title,
+                plain_lyrics,
+                tokenize="porter unicode61 remove_diacritics 2"
+            )
+        """)
+        cursor = conn.cursor()
+        cursor.execute("SELECT track_id FROM tracks_lyrics_fts")
+        indexed_ids = set(r["track_id"] for r in cursor.fetchall())
+
+        import re
+        import json
+        from pathlib import Path
+        from app.config import DATA_DIR
+
+        lyrics_dir = DATA_DIR / "lyrics"
+        if not lyrics_dir.exists():
+            return
+
+        batch = []
+        for json_file in lyrics_dir.glob("*.json"):
+            if not json_file.stem.isdigit():
+                continue
+            tid = int(json_file.stem)
+            if tid in indexed_ids:
+                continue
+            try:
+                data = json.loads(json_file.read_text(encoding="utf-8"))
+                raw = data.get("syncedLyrics") or data.get("plainLyrics")
+                if raw and not data.get("notFound"):
+                    clean = re.sub(r"\[\d{2}:\d{2}(?:\.\d+)?\]", "", raw).strip()
+                    if clean:
+                        batch.append((tid, clean))
+            except Exception:
+                continue
+
+            if batch:
+                cursor.execute("""
+                    SELECT t.id, t.title, ar.name as artist, a.title as album
+                    FROM tracks t
+                    JOIN artists ar ON t.artist_id = ar.id
+                    JOIN albums a ON t.album_id = a.id
+                """)
+                meta = {r["id"]: (r["title"], r["artist"], r["album"]) for r in cursor.fetchall()}
+
+                insert_rows = []
+                for tid, clean_lyrics in batch:
+                    if tid in meta:
+                        title, artist, album = meta[tid]
+                        insert_rows.append((tid, title, artist, album, clean_lyrics))
+
+                if insert_rows:
+                    cursor.executemany("""
+                        INSERT INTO tracks_lyrics_fts (track_id, title, artist_name, album_title, plain_lyrics)
+                        VALUES (?, ?, ?, ?, ?)
+                    """, insert_rows)
+                    print(f"[FTS] Successfully indexed {len(insert_rows)} tracks into tracks_lyrics_fts.")
+    except Exception as e:
+        print(f"[FTS] Error initializing tracks_lyrics_fts: {e}")
+
+
+def sync_track_to_lyrics_fts(track_id: int, lyrics_text: str):
+    """Insert or update track lyrics in the tracks_lyrics_fts virtual table."""
+    if not lyrics_text:
+        return
+    import re
+    # Strip timestamp brackets e.g. [01:23.45]
+    clean_lyrics = re.sub(r"\[\d{2}:\d{2}(?:\.\d+)?\]", "", lyrics_text).strip()
+    if not clean_lyrics:
+        return
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT t.title, ar.name AS artist_name, a.title AS album_title
+                FROM tracks t
+                JOIN artists ar ON t.artist_id = ar.id
+                JOIN albums a ON t.album_id = a.id
+                WHERE t.id = ?
+            """, (track_id,))
+            row = cursor.fetchone()
+            if not row:
+                return
+            cursor.execute("DELETE FROM tracks_lyrics_fts WHERE track_id = ?", (track_id,))
+            cursor.execute("""
+                INSERT INTO tracks_lyrics_fts (track_id, title, artist_name, album_title, plain_lyrics)
+                VALUES (?, ?, ?, ?, ?)
+            """, (track_id, row["title"], row["artist_name"], row["album_title"], clean_lyrics))
+    except Exception as e:
+        print(f"[FTS] Error syncing track {track_id} to lyrics index: {e}")
+
+
+def remove_track_from_lyrics_fts(track_id: int):
+    """Remove track from tracks_lyrics_fts virtual table."""
+    try:
+        with get_db() as conn:
+            conn.execute("DELETE FROM tracks_lyrics_fts WHERE track_id = ?", (track_id,))
+    except Exception as e:
+        print(f"[FTS] Error removing track {track_id} from lyrics index: {e}")
+
 
