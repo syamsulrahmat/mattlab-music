@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import { Mic2, Music, RefreshCw, X, ArrowDownCircle, MicOff, Mic, Loader2 } from 'lucide-react';
+import { Mic2, Music, RefreshCw, X, ArrowDownCircle, MicOff, Mic, Loader2, Edit3 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { parseLrc, formatPlainLyrics } from '../utils/lyrics';
 import { LYRICS_CONFIG } from '../config/lyricsConfig';
 import { DESIGN_TOKENS } from '../config/designTokens';
+import { EditLyricsModal } from './EditLyricsModal';
 
 export const LyricsView = ({ onClose }) => {
   const { 
@@ -29,6 +30,8 @@ export const LyricsView = ({ onClose }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [activeLineIdx, setActiveLineIdx] = useState(-1);
   const [isUserScrolled, setIsUserScrolled] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
 
   const containerRef = useRef(null);
   const lineRefs = useRef([]);
@@ -292,6 +295,13 @@ export const LyricsView = ({ onClose }) => {
           </div>
 
           <button
+            onClick={() => setIsEditModalOpen(true)}
+            className="p-2 rounded-full hover:bg-white/10 text-content-secondary hover:text-content-primary transition"
+            title="Edit or Paste Lyrics"
+          >
+            <Edit3 size={16} />
+          </button>
+          <button
             onClick={() => fetchLyrics(currentTrack.id, true)}
             disabled={isLoading}
             className="p-2 rounded-full hover:bg-white/10 text-content-secondary hover:text-content-primary transition"
@@ -362,13 +372,22 @@ export const LyricsView = ({ onClose }) => {
             <p className="text-xs text-content-muted max-w-sm mb-6">
               We couldn't find lyrics for "{currentTrack.title}" by {currentTrack.artist_name} on LRCLIB or locally as a .lrc file.
             </p>
-            <button
-              onClick={() => fetchLyrics(currentTrack.id, true)}
-              className="bg-surface-elevated hover:bg-surface-hover text-content-primary font-semibold text-xs px-4 py-2 rounded-full border border-border-medium transition flex items-center gap-2"
-            >
-              <RefreshCw size={13} />
-              Try Searching Again
-            </button>
+            <div className="flex items-center gap-2.5 flex-wrap justify-center">
+              <button
+                onClick={() => setIsEditModalOpen(true)}
+                className="bg-brand-500 hover:bg-brand-400 text-black font-bold text-xs px-4 py-2 rounded-full transition flex items-center gap-1.5 shadow"
+              >
+                <Edit3 size={13} />
+                <span>Add / Paste Lyrics</span>
+              </button>
+              <button
+                onClick={() => fetchLyrics(currentTrack.id, true)}
+                className="bg-surface-elevated hover:bg-surface-hover text-content-primary font-semibold text-xs px-4 py-2 rounded-full border border-border-medium transition flex items-center gap-2"
+              >
+                <RefreshCw size={13} />
+                <span>Try Searching Again</span>
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -383,6 +402,19 @@ export const LyricsView = ({ onClose }) => {
           <span>Resume Auto-scroll</span>
         </button>
       )}
+
+      {/* Edit / Paste Lyrics Modal */}
+      <EditLyricsModal
+        isOpen={isEditModalOpen}
+        track={currentTrack}
+        initialLyrics={lyricsData}
+        onClose={() => setIsEditModalOpen(false)}
+        onLyricsSaved={(savedData) => {
+          setLyricsData(savedData);
+          setIsUserScrolled(false);
+          setActiveLineIdx(-1);
+        }}
+      />
     </div>
   );
 };

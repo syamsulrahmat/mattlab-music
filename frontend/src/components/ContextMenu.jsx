@@ -18,6 +18,7 @@ export const ContextMenu = ({
   onSelectPlaylist,
   onSelectTab,
   onAddToPlaylist,
+  onEditLyrics,
   onPlaylistUpdated,
   onPlaylistDeleted,
   onPromptDeletePlaylist,
@@ -167,6 +168,19 @@ export const ContextMenu = ({
             >
               <Plus size={15} className="text-content-secondary" />
               <span>Add to playlist</span>
+            </button>
+          )}
+
+          {onEditLyrics && (
+            <button
+              onClick={() => {
+                onEditLyrics(data);
+                onClose();
+              }}
+              className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
+            >
+              <Edit2 size={15} className="text-content-secondary" />
+              <span>Edit / Add Lyrics</span>
             </button>
           )}
 

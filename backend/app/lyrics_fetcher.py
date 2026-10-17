@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import time
 import logging
@@ -24,6 +25,70 @@ LYRICS_DIR = DATA_DIR / "lyrics"
 LYRICS_DIR.mkdir(parents=True, exist_ok=True)
 
 USER_AGENT = "MattLabMusic/1.0.0 (https://github.com/syamsulrahmat/mattlab-music; self-hosted)"
+
+
+def clean_title_for_search(title: Optional[str]) -> str:
+    """Strip feat, version, remix, remastered, and bonus tags for higher lyric hit rates."""
+    if not title:
+        return ""
+    cleaned = re.sub(
+        r"\s*[\(\[](?:feat\.?|ft\.?|featuring|deluxe|remaster(?:ed)?|bonus|expanded|edition|version|official|from\s+[\"'][^\"']+[\"']|live|acoustic|karaoke\s+version)[^\)\]]*[\)\]]",
+        "",
+        title,
+        flags=re.IGNORECASE,
+    )
+    cleaned = re.sub(
+        r"\s*-\s*(?:remaster(?:ed)?(?:\s*\d{4})?|single|ep|bonus\s*track|deluxe(?:\s*edition)?|voice\s*memos?).*$",
+        "",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    return cleaned.strip() or title.strip()
+
+
+def clean_artist_for_search(artist: Optional[str]) -> str:
+    """Extract primary artist, stripping featured artists and collaboration suffixes."""
+    if not artist:
+        return ""
+    a = re.sub(r"\s*[\(\[](?:feat\.?|ft\.?|featuring)[^\)\]]*[\)\]]", "", artist, flags=re.IGNORECASE)
+    parts = re.split(r"\s*(?:\b(?:feat\.?|ft\.?|featuring|vs\.?)\b|[/,&])\s*", a, flags=re.IGNORECASE)
+    cleaned = parts[0].strip() if parts else artist.strip()
+    return cleaned or artist.strip()
+
+
+def clean_album_for_search(album: Optional[str]) -> str:
+    """Strip deluxe, anniversary, and bonus tags from album titles."""
+    if not album:
+        return ""
+    cleaned = re.sub(
+        r"\s*[\(\[](?:deluxe|bonus|expanded|edition|remaster(?:ed)?|anniversary)[^\)\]]*[\)\]]",
+        "",
+        album,
+        flags=re.IGNORECASE,
+    )
+    return cleaned.strip() or album.strip()
+
+
+def fetch_ovh_lyrics(artist: str, title: str) -> Optional[str]:
+    """Fetch plain text lyrics from free public api.lyrics.ovh fallback."""
+    if not artist or not title:
+        return None
+    try:
+        url = f"https://api.lyrics.ovh/v1/{urllib.parse.quote(artist)}/{urllib.parse.quote(title)}"
+        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            lyrics = data.get("lyrics")
+            if lyrics and str(lyrics).strip():
+                return str(lyrics).strip()
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return None
+        raise
+    except Exception:
+        raise
+    return None
+
 
 
 def sanitize_lyrics_text(plain_text: Optional[str]) -> Optional[str]:
@@ -197,6 +262,85 @@ class LyricsBackgroundFetcher:
         self.telegram_notified = False
         logger.info(f"[LyricsFetcher] Enqueued {len(missing_ids)} missing tracks for background retrieval.")
 
+    def reset_unmatched_tracks(self) -> int:
+        """
+        Reset tracks previously marked 'not_found' due to 503/network errors.
+        Deletes stale negative cache files and enqueues them for fresh retrieval.
+        """
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM tracks WHERE lyrics_status = 'not_found' ORDER BY id ASC")
+            rows = cursor.fetchall()
+            reset_ids = [r["id"] for r in rows]
+
+            if reset_ids:
+                conn.execute("UPDATE tracks SET lyrics_status = 'pending' WHERE lyrics_status = 'not_found'")
+
+        # Delete negative cache files
+        deleted_count = 0
+        for tid in reset_ids:
+            cache_file = LYRICS_DIR / f"{tid}.json"
+            if cache_file.exists():
+                try:
+                    data = json.loads(cache_file.read_text(encoding="utf-8"))
+                    if data.get("notFound") is True or (not data.get("syncedLyrics") and not data.get("plainLyrics")):
+                        cache_file.unlink()
+                        deleted_count += 1
+                except Exception:
+                    try:
+                        cache_file.unlink()
+                        deleted_count += 1
+                    except Exception:
+                        pass
+
+        # Enqueue back into backlog queue
+        if reset_ids:
+            self.enqueue_tracks(reset_ids, high_priority=False)
+            self.telegram_notified = False
+            logger.info(f"[LyricsFetcher] Reset {len(reset_ids)} 'not_found' tracks (deleted {deleted_count} negative cache files).")
+
+        return len(reset_ids)
+
+    def save_custom_lyrics(self, track_id: int, lyrics_text: str, is_synced: Optional[bool] = None) -> Dict[str, Any]:
+        """Save user-edited or custom pasted lyrics for a track."""
+        text = lyrics_text.strip()
+        if not text:
+            raise ValueError("Lyrics text cannot be empty")
+
+        if is_synced is None:
+            # Auto-detect LRC timestamp format like [00:12.34] or [01:23]
+            is_synced = bool(re.search(r"\[\d{2}:\d{2}", text))
+
+        cache_file = LYRICS_DIR / f"{track_id}.json"
+        result = {
+            "track_id": track_id,
+            "syncedLyrics": text if is_synced else None,
+            "plainLyrics": None if is_synced else sanitize_lyrics_text(text),
+            "source": "manual",
+            "updated_at": int(time.time()),
+        }
+        cache_file.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        status = "synced" if is_synced else "plain"
+        self._update_db_lyrics_status(track_id, status)
+
+        # Attempt to save .lrc sidecar file next to audio file on disk
+        try:
+            with get_db() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT file_path FROM tracks WHERE id = ?", (track_id,))
+                row = cursor.fetchone()
+            if row and row["file_path"]:
+                audio_path = Path(row["file_path"])
+                if audio_path.exists():
+                    lrc_path = audio_path.with_suffix(".lrc")
+                    lrc_path.write_text(text, encoding="utf-8", errors="ignore")
+                    logger.info(f"[LyricsFetcher] Saved .lrc sidecar file for track {track_id} to {lrc_path}")
+        except Exception as e:
+            logger.warning(f"[LyricsFetcher] Could not write .lrc sidecar for track {track_id}: {e}")
+
+        return result
+
     def _wait_for_rate_limit(self):
         """Enforce polite 2.5s delay between outbound network requests."""
         elapsed = time.time() - self.last_network_request_time
@@ -206,11 +350,12 @@ class LyricsBackgroundFetcher:
 
     def fetch_single_track(self, track_id: int, force: bool = False) -> Dict[str, Any]:
         """
-        Fetch lyrics for a single track following the 4-tier waterfall:
+        Fetch lyrics for a single track following the multi-tier waterfall:
         1. Local cache in /data/lyrics/{track_id}.json
         2. Local .lrc sidecar file next to audio file
         3. Embedded audio tags in file (FLAC, MP3, MP4)
-        4. Outbound LRCLIB API with anti-blocking rate limits & backoff
+        4. Outbound LRCLIB API (Exact match & Fuzzy clean match)
+        5. Public Lyrics.ovh API fallback (plain text)
         """
         cache_file = LYRICS_DIR / f"{track_id}.json"
 
@@ -277,26 +422,39 @@ class LyricsBackgroundFetcher:
                 self._update_db_lyrics_status(track_id, status)
                 return result
 
-        # ─── TIER 3 & 4: Outbound LRCLIB API with Safe Rate Limiting ─────────
-        # Check circuit breaker before making outbound request
+        # ─── TIER 3 & 4: Outbound APIs (LRCLIB & Lyrics.ovh) ─────────────────
         if time.time() < self.circuit_breaker_until:
             cooldown_rem = int(self.circuit_breaker_until - time.time())
             logger.warning(f"[LyricsFetcher] Circuit breaker active. Cooling down for {cooldown_rem}s.")
-            return {"track_id": track_id, "syncedLyrics": None, "plainLyrics": None, "source": "none", "notFound": True}
+            return {
+                "track_id": track_id,
+                "syncedLyrics": None,
+                "plainLyrics": None,
+                "source": "none",
+                "notFound": False,
+                "transient": True,
+            }
 
-        clean_title = track["title"].split("(")[0].split("-")[0].strip()
-        primary_artist = track["artist_name"].split("/")[0].split(",")[0].strip()
+        raw_title = track["title"] or ""
+        raw_artist = track["artist_name"] or ""
+        raw_album = track["album_title"] or ""
+        duration_sec = int(track["duration_seconds"] or 0)
+
+        cleaned_title = clean_title_for_search(raw_title)
+        cleaned_artist = clean_artist_for_search(raw_artist)
+        cleaned_album = clean_album_for_search(raw_album)
 
         lrclib_data = None
+        has_transient_error = False
 
-        # 1. Exact match via /api/get
+        # Step 3a: Exact match via LRCLIB /api/get
         try:
             self._wait_for_rate_limit()
             params = {
-                "artist_name": primary_artist,
-                "track_name": clean_title,
-                "album_name": track["album_title"],
-                "duration": int(track["duration_seconds"] or 0),
+                "artist_name": cleaned_artist or raw_artist,
+                "track_name": cleaned_title or raw_title,
+                "album_name": cleaned_album or raw_album,
+                "duration": duration_sec,
             }
             url = f"https://lrclib.net/api/get?{urllib.parse.urlencode(params)}"
             req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
@@ -306,16 +464,21 @@ class LyricsBackgroundFetcher:
         except urllib.error.HTTPError as http_err:
             if http_err.code == 429:
                 self._handle_rate_limit(http_err)
+                has_transient_error = True
+            elif http_err.code in (500, 502, 503, 504):
+                has_transient_error = True
+                self._handle_network_error(http_err)
             elif http_err.code != 404:
                 self._handle_network_error(http_err)
         except Exception as e:
+            has_transient_error = True
             self._handle_network_error(e)
 
-        # 2. Fuzzy search fallback if exact match had no synced lyrics
+        # Step 3b: Search fallback on LRCLIB if exact match had no synced lyrics
         if (not lrclib_data or not lrclib_data.get("syncedLyrics")) and time.time() >= self.circuit_breaker_until:
             try:
                 self._wait_for_rate_limit()
-                query = f"{primary_artist} {clean_title}"
+                query = f"{cleaned_artist} {cleaned_title}".strip()
                 url = f"https://lrclib.net/api/search?q={urllib.parse.quote(query)}"
                 req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
                 with urllib.request.urlopen(req, timeout=5) as response:
@@ -325,14 +488,21 @@ class LyricsBackgroundFetcher:
                         if synced_match:
                             lrclib_data = synced_match
                         elif not lrclib_data and items:
-                            lrclib_data = items[0]
+                            plain_match = next((it for it in items if it.get("plainLyrics")), None)
+                            if plain_match:
+                                lrclib_data = plain_match
                 self.consecutive_network_errors = 0
             except urllib.error.HTTPError as http_err:
                 if http_err.code == 429:
                     self._handle_rate_limit(http_err)
+                    has_transient_error = True
+                elif http_err.code in (500, 502, 503, 504):
+                    has_transient_error = True
+                    self._handle_network_error(http_err)
                 elif http_err.code != 404:
                     self._handle_network_error(http_err)
             except Exception as e:
+                has_transient_error = True
                 self._handle_network_error(e)
 
         # If lyrics found on LRCLIB
@@ -348,7 +518,44 @@ class LyricsBackgroundFetcher:
             self._update_db_lyrics_status(track_id, status)
             return result
 
-        # Negative Caching (Permanent: never re-query)
+        # ─── TIER 4: Secondary Provider Fallback: Lyrics.ovh (Plain) ─────────
+        if time.time() >= self.circuit_breaker_until:
+            try:
+                self._wait_for_rate_limit()
+                ovh_lyrics = fetch_ovh_lyrics(cleaned_artist or raw_artist, cleaned_title or raw_title)
+                if ovh_lyrics:
+                    sanitized_ovh = sanitize_lyrics_text(ovh_lyrics)
+                    if sanitized_ovh:
+                        result = {
+                            "track_id": track_id,
+                            "syncedLyrics": None,
+                            "plainLyrics": sanitized_ovh,
+                            "source": "lyrics_ovh",
+                        }
+                        cache_file.write_text(json.dumps(result), encoding="utf-8")
+                        self._update_db_lyrics_status(track_id, "plain")
+                        return result
+            except urllib.error.HTTPError as http_err:
+                if http_err.code in (500, 502, 503, 504):
+                    has_transient_error = True
+                elif http_err.code != 404:
+                    logger.debug(f"Lyrics.ovh HTTP {http_err.code} for track {track_id}")
+            except Exception as e:
+                logger.debug(f"Lyrics.ovh request failed for track {track_id}: {e}")
+
+        # If transient network error occurred (503 / timeout), DO NOT negative cache!
+        if has_transient_error:
+            logger.warning(f"[LyricsFetcher] Transient network error for track {track_id} ({raw_artist} - {raw_title}). Will retry later.")
+            return {
+                "track_id": track_id,
+                "syncedLyrics": None,
+                "plainLyrics": None,
+                "source": "none",
+                "notFound": False,
+                "transient": True,
+            }
+
+        # Negative Caching (Only when affirmatively 404 across providers)
         not_found_result = {
             "track_id": track_id,
             "syncedLyrics": None,

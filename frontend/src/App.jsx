@@ -17,6 +17,7 @@ import { PlayerBar } from './components/PlayerBar';
 import { FloatingMiniPlayer } from './components/FloatingMiniPlayer';
 import { MobileNav } from './components/MobileNav';
 import { AddToPlaylistModal } from './components/AddToPlaylistModal';
+import { EditLyricsModal } from './components/EditLyricsModal';
 import { CreatePlaylistModal } from './components/CreatePlaylistModal';
 import { ImportSpotifyModal } from './components/ImportSpotifyModal';
 import { RequestMusicModal } from './components/RequestMusicModal';
@@ -51,6 +52,7 @@ const MainAppContent = () => {
   const [isQueueOpen, setIsQueueOpen] = useState(true);
   const [isMobileLibraryOpen, setIsMobileLibraryOpen] = useState(false);
   const [modalTrack, setModalTrack] = useState(null);
+  const [lyricsTrackToEdit, setLyricsTrackToEdit] = useState(null);
   const [isCreatePlaylistOpen, setIsCreatePlaylistOpen] = useState(false);
   const [isImportSpotifyOpen, setIsImportSpotifyOpen] = useState(false);
   const [isRequestMusicOpen, setIsRequestMusicOpen] = useState(false);
@@ -991,6 +993,7 @@ const MainAppContent = () => {
         onSelectPlaylist={handleSelectPlaylist}
         onSelectTab={handleSelectTab}
         onAddToPlaylist={(track) => setModalTrack(track)}
+        onEditLyrics={(track) => setLyricsTrackToEdit(track)}
         onPlaylistUpdated={fetchPlaylists}
         onPlaylistDeleted={handlePlaylistDeleted}
         onPromptDeletePlaylist={(pl) => setPlaylistToDelete(pl)}
@@ -1006,6 +1009,13 @@ const MainAppContent = () => {
         isOpen={Boolean(modalTrack)}
         onClose={() => setModalTrack(null)}
         onPlaylistUpdated={fetchPlaylists}
+      />
+
+      {/* Edit / Add Lyrics Modal */}
+      <EditLyricsModal
+        isOpen={Boolean(lyricsTrackToEdit)}
+        track={lyricsTrackToEdit}
+        onClose={() => setLyricsTrackToEdit(null)}
       />
 
       {/* Create Playlist Modal (Integrated In-App UI) */}
