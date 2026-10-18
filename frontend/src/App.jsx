@@ -1068,27 +1068,30 @@ const MainAppContent = () => {
       />
 
       {/* Custom Right-Click Context Menu */}
-      <ContextMenu
-        isOpen={contextMenu.isOpen}
-        x={contextMenu.x}
-        y={contextMenu.y}
-        type={contextMenu.type}
-        data={contextMenu.data}
-        onClose={handleCloseContextMenu}
-        onSelectAlbum={handleSelectAlbum}
-        onSelectArtist={handleSelectArtist}
-        onSelectPlaylist={handleSelectPlaylist}
-        onSelectTab={handleSelectTab}
-        onAddToPlaylist={(track) => setModalTrack(track)}
-        onEditLyrics={(track) => setLyricsTrackToEdit(track)}
-        onPlaylistUpdated={fetchPlaylists}
-        onPlaylistDeleted={handlePlaylistDeleted}
-        onPromptDeletePlaylist={(pl) => setPlaylistToDelete(pl)}
-        onPromptRenamePlaylist={(pl) => setPlaylistToRename(pl)}
-        onPromptTakeOwnership={(pl) => setPlaylistToTakeOwnership(pl)}
-        onCreatePlaylistPrompt={handleOpenCreatePlaylist}
-        onImportSpotifyPrompt={handleOpenImportSpotify}
-      />
+      {contextMenu.isOpen && (
+        <ContextMenu
+          key={`${contextMenu.x}-${contextMenu.y}-${contextMenu.type}-${contextMenu.data?.id || ''}`}
+          isOpen={contextMenu.isOpen}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          type={contextMenu.type}
+          data={contextMenu.data}
+          onClose={handleCloseContextMenu}
+          onSelectAlbum={handleSelectAlbum}
+          onSelectArtist={handleSelectArtist}
+          onSelectPlaylist={handleSelectPlaylist}
+          onSelectTab={handleSelectTab}
+          onAddToPlaylist={(track) => setModalTrack(track)}
+          onEditLyrics={(track) => setLyricsTrackToEdit(track)}
+          onPlaylistUpdated={fetchPlaylists}
+          onPlaylistDeleted={handlePlaylistDeleted}
+          onPromptDeletePlaylist={(pl) => setPlaylistToDelete(pl)}
+          onPromptRenamePlaylist={(pl) => setPlaylistToRename(pl)}
+          onPromptTakeOwnership={(pl) => setPlaylistToTakeOwnership(pl)}
+          onCreatePlaylistPrompt={handleOpenCreatePlaylist}
+          onImportSpotifyPrompt={handleOpenImportSpotify}
+        />
+      )}
 
       {/* Add to Playlist Modal */}
       <AddToPlaylistModal

@@ -930,7 +930,6 @@ export const PlaylistDetail = ({
     >
       {/* 4. Full-bleed Header Banner taking all the area without back button */}
       <div 
-        onContextMenu={(e) => onContextMenu?.(e, 'playlist', playlist)}
         className="bg-gradient-to-b from-emerald-950/45 via-surface-panel/75 to-surface-island px-6 sm:px-8 pt-8 sm:pt-10 pb-8 sm:pb-10 w-full border-b border-border-subtle"
       >
         <div className="flex flex-col md:flex-row gap-6 md:gap-7 items-start md:items-end">

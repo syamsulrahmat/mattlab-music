@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { 
   Play, Pause, Plus, Heart, ListPlus, Disc3, Mic2, CornerDownRight, Trash2,
   ListMusic, RefreshCw, ExternalLink, Edit2, Copy, Loader2, Mic, MicOff, UserCheck
@@ -79,13 +79,63 @@ export const ContextMenu = ({
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen || !data) return null;
+  // Screen boundary positioning calculation (Option A: Native Upward Flip)
+  const calculatePosition = (targetHeight = 420, targetWidth = 224) => {
+    if (typeof window === 'undefined') return { top: y, left: x, isFlipped: false };
 
-  // Screen boundary positioning adjustment
-  const menuWidth = 220;
-  const menuHeight = 280;
-  const adjustedX = Math.max(10, Math.min(x, window.innerWidth - menuWidth - 10));
-  const adjustedY = Math.max(10, Math.min(y, window.innerHeight - menuHeight - 10));
+    // Bottom clearance: 80px fixed player bar + 10px safe margin = 90px
+    const bottomPlayerBarHeight = 90;
+    const topBarHeight = 64;
+    const padding = 10;
+
+    const maxUsableY = window.innerHeight - bottomPlayerBarHeight;
+    const maxUsableX = window.innerWidth - padding;
+
+    let posX = x;
+    let posY = y;
+    let isFlipped = false;
+
+    // Horizontal boundary adjustment
+    if (x + targetWidth > maxUsableX) {
+      posX = Math.max(padding, x - targetWidth);
+      if (posX + targetWidth > maxUsableX) {
+        posX = Math.max(padding, maxUsableX - targetWidth);
+      }
+    } else {
+      posX = Math.max(padding, x);
+    }
+
+    // Vertical boundary adjustment: Flip upward if running past bottom player bar clearance
+    if (y + targetHeight > maxUsableY) {
+      const flippedY = y - targetHeight;
+      if (flippedY >= topBarHeight) {
+        posY = flippedY;
+        isFlipped = true;
+      } else {
+        // If neither above nor below fits completely, dock top above bottom bar
+        posY = Math.max(topBarHeight, maxUsableY - targetHeight);
+        isFlipped = posY < y;
+      }
+    } else {
+      posY = Math.max(topBarHeight, y);
+      isFlipped = false;
+    }
+
+    return { top: posY, left: posX, isFlipped };
+  };
+
+  const estimatedHeight = type === 'track' ? 440 : type === 'playlist' ? 380 : 260;
+  const [coords, setCoords] = useState(() => calculatePosition(estimatedHeight));
+
+  useLayoutEffect(() => {
+    if (!isOpen || !menuRef.current) return;
+    const rect = menuRef.current.getBoundingClientRect();
+    const actualWidth = rect.width || 224;
+    const actualHeight = rect.height || estimatedHeight;
+    setCoords(calculatePosition(actualHeight, actualWidth));
+  }, [isOpen, x, y, type, data]);
+
+  if (!isOpen || !data) return null;
 
   const isCurrentPlayingThis = data && currentTrack && currentTrack.id === data.id;
   const isFav = data && data.id ? isFavorite(data.id) : false;
@@ -93,8 +143,14 @@ export const ContextMenu = ({
   return (
     <div
       ref={menuRef}
-      style={{ top: `${adjustedY}px`, left: `${adjustedX}px` }}
-      className="fixed z-50 w-56 bg-surface-panel text-content-primary rounded-md shadow-2xl border border-border-medium py-1.5 text-xs font-medium select-none animate-in fade-in zoom-in-95 duration-100"
+      style={{
+        top: `${coords.top}px`,
+        left: `${coords.left}px`,
+        maxHeight: 'calc(100vh - 150px)',
+      }}
+      className={`fixed z-50 w-56 bg-surface-panel text-content-primary rounded-md shadow-2xl border border-border-medium py-1.5 text-xs font-medium select-none overflow-y-auto animate-in fade-in zoom-in-95 duration-100 ${
+        coords.isFlipped ? 'origin-bottom-left' : 'origin-top-left'
+      }`}
       onClick={(e) => e.stopPropagation()}
     >
       {type === 'track' && (
