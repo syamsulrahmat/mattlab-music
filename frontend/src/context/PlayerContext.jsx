@@ -84,6 +84,20 @@ export const PlayerProvider = ({ children }) => {
   const [favoriteIds, setFavoriteIds] = useState(new Set());
   const [preloadedTrackIds, setPreloadedTrackIds] = useState(() => audioPreloader.getPreloadedTrackIds());
   const [preloadCount, setPreloadCountState] = useState(() => audioPreloader.getMaxPreloadCount());
+  const [audioQuality, setAudioQualityState] = useState(() => {
+    try {
+      return localStorage.getItem('mattlab_audio_quality') || 'original';
+    } catch (_) {
+      return 'original';
+    }
+  });
+
+  const getTrackStreamUrl = useCallback((track, qualityOverride = null) => {
+    if (!track?.id) return '';
+    const q = qualityOverride || audioQuality;
+    const base = `/api/stream/${track.id}`;
+    return q === 'data_saver' ? `${base}?quality=low` : base;
+  }, [audioQuality]);
 
   // Karaoke Mode (Pure Demucs AI Instrumental Toggle - starts OFF by default on load/reload)
   const [isKaraokeMode, setIsKaraokeMode] = useState(() => {
@@ -215,7 +229,7 @@ export const PlayerProvider = ({ children }) => {
     return null;
   }, []);
 
-  const crossfadeToSource = useCallback((targetSrc, targetMode) => {
+  const crossfadeToSource = useCallback((targetSrc, targetMode = null) => {
     const currentAudio = audioRef.current;
     const standbyAudio = standbyAudioRef.current;
     if (!currentTrack || !currentAudio || !standbyAudio) return;
@@ -226,7 +240,9 @@ export const PlayerProvider = ({ children }) => {
 
     // If audio is paused, just switch source directly without crossfade
     if (!wasPlaying) {
-      setIsKaraokeMode(targetMode);
+      if (typeof targetMode === 'boolean') {
+        setIsKaraokeMode(targetMode);
+      }
       currentAudio.src = targetSrc;
       currentAudio.currentTime = currentTimeSnapshot;
       return;
@@ -239,28 +255,22 @@ export const PlayerProvider = ({ children }) => {
     }
 
     isCrossfadingRef.current = true;
-    setIsKaraokeMode(targetMode);
+    if (typeof targetMode === 'boolean') {
+      setIsKaraokeMode(targetMode);
+    }
 
-    // Prepare standby audio
+    // Prepare standby audio at 0 volume so it can buffer and sync silently
     standbyAudio.src = targetSrc;
     standbyAudio.volume = 0;
     standbyAudio.playbackRate = currentAudio.playbackRate;
 
-    const startCrossfade = async () => {
-      try {
-        standbyAudio.currentTime = currentAudio.currentTime;
-        await standbyAudio.play();
-      } catch (err) {
-        console.warn('Crossfade play interrupted:', err);
-        currentAudio.src = targetSrc;
-        currentAudio.currentTime = currentTimeSnapshot;
-        currentAudio.volume = baseVolume;
-        currentAudio.play().catch(() => {});
-        isCrossfadingRef.current = false;
-        return;
-      }
+    let isHandled = false;
 
-      const durationMs = 350;
+    const beginCrossfade = () => {
+      if (isHandled) return;
+      isHandled = true;
+
+      const durationMs = 260; // Studio seamless equal-power crossfade
       const startTime = performance.now();
 
       const crossfadeStep = (now) => {
@@ -294,24 +304,50 @@ export const PlayerProvider = ({ children }) => {
       crossfadeTimerRef.current = requestAnimationFrame(crossfadeStep);
     };
 
-    if (standbyAudio.readyState >= 3) {
-      startCrossfade();
+    const startStandbyPlayback = async () => {
+      if (isHandled) return;
+      try {
+        await standbyAudio.play();
+        // Standby audio is actively decoding and outputting audio at volume 0; now safe to crossfade!
+        beginCrossfade();
+      } catch (err) {
+        console.warn('Standby audio playback failed:', err);
+        currentAudio.volume = baseVolume;
+        isCrossfadingRef.current = false;
+      }
+    };
+
+    const onSeeked = () => {
+      standbyAudio.removeEventListener('seeked', onSeeked);
+      startStandbyPlayback();
+    };
+
+    const handleLoadedMetadata = () => {
+      standbyAudio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      const targetTime = currentAudio.currentTime || currentTimeSnapshot;
+      try {
+        standbyAudio.currentTime = targetTime;
+      } catch (_) {}
+
+      // If already at or near targetTime and ready to play, start immediately
+      if (Math.abs(standbyAudio.currentTime - targetTime) < 0.1 && standbyAudio.readyState >= 3) {
+        startStandbyPlayback();
+      } else {
+        standbyAudio.addEventListener('seeked', onSeeked, { once: true });
+        const onCanPlay = () => {
+          if (standbyAudio.currentTime > 0 || targetTime === 0) {
+            standbyAudio.removeEventListener('canplay', onCanPlay);
+            onSeeked();
+          }
+        };
+        standbyAudio.addEventListener('canplay', onCanPlay);
+      }
+    };
+
+    if (standbyAudio.readyState >= 1) {
+      handleLoadedMetadata();
     } else {
-      let isHandled = false;
-      const onReady = () => {
-        if (isHandled) return;
-        isHandled = true;
-        standbyAudio.removeEventListener('canplay', onReady);
-        standbyAudio.removeEventListener('seeked', onReady);
-        startCrossfade();
-      };
-
-      standbyAudio.addEventListener('canplay', onReady, { once: true });
-      standbyAudio.addEventListener('seeked', onReady, { once: true });
-
-      setTimeout(() => {
-        if (!isHandled) onReady();
-      }, 2000);
+      standbyAudio.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
     }
   }, [currentTrack, volume, isMuted]);
 
@@ -401,7 +437,7 @@ export const PlayerProvider = ({ children }) => {
     } else {
       // User turned Karaoke OFF: restore original track stream
       const preloaded = audioPreloader.getPreloadedAudio(currentTrack.id);
-      const originalSrc = preloaded || currentTrack.stream_url || `/api/stream/${currentTrack.id}`;
+      const originalSrc = preloaded || getTrackStreamUrl(currentTrack);
       crossfadeToSource(originalSrc, false);
     }
   }, [isKaraokeMode, currentTrack, karaokeStemStatus, fetchKaraokeStatus, generateKaraokeStems, crossfadeToSource]);
@@ -437,12 +473,16 @@ export const PlayerProvider = ({ children }) => {
       track: {
         id: track.id,
         title: track.title,
+        artist_id: track.artist_id || null,
         artist_name: track.artist_name || track.artist || '',
+        album_id: track.album_id || null,
         album_title: track.album_title || '',
         duration_seconds: track.duration_seconds || dur || 0,
         cover_path: track.cover_path || null,
         cover_url: track.cover_url || null,
         file_path: track.file_path || '',
+        file_format: track.file_format || null,
+        bitrate: track.bitrate || null,
         stream_url: track.stream_url || `/api/stream/${track.id}`,
       },
       currentTime: cleanTime,
@@ -450,10 +490,14 @@ export const PlayerProvider = ({ children }) => {
       queue: (q || []).slice(0, 50).map((t) => ({
         id: t.id,
         title: t.title,
+        artist_id: t.artist_id || null,
         artist_name: t.artist_name || t.artist || '',
+        album_id: t.album_id || null,
         album_title: t.album_title || '',
         duration_seconds: t.duration_seconds || 0,
         cover_url: t.cover_url || null,
+        file_format: t.file_format || null,
+        bitrate: t.bitrate || null,
         stream_url: t.stream_url || `/api/stream/${t.id}`,
       })),
       queueIndex: typeof qIdx === 'number' ? qIdx : 0,
@@ -472,6 +516,24 @@ export const PlayerProvider = ({ children }) => {
     }, 6000);
   }, [saveUserPreference]);
 
+  // Ensure currentTrack has file_format and bitrate metadata for accurate audio quality indicators
+  useEffect(() => {
+    if (currentTrack?.id && !currentTrack.file_format) {
+      let isSubscribed = true;
+      fetch(`/api/tracks/${currentTrack.id}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (isSubscribed && data?.file_format) {
+            setCurrentTrack((prev) => (prev?.id === currentTrack.id ? { ...prev, file_format: data.file_format, bitrate: data.bitrate } : prev));
+          }
+        })
+        .catch(() => {});
+      return () => {
+        isSubscribed = false;
+      };
+    }
+  }, [currentTrack?.id, currentTrack?.file_format]);
+
   // On startup: pre-attach stream URL to audio element and prefetch lyrics if restoring saved track
   useEffect(() => {
     if (!hasRestoredAudioRef.current && savedState?.track) {
@@ -479,13 +541,13 @@ export const PlayerProvider = ({ children }) => {
       const audio = audioRef.current;
       if (audio && (!audio.src || audio.src === '' || audio.src === window.location.href)) {
         const preloadedAudio = audioPreloader.getPreloadedAudio(savedState.track.id);
-        const standardUrl = preloadedAudio || savedState.track.stream_url || `/api/stream/${savedState.track.id}`;
+        const standardUrl = preloadedAudio || getTrackStreamUrl(savedState.track);
         audio.preload = 'metadata';
         audio.src = standardUrl;
       }
       fetchTrackLyrics(savedState.track.id);
     }
-  }, [savedState, fetchTrackLyrics]);
+  }, [savedState, fetchTrackLyrics, getTrackStreamUrl]);
 
   // Flush latest playback position to localStorage when window unloads or pagehides
   useEffect(() => {
@@ -538,6 +600,26 @@ export const PlayerProvider = ({ children }) => {
     setPreloadedTrackIds(new Set());
   }, []);
 
+  const setAudioQuality = useCallback((mode) => {
+    const validated = mode === 'data_saver' ? 'data_saver' : 'original';
+    setAudioQualityState(validated);
+    try {
+      localStorage.setItem('mattlab_audio_quality', validated);
+    } catch (_) {}
+    saveUserPreference({ audioQuality: validated });
+    audioPreloader.setAudioQuality(validated);
+    setPreloadedTrackIds(new Set());
+
+    // Seamless gapless on-the-fly crossfade audio stream swap
+    const audio = audioRef.current;
+    if (currentTrack && audio && !isKaraokeMode) {
+      const newUrl = getTrackStreamUrl(currentTrack, validated);
+      if (audio.src !== newUrl && !audio.src.endsWith(newUrl)) {
+        crossfadeToSource(newUrl, null);
+      }
+    }
+  }, [saveUserPreference, currentTrack, isKaraokeMode, getTrackStreamUrl, crossfadeToSource]);
+
   // Subscribe to audioPreloader events
   useEffect(() => {
     return audioPreloader.subscribe((ids) => {
@@ -581,6 +663,13 @@ export const PlayerProvider = ({ children }) => {
           try {
             localStorage.setItem('music_pip_engine', prefs.pipEngine);
           } catch (_) {}
+        }
+        if (prefs.audioQuality && ['original', 'data_saver'].includes(prefs.audioQuality)) {
+          setAudioQualityState(prefs.audioQuality);
+          try {
+            localStorage.setItem('mattlab_audio_quality', prefs.audioQuality);
+          } catch (_) {}
+          audioPreloader.setAudioQuality(prefs.audioQuality);
         }
 
         // Restore server-saved playback state if client has no current track
@@ -773,7 +862,7 @@ export const PlayerProvider = ({ children }) => {
     const stemInfo = karaokeStemStatus[currentTrack.id];
     if (stemInfo?.exists) {
       const preloadedAudio = audioPreloader.getPreloadedAudio(currentTrack.id);
-      const standardUrl = preloadedAudio || currentTrack.stream_url || `/api/stream/${currentTrack.id}`;
+      const standardUrl = preloadedAudio || getTrackStreamUrl(currentTrack);
       const instrumentalUrl = `/api/karaoke/${currentTrack.id}/stream/instrumental`;
       const targetSrc = isKaraokeMode ? standardUrl : instrumentalUrl;
 
@@ -888,7 +977,7 @@ export const PlayerProvider = ({ children }) => {
     }
 
     const preloadedAudio = audioPreloader.getPreloadedAudio(track.id);
-    const standardUrl = preloadedAudio || track.stream_url || `/api/stream/${track.id}`;
+    const standardUrl = preloadedAudio || getTrackStreamUrl(track);
 
     if (isKaraokeMode && stemInfo?.exists) {
       // Studio Stem Mode
@@ -901,6 +990,11 @@ export const PlayerProvider = ({ children }) => {
       console.warn('Autoplay prevented:', err);
       setIsBuffering(false);
     });
+
+    // Background pre-warm 128k LQ transcode if running in HQ mode so toggling to LQ is instant (0ms wait)
+    if (track?.id && audioQuality === 'original') {
+      fetch(`/api/stream/prewarm/${track.id}`, { method: 'POST' }).catch(() => {});
+    }
 
     // Background prefetch lyrics so they render instantly with 0ms delay
     if (track?.id) {
@@ -944,7 +1038,7 @@ export const PlayerProvider = ({ children }) => {
     } else {
       if (!audio.src || audio.src === '' || audio.src === window.location.href) {
         const preloadedAudio = audioPreloader.getPreloadedAudio(currentTrack.id);
-        const standardUrl = preloadedAudio || currentTrack.stream_url || `/api/stream/${currentTrack.id}`;
+        const standardUrl = preloadedAudio || getTrackStreamUrl(currentTrack);
         audio.src = standardUrl;
       }
 
@@ -988,7 +1082,7 @@ export const PlayerProvider = ({ children }) => {
     if (!audio.src || audio.src === '' || audio.src === window.location.href) {
       if (currentTrack) {
         const preloadedAudio = audioPreloader.getPreloadedAudio(currentTrack.id);
-        const standardUrl = preloadedAudio || currentTrack.stream_url || `/api/stream/${currentTrack.id}`;
+        const standardUrl = preloadedAudio || getTrackStreamUrl(currentTrack);
         audio.src = standardUrl;
       }
     }
@@ -1634,6 +1728,9 @@ export const PlayerProvider = ({ children }) => {
         preloadCount,
         setPreloadCount,
         clearPreloadCache,
+        audioQuality,
+        setAudioQuality,
+        getTrackStreamUrl,
         pipWindow,
         setPipWindow,
         isMiniPlayerOpen,

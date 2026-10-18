@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 from typing import Generator, Optional
 
-from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status, BackgroundTasks
 from fastapi.responses import StreamingResponse, FileResponse, Response
 
 from app.database import get_db
@@ -41,14 +41,19 @@ def stream_file_chunks(file_path: Path, start: int, length: int, chunk_size: int
             yield chunk
 
 @router.get("/stream/{track_id}")
-async def stream_track(track_id: int, request: Request):
+async def stream_track(
+    track_id: int, 
+    request: Request,
+    quality: Optional[str] = None
+):
     """
     Stream audio file supporting HTTP 206 Partial Content (Range requests)
     for seamless seeking, scrub buffering, and low latency playback.
+    Supports ?quality=low / ?quality=data_saver for 128 kbps bandwidth-saving streaming.
     """
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT file_path, file_format, file_size FROM tracks WHERE id = ?", (track_id,))
+        cursor.execute("SELECT file_path, file_format, file_size, bitrate FROM tracks WHERE id = ?", (track_id,))
         row = cursor.fetchone()
 
     if not row:
@@ -61,6 +66,28 @@ async def stream_track(track_id: int, request: Request):
     file_size = row["file_size"] or file_path.stat().st_size
     file_format = row["file_format"].lower()
     media_type = MIME_TYPES.get(file_format, "application/octet-stream")
+
+    # Data Saver quality mode: transcode to 128k MP3 if high-bitrate / lossless
+    quality_mode = (quality or "").lower().strip()
+    is_data_saver = quality_mode in ("low", "data_saver", "128k")
+
+    if is_data_saver:
+        raw_bitrate = row["bitrate"] or 0
+        # If the file is already an MP3 at <= 192k, stream directly without re-encoding
+        if file_format == "mp3" and raw_bitrate > 0 and raw_bitrate <= 192000:
+            pass
+        else:
+            try:
+                from app.transcoder import get_or_create_transcoded_track
+                transcoded_path = await get_or_create_transcoded_track(track_id, file_path, "128k")
+                if transcoded_path.exists() and transcoded_path.stat().st_size > 1024:
+                    file_path = transcoded_path
+                    file_size = transcoded_path.stat().st_size
+                    file_format = "mp3"
+                    media_type = "audio/mpeg"
+            except Exception:
+                # If transcode fails, gracefully fall back to original audio
+                pass
 
     range_header = request.headers.get("Range")
     if not range_header:
@@ -104,6 +131,48 @@ async def stream_track(track_id: int, request: Request):
         headers=headers,
         media_type=media_type,
     )
+
+
+@router.get("/stream/cache/stats")
+async def get_stream_cache_stats():
+    """Retrieve disk space and file count for transcoded audio files."""
+    from app.transcoder import get_transcode_cache_stats
+    return get_transcode_cache_stats()
+
+
+@router.post("/stream/cache/clear")
+async def clear_stream_transcode_cache():
+    """Clear all cached transcoded audio files to reclaim disk space."""
+    from app.transcoder import clear_transcode_cache
+    return clear_transcode_cache()
+
+
+async def _async_prewarm(track_id: int):
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT file_path, file_format, bitrate FROM tracks WHERE id = ?", (track_id,))
+        row = cursor.fetchone()
+    if not row:
+        return
+    file_path = Path(row["file_path"])
+    file_format = row["file_format"].lower()
+    raw_bitrate = row["bitrate"] or 0
+    # Skip if track is already lightweight MP3
+    if file_format == "mp3" and raw_bitrate > 0 and raw_bitrate <= 192000:
+        return
+    if file_path.exists():
+        try:
+            from app.transcoder import get_or_create_transcoded_track
+            await get_or_create_transcoded_track(track_id, file_path, "128k")
+        except Exception:
+            pass
+
+
+@router.post("/stream/prewarm/{track_id}")
+async def prewarm_track_transcode(track_id: int, background_tasks: BackgroundTasks):
+    """Pre-transcode 128k MP3 in the background so switching to LQ is instant (0ms wait)."""
+    background_tasks.add_task(_async_prewarm, track_id)
+    return {"status": "prewarming", "track_id": track_id}
 
 @router.get("/covers-sample")
 async def get_sample_album_covers(limit: int = 30):

@@ -243,6 +243,8 @@ export const SettingsModal = ({
     setPreloadCount, 
     preloadedTrackIds, 
     clearPreloadCache,
+    audioQuality,
+    setAudioQuality,
     pipEngine,
     setPipEngine,
     togglePiP,
@@ -250,6 +252,9 @@ export const SettingsModal = ({
   } = usePlayer();
   const [clearingCache, setClearingCache] = useState(false);
   const [cacheClearedSuccess, setCacheClearedSuccess] = useState(false);
+  const [transcodeCacheStats, setTranscodeCacheStats] = useState({ file_count: 0, size_mb: 0 });
+  const [clearingTranscodeCache, setClearingTranscodeCache] = useState(false);
+  const [transcodeClearedSuccess, setTranscodeClearedSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState(initialTab || 'account');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -479,6 +484,32 @@ export const SettingsModal = ({
     }
   };
 
+  const fetchTranscodeStats = async () => {
+    try {
+      const res = await fetch('/api/stream/cache/stats');
+      if (res.ok) {
+        const data = await res.json();
+        setTranscodeCacheStats(data);
+      }
+    } catch (_) {}
+  };
+
+  const handleClearTranscodeCache = async () => {
+    try {
+      setClearingTranscodeCache(true);
+      const res = await fetch('/api/stream/cache/clear', { method: 'POST' });
+      if (res.ok) {
+        setTranscodeClearedSuccess(true);
+        fetchTranscodeStats();
+        setTimeout(() => setTranscodeClearedSuccess(false), 2500);
+      }
+    } catch (err) {
+      console.error('Failed to clear transcode cache:', err);
+    } finally {
+      setClearingTranscodeCache(false);
+    }
+  };
+
   // Automatic Lyrics Search Crawler State & Handlers
   const [lyricsStatus, setLyricsStatus] = useState(null);
   const [lyricsActionLoading, setLyricsActionLoading] = useState(false);
@@ -525,6 +556,7 @@ export const SettingsModal = ({
   useEffect(() => {
     if (!isOpen || activeTab !== 'playback') return;
     fetchLyricsStatus();
+    fetchTranscodeStats();
     const interval = setInterval(fetchLyricsStatus, 3000);
     return () => clearInterval(interval);
   }, [isOpen, activeTab]);
@@ -1181,6 +1213,146 @@ export const SettingsModal = ({
                     <span className="text-content-secondary font-medium">
                       {preloadedTrackIds?.size || 0} track{preloadedTrackIds?.size === 1 ? '' : 's'} in RAM
                     </span>
+                  </div>
+                </div>
+
+                {/* Streaming Audio Quality & Data Saver Card */}
+                <div className="p-5 rounded-2xl bg-surface-panel border border-border-subtle space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border-subtle">
+                    <div>
+                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                        <Gauge size={16} className="text-brand-500" />
+                        <span>Streaming Audio Quality & Data Saver</span>
+                      </h4>
+                      <p className="text-xs text-content-muted mt-0.5">
+                        Select your preferred streaming fidelity. Switch to Data Saver to reduce bandwidth consumption by up to 90%.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider ${
+                        audioQuality === 'data_saver'
+                          ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                          : 'bg-brand-500/15 text-brand-400 border border-brand-500/30'
+                      }`}>
+                        {audioQuality === 'data_saver' ? 'LQ • Data Saver (128 kbps)' : 'HQ • Lossless Master / 320k'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Dual Mode Selectable Quality Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Option 1: Original / Lossless Quality */}
+                    <button
+                      type="button"
+                      onClick={() => setAudioQuality('original')}
+                      className={`p-4 rounded-xl text-left border transition flex flex-col justify-between relative group ${
+                        audioQuality === 'original'
+                          ? 'bg-brand-500/10 border-brand-500 text-white shadow-sm ring-1 ring-brand-500/40'
+                          : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs text-white">HQ • Lossless Master</span>
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30">
+                              DEFAULT
+                            </span>
+                          </div>
+                          {audioQuality === 'original' && (
+                            <Check size={14} className="text-brand-500 shrink-0" />
+                          )}
+                        </div>
+                        <p className="text-[11px] text-content-muted leading-relaxed mb-3">
+                          Bit-perfect playback streaming up to 24-bit FLAC and 320 kbps MP3 files with uncompressed dynamic range. Ideal for Wi-Fi, Ethernet, and DAC / studio headphone listening.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border-subtle text-[10px]">
+                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">FLAC / ALAC / WAV</span>
+                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">Bit-Perfect Audio</span>
+                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">Full Dynamic Range</span>
+                      </div>
+                    </button>
+
+                    {/* Option 2: Data Saver Quality */}
+                    <button
+                      type="button"
+                      onClick={() => setAudioQuality('data_saver')}
+                      className={`p-4 rounded-xl text-left border transition flex flex-col justify-between relative group ${
+                        audioQuality === 'data_saver'
+                          ? 'bg-amber-500/10 border-amber-500 text-white shadow-sm ring-1 ring-amber-500/40'
+                          : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs text-white">LQ • Data Saver (128 kbps)</span>
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                              85–90% SAVINGS
+                            </span>
+                          </div>
+                          {audioQuality === 'data_saver' && (
+                            <Check size={14} className="text-amber-400 shrink-0" />
+                          )}
+                        </div>
+                        <p className="text-[11px] text-content-muted leading-relaxed mb-3">
+                          On-the-fly streaming & caching at 128 kbps MP3. Uses only ~3.5 MB per track instead of 30–50 MB. Ideal for mobile cellular data plans, roaming, and metered Wi-Fi.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border-subtle text-[10px]">
+                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">~3.5 MB per Track</span>
+                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">Fast Buffer Fill</span>
+                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">Cellular Friendly</span>
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* Transcode Cache Info & Clear Action */}
+                  <div className="p-3.5 rounded-xl bg-surface-island border border-border-subtle text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-start gap-2.5">
+                      <HardDrive size={15} className="text-brand-500 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-content-secondary leading-relaxed">
+                          <strong className="text-white">Server Transcode Cache: </strong>
+                          {transcodeCacheStats.size_mb > 0 ? (
+                            <>
+                              <span className="text-brand-400 font-mono font-bold">{transcodeCacheStats.size_mb} MB</span> across {transcodeCacheStats.file_count} converted track{transcodeCacheStats.file_count === 1 ? '' : 's'}. Cached files enable instant seeking with zero CPU usage.
+                            </>
+                          ) : (
+                            <span>Empty (0 MB). Transcodes are generated on-demand when playing in Data Saver mode.</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    {transcodeCacheStats.file_count > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearTranscodeCache}
+                        disabled={clearingTranscodeCache}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shrink-0 self-start sm:self-auto ${
+                          transcodeClearedSuccess
+                            ? 'bg-brand-500/20 text-brand-400 border border-brand-500/30'
+                            : 'bg-white/10 hover:bg-white/20 text-white border border-border-medium'
+                        }`}
+                      >
+                        {transcodeClearedSuccess ? (
+                          <>
+                            <Check size={13} className="text-brand-400" />
+                            <span>Cache Cleared!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 size={13} />
+                            <span>{clearingTranscodeCache ? 'Purging...' : 'Purge Transcodes'}</span>
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
                 </div>
 
