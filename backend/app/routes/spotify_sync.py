@@ -15,6 +15,7 @@ from app.config import MUSIC_DIR, COVERS_DIR
 from app.database import get_db
 from app.scanner import index_single_audio_file
 from app.auth import get_current_user
+from app.telegram import notify_telegram
 
 router = APIRouter(prefix="/spotify", tags=["Spotify Playlist Live Sync & Downloader"])
 
@@ -886,32 +887,6 @@ def resume_interrupted_spotify_downloads():
     except Exception as e:
         print(f"[SPOTIFY RESUME] Error checking pending playlists: {e}", flush=True)
 
-def notify_telegram(message: str):
-    """Send summary notification to Telegram bot via host binary or direct Telegram API."""
-    if os.path.exists("/usr/local/bin/tg-notify"):
-        try:
-            import subprocess
-            subprocess.run(["/usr/local/bin/tg-notify", message], check=False)
-            return
-        except Exception:
-            pass
-    try:
-        token_path = Path("/data/telegram/token")
-        chatid_path = Path("/data/telegram/chatid")
-        if not token_path.exists():
-            token_path = Path("/boot/config/plugins/dynamix/telegram/token")
-            chatid_path = Path("/boot/config/plugins/dynamix/telegram/chatid")
-        if token_path.exists() and chatid_path.exists():
-            token = token_path.read_text().strip()
-            chat_id = chatid_path.read_text().strip()
-            url = f"https://api.telegram.org/bot{token}/sendMessage"
-            payload = json.dumps({"chat_id": chat_id, "text": message, "parse_mode": "HTML"}).encode("utf-8")
-            req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
-            with urllib.request.urlopen(req, timeout=5):
-                pass
-    except Exception as e:
-        print(f"[TG NOTIFY] Error: {e}", flush=True)
-
 def start_scheduled_spotify_watcher():
     """Background daemon loop that periodically checks Spotify playlists every 6 hours."""
     # Immediately resume any pending queues from before restart
@@ -939,7 +914,7 @@ def start_scheduled_spotify_watcher():
 
                         if new_count > 0 or removed_count > 0:
                             summary_msg = f"🎵 <b>Spotify Playlist Updated</b>: '{p_name}' synced ({new_count} added, {removed_count} removed, total {res.get('synced_tracks_total', 0)} tracks)"
-                            notify_telegram(summary_msg)
+                            notify_telegram(summary_msg, topic="music")
 
                     except Exception as e:
                         print(f"[SPOTIFY WATCHER] Error syncing playlist {pl.get('name')}: {e}", flush=True)

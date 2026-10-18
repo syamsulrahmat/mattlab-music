@@ -80,7 +80,7 @@ def create_bug_report(req: Request, data: CreateBugReportRequest):
         f"{diag_summary}\n\n"
         f"<b>Details:</b>\n{html.escape(description)}"
     )
-    notify_telegram(tg_message)
+    notify_telegram(tg_message, topic="dev")
 
     return report_dict
 
