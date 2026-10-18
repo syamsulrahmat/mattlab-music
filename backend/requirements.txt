@@ -7,3 +7,7 @@ aiofiles>=23.2.1
 yt-dlp>=2024.1.0
 python-multipart>=0.0.9
 spotifyscraper>=3.9.0
+pykakasi>=2.3.0
+cutlet>=0.5.2
+unidic-lite>=1.0.8
+korean-romanizer>=0.28.0

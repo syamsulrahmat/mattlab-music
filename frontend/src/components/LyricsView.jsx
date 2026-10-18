@@ -21,7 +21,7 @@ export const LyricsView = ({ onClose }) => {
   const [lyricsData, setLyricsData] = useState(() => {
     if (currentTrack?.id) {
       try {
-        const cached = localStorage.getItem(`lyrics_cache_${currentTrack.id}`);
+        const cached = localStorage.getItem(`lyrics_cache_v2_${currentTrack.id}`) || localStorage.getItem(`lyrics_cache_${currentTrack.id}`);
         if (cached) return JSON.parse(cached);
       } catch (_) {}
     }
@@ -31,7 +31,20 @@ export const LyricsView = ({ onClose }) => {
   const [activeLineIdx, setActiveLineIdx] = useState(-1);
   const [isUserScrolled, setIsUserScrolled] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [romanizationMode, setRomanizationMode] = useState(() => {
+    try {
+      return localStorage.getItem('lyrics_romanization_mode') || 'both';
+    } catch (_) {
+      return 'both';
+    }
+  });
 
+  const handleSetRomanizationMode = (mode) => {
+    setRomanizationMode(mode);
+    try {
+      localStorage.setItem('lyrics_romanization_mode', mode);
+    } catch (_) {}
+  };
 
   const containerRef = useRef(null);
   const lineRefs = useRef([]);
@@ -40,20 +53,25 @@ export const LyricsView = ({ onClose }) => {
   const fetchLyrics = useCallback(async (trackId, forceRefresh = false) => {
     if (!trackId) return;
 
-    const cacheKey = `lyrics_cache_${trackId}`;
+    const cacheKey = `lyrics_cache_v2_${trackId}`;
+    let hasValidCache = false;
     if (!forceRefresh) {
       try {
-        const cached = localStorage.getItem(cacheKey);
+        const cached = localStorage.getItem(cacheKey) || localStorage.getItem(`lyrics_cache_${trackId}`);
         if (cached) {
           const parsed = JSON.parse(cached);
-          setLyricsData(parsed);
-          // If cached data is present, no need to show loading spinner
-          return;
+          if (parsed) {
+            setLyricsData(parsed);
+            hasValidCache = true;
+          }
         }
       } catch (_) {}
     }
 
-    setIsLoading(true);
+    if (!hasValidCache) {
+      setIsLoading(true);
+    }
+
     try {
       const res = await fetch(`/api/lyrics/${trackId}`);
       const data = await res.json();
@@ -65,7 +83,9 @@ export const LyricsView = ({ onClose }) => {
       }
     } catch (err) {
       console.error('Failed to fetch lyrics:', err);
-      setLyricsData({ notFound: true });
+      if (!hasValidCache) {
+        setLyricsData({ notFound: true });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -76,9 +96,9 @@ export const LyricsView = ({ onClose }) => {
     if (currentTrack?.id) {
       setIsUserScrolled(false);
       setActiveLineIdx(-1);
-      const cacheKey = `lyrics_cache_${currentTrack.id}`;
+      const cacheKey = `lyrics_cache_v2_${currentTrack.id}`;
       try {
-        const cached = localStorage.getItem(cacheKey);
+        const cached = localStorage.getItem(cacheKey) || localStorage.getItem(`lyrics_cache_${currentTrack.id}`);
         if (cached) {
           setLyricsData(JSON.parse(cached));
         } else {
@@ -93,12 +113,33 @@ export const LyricsView = ({ onClose }) => {
     }
   }, [currentTrack?.id, fetchLyrics]);
 
+  const hasRomanization = Boolean(
+    lyricsData?.hasRomanization && (lyricsData?.romanizedSynced || lyricsData?.romanizedPlain)
+  );
+
   const parsedLines = useMemo(() => {
-    if (lyricsData?.syncedLyrics) {
-      return parseLrc(lyricsData.syncedLyrics);
-    }
-    return [];
-  }, [lyricsData?.syncedLyrics]);
+    if (!lyricsData?.syncedLyrics) return [];
+    const orig = parseLrc(lyricsData.syncedLyrics);
+    if (!lyricsData?.romanizedSynced) return orig;
+
+    const rom = parseLrc(lyricsData.romanizedSynced);
+    return orig.map((line, idx) => ({
+      ...line,
+      romanized: rom[idx]?.text || null,
+    }));
+  }, [lyricsData?.syncedLyrics, lyricsData?.romanizedSynced]);
+
+  const plainLines = useMemo(() => {
+    if (!lyricsData?.plainLyrics) return [];
+    const origLines = formatPlainLyrics(lyricsData.plainLyrics).split('\n');
+    const romLines = lyricsData?.romanizedPlain
+      ? formatPlainLyrics(lyricsData.romanizedPlain).split('\n')
+      : [];
+    return origLines.map((line, idx) => ({
+      text: line,
+      romanized: romLines[idx] || null,
+    }));
+  }, [lyricsData?.plainLyrics, lyricsData?.romanizedPlain]);
 
   // Determine active synced line based on currentTime
   useEffect(() => {
@@ -294,6 +335,45 @@ export const LyricsView = ({ onClose }) => {
             )}
           </div>
 
+          {/* Romanization 3-Way Pill (Option C: Original | Both | Romaji) */}
+          {hasRomanization && (
+            <div className="flex items-center bg-surface-elevated/90 border border-border-medium rounded-full p-0.5 text-xs text-content-secondary shadow-sm">
+              <button
+                onClick={() => handleSetRomanizationMode('original')}
+                className={`px-2.5 py-1 rounded-full font-medium transition text-xs ${
+                  romanizationMode === 'original'
+                    ? 'bg-brand-500 text-black font-bold shadow'
+                    : 'hover:text-white text-content-secondary'
+                }`}
+                title="Original script only (Hangul / Kanji)"
+              >
+                Original
+              </button>
+              <button
+                onClick={() => handleSetRomanizationMode('both')}
+                className={`px-2.5 py-1 rounded-full font-medium transition text-xs ${
+                  romanizationMode === 'both'
+                    ? 'bg-brand-500 text-black font-bold shadow'
+                    : 'hover:text-white text-content-secondary'
+                }`}
+                title="Karaoke dual lines: original with romanized subtitle"
+              >
+                Both
+              </button>
+              <button
+                onClick={() => handleSetRomanizationMode('romaji')}
+                className={`px-2.5 py-1 rounded-full font-medium transition text-xs ${
+                  romanizationMode === 'romaji'
+                    ? 'bg-brand-500 text-black font-bold shadow'
+                    : 'hover:text-white text-content-secondary'
+                }`}
+                title="Romanized pronunciation only"
+              >
+                Romaji
+              </button>
+            </div>
+          )}
+
           <button
             onClick={() => setIsEditModalOpen(true)}
             className="p-2 rounded-full hover:bg-white/10 text-content-secondary hover:text-content-primary transition"
@@ -339,8 +419,15 @@ export const LyricsView = ({ onClose }) => {
             {parsedLines.map((line, idx) => {
               const isActive = idx === activeLineIdx;
               const isPast = idx < activeLineIdx;
+              const hasRom = Boolean(
+                line.romanized &&
+                line.romanized.toLowerCase().trim() !== line.text.toLowerCase().trim()
+              );
+              const displayText =
+                romanizationMode === 'romaji' && hasRom ? line.romanized : line.text;
+
               return (
-                <p
+                <div
                   key={`${line.time}-${idx}`}
                   ref={(el) => (lineRefs.current[idx] = el)}
                   onClick={() => seek(line.time)}
@@ -352,13 +439,50 @@ export const LyricsView = ({ onClose }) => {
                       : `${LYRICS_CONFIG.colors.idleClass} ${LYRICS_CONFIG.typography.upcomingWeightClass} text-lg sm:text-xl md:text-2xl hover:text-content-primary/70`
                   }`}
                 >
-                  {line.text}
-                </p>
+                  <p>{displayText}</p>
+                  {romanizationMode === 'both' && hasRom && (
+                    <p
+                      className={`text-sm sm:text-base md:text-lg font-normal tracking-wide mt-1 transition-all duration-300 ${
+                        isActive
+                          ? 'text-brand-300/90 font-medium'
+                          : isPast
+                          ? 'text-content-subtle/80'
+                          : 'text-content-muted/70'
+                      }`}
+                    >
+                      {line.romanized}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : plainLines.length > 0 ? (
+          /* Plain Unsynced Lyrics */
+          <div className="max-w-2xl mx-auto py-12 space-y-4 text-center">
+            {plainLines.map((line, idx) => {
+              const hasRom = Boolean(
+                line.romanized &&
+                line.romanized.toLowerCase().trim() !== line.text.toLowerCase().trim()
+              );
+              const displayText =
+                romanizationMode === 'romaji' && hasRom ? line.romanized : line.text;
+              return (
+                <div key={idx} className="leading-relaxed">
+                  <p className="text-content-primary/90 font-medium text-base sm:text-lg">
+                    {displayText}
+                  </p>
+                  {romanizationMode === 'both' && hasRom && (
+                    <p className="text-xs sm:text-sm text-content-muted mt-0.5 tracking-wide">
+                      {line.romanized}
+                    </p>
+                  )}
+                </div>
               );
             })}
           </div>
         ) : lyricsData?.plainLyrics ? (
-          /* Plain Unsynced Lyrics */
+          /* Plain Unsynced Fallback */
           <div className="max-w-2xl mx-auto py-12 whitespace-pre-line text-content-primary/80 font-normal text-base sm:text-lg leading-loose text-center">
             {formatPlainLyrics(lyricsData.plainLyrics)}
           </div>
@@ -413,6 +537,11 @@ export const LyricsView = ({ onClose }) => {
           setLyricsData(savedData);
           setIsUserScrolled(false);
           setActiveLineIdx(-1);
+          if (currentTrack?.id && savedData) {
+            try {
+              localStorage.setItem(`lyrics_cache_v2_${currentTrack.id}`, JSON.stringify(savedData));
+            } catch (_) {}
+          }
         }}
       />
     </div>

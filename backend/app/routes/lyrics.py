@@ -75,6 +75,12 @@ async def get_track_lyrics(track_id: int, force: bool = Query(False)):
     5. Lyrics.ovh fallback public lyrics service
     """
     res = lyrics_fetcher.fetch_single_track(track_id, force=force)
+    if res and not res.get("notFound"):
+        try:
+            from app.romanization import enrich_lyrics_with_romanization
+            res = enrich_lyrics_with_romanization(res)
+        except Exception as e:
+            pass
     return res
 
 
@@ -97,6 +103,12 @@ async def save_track_lyrics(track_id: int, body: SaveLyricsRequest, request: Req
             lyrics_text=body.lyrics,
             is_synced=body.is_synced,
         )
+        if res and not res.get("notFound"):
+            try:
+                from app.romanization import enrich_lyrics_with_romanization
+                res = enrich_lyrics_with_romanization(res)
+            except Exception:
+                pass
         return res
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
