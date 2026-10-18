@@ -164,6 +164,7 @@ async def get_artist_detail(artist_id: int):
         cursor.execute("""
             SELECT 
                 t.id, t.title, t.track_number, t.duration_seconds, t.album_id,
+                t.file_format, t.bitrate,
                 a.title AS album_title
             FROM tracks t
             JOIN albums a ON t.album_id = a.id
@@ -440,6 +441,7 @@ async def search_library(q: str = Query(..., min_length=1), limit: int = Query(2
         cursor.execute(f"""
             SELECT 
                 t.id, t.title, t.track_number, t.duration_seconds,
+                t.file_format, t.bitrate,
                 a.id AS album_id, a.title AS album_title,
                 ar.id AS artist_id, ar.name AS artist_name
             FROM tracks t
@@ -467,6 +469,7 @@ async def search_library(q: str = Query(..., min_length=1), limit: int = Query(2
                 cursor.execute("""
                     SELECT 
                         t.id, t.title, t.track_number, t.duration_seconds,
+                        t.file_format, t.bitrate,
                         a.id AS album_id, a.title AS album_title,
                         ar.id AS artist_id, ar.name AS artist_name,
                         snippet(tracks_lyrics_fts, 4, '<mark class="bg-brand-500/25 text-brand-300 font-semibold px-0.5 rounded">', '</mark>', '...', 10) AS lyric_snippet,
@@ -587,7 +590,7 @@ async def search_library(q: str = Query(..., min_length=1), limit: int = Query(2
                         corrected_query = a_dict["name"]
 
                         cursor.execute("""
-                            SELECT t.id, t.title, t.track_number, t.duration_seconds, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                            SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
                             FROM tracks t
                             JOIN albums a ON t.album_id = a.id
                             JOIN artists ar ON t.artist_id = ar.id
@@ -648,7 +651,7 @@ async def search_library(q: str = Query(..., min_length=1), limit: int = Query(2
 
                 # Specific matched track first
                 cursor.execute("""
-                    SELECT t.id, t.title, t.track_number, t.duration_seconds, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                    SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
                     FROM tracks t
                     JOIN albums a ON t.album_id = a.id
                     JOIN artists ar ON t.artist_id = ar.id
@@ -665,7 +668,7 @@ async def search_library(q: str = Query(..., min_length=1), limit: int = Query(2
 
                 # Additional tracks by this artist
                 cursor.execute("""
-                    SELECT t.id, t.title, t.track_number, t.duration_seconds, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                    SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
                     FROM tracks t
                     JOIN albums a ON t.album_id = a.id
                     JOIN artists ar ON t.artist_id = ar.id
@@ -715,7 +718,7 @@ async def search_library(q: str = Query(..., min_length=1), limit: int = Query(2
 
                 # Fetch artist's library songs
                 cursor.execute("""
-                    SELECT t.id, t.title, t.track_number, t.duration_seconds, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                    SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
                     FROM tracks t
                     JOIN albums a ON t.album_id = a.id
                     JOIN artists ar ON t.artist_id = ar.id
@@ -753,7 +756,7 @@ async def search_library(q: str = Query(..., min_length=1), limit: int = Query(2
                 match_type = "track"
 
                 cursor.execute("""
-                    SELECT t.id, t.title, t.track_number, t.duration_seconds, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                    SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
                     FROM tracks t
                     JOIN albums a ON t.album_id = a.id
                     JOIN artists ar ON t.artist_id = ar.id
@@ -770,7 +773,7 @@ async def search_library(q: str = Query(..., min_length=1), limit: int = Query(2
 
                 # Also fetch other tracks sharing base title or artist
                 cursor.execute("""
-                    SELECT t.id, t.title, t.track_number, t.duration_seconds, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                    SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
                     FROM tracks t
                     JOIN albums a ON t.album_id = a.id
                     JOIN artists ar ON t.artist_id = ar.id
@@ -796,7 +799,7 @@ async def search_library(q: str = Query(..., min_length=1), limit: int = Query(2
                     for tok in corr_tokens:
                         c_params.extend([f"%{tok}%", f"%{tok}%", f"%{tok}%"])
                     cursor.execute(f"""
-                        SELECT t.id, t.title, t.track_number, t.duration_seconds, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                        SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
                         FROM tracks t
                         JOIN albums a ON t.album_id = a.id
                         JOIN artists ar ON t.artist_id = ar.id
@@ -823,7 +826,7 @@ async def search_library(q: str = Query(..., min_length=1), limit: int = Query(2
                     if c_fts:
                         try:
                             cursor.execute("""
-                                SELECT t.id, t.title, t.track_number, t.duration_seconds, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name,
+                                SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name,
                                        bm25(tracks_lyrics_fts) AS rank
                                 FROM tracks_lyrics_fts fts
                                 JOIN tracks t ON fts.track_id = t.id
@@ -876,7 +879,7 @@ async def search_library(q: str = Query(..., min_length=1), limit: int = Query(2
 
                             # Fetch artist's library songs
                             cursor.execute("""
-                                SELECT t.id, t.title, t.track_number, t.duration_seconds, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                                SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
                                 FROM tracks t
                                 JOIN albums a ON t.album_id = a.id
                                 JOIN artists ar ON t.artist_id = ar.id
@@ -896,7 +899,7 @@ async def search_library(q: str = Query(..., min_length=1), limit: int = Query(2
 
                         # Check if specific track exists in local library
                         cursor.execute("""
-                            SELECT t.id, t.title, t.track_number, t.duration_seconds, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                            SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
                             FROM tracks t
                             JOIN albums a ON t.album_id = a.id
                             JOIN artists ar ON t.artist_id = ar.id

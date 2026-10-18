@@ -46,6 +46,9 @@ export const PlayerBar = ({
     toggleRepeat,
     isPiPActive,
     togglePiP,
+    audioQuality,
+    setAudioQuality,
+    showToast,
     isKaraokeMode,
     toggleKaraoke,
     karaokeStemStatus,
@@ -53,6 +56,20 @@ export const PlayerBar = ({
     generateKaraokeStems,
     fetchKaraokeStatus,
   } = usePlayer();
+
+  const handleToggleAudioQuality = (e) => {
+    e.stopPropagation();
+    const nextQuality = audioQuality === 'data_saver' ? 'original' : 'data_saver';
+    setAudioQuality(nextQuality);
+    if (showToast) {
+      showToast(
+        nextQuality === 'data_saver' 
+          ? '⚡ Switched to Low Quality (LQ - 128 kbps)' 
+          : '✨ Switched to High Quality (HQ / Master)',
+        2500
+      );
+    }
+  };
 
   const handleToggleKaraoke = () => {
     const turningOn = !isKaraokeMode;
@@ -153,14 +170,33 @@ export const PlayerBar = ({
                 onClick={() => onSelectAlbum && onSelectAlbum(currentTrack.album_id)}
                 className="w-11 h-11 rounded-md object-cover bg-surface-elevated shrink-0 shadow cursor-pointer active:scale-95 transition"
               />
-              <div className="truncate">
-                <div className="flex items-center gap-1.5">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 min-w-0">
                   <h4 
                     onClick={() => onSelectAlbum && onSelectAlbum(currentTrack.album_id)}
                     className="text-xs font-bold text-content-primary truncate cursor-pointer hover:underline"
                   >
                     {currentTrack.title}
                   </h4>
+                  {audioQuality === 'data_saver' ? (
+                    <button
+                      type="button"
+                      onClick={handleToggleAudioQuality}
+                      className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0 uppercase tracking-wider active:scale-95 transition cursor-pointer select-none"
+                      title="Low Quality active (LQ / 128 kbps) • Tap to switch to HQ"
+                    >
+                      LQ
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleToggleAudioQuality}
+                      className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30 shrink-0 uppercase tracking-wider active:scale-95 transition cursor-pointer select-none"
+                      title="High Quality active • Tap to switch to LQ"
+                    >
+                      {currentTrack.file_format?.toLowerCase() === 'flac' ? 'FLAC' : 'HQ'}
+                    </button>
+                  )}
                   {isTrackPreloaded && isTrackPreloaded(currentTrack.id) && (
                     <span 
                       className="w-1.5 h-1.5 rounded-full bg-brand-500 shrink-0" 
@@ -251,7 +287,7 @@ export const PlayerBar = ({
                 title={currentTrack.album_title || 'Go to album'}
               />
               <div className="truncate max-w-[140px] lg:max-w-[180px]">
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 min-w-0">
                   <h4 
                     onClick={() => onSelectAlbum && onSelectAlbum(currentTrack.album_id)}
                     className="text-sm font-bold text-content-primary truncate hover:underline cursor-pointer"
@@ -259,6 +295,25 @@ export const PlayerBar = ({
                   >
                     {currentTrack.title}
                   </h4>
+                  {audioQuality === 'data_saver' ? (
+                    <button
+                      type="button"
+                      onClick={handleToggleAudioQuality}
+                      className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0 uppercase tracking-wider hover:bg-amber-500/35 hover:border-amber-500/60 active:scale-95 transition cursor-pointer select-none"
+                      title="Low Quality active (LQ / 128 kbps) • Click to switch to HQ"
+                    >
+                      LQ
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleToggleAudioQuality}
+                      className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30 shrink-0 uppercase tracking-wider hover:bg-brand-500/35 hover:border-brand-500/60 active:scale-95 transition cursor-pointer select-none"
+                      title="High Quality active • Click to switch to LQ"
+                    >
+                      {currentTrack.file_format?.toLowerCase() === 'flac' ? 'FLAC' : 'HQ'}
+                    </button>
+                  )}
                   {isTrackPreloaded && isTrackPreloaded(currentTrack.id) && (
                     <span 
                       className="w-1.5 h-1.5 rounded-full bg-brand-500 shrink-0" 

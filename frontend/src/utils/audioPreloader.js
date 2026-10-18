@@ -34,6 +34,22 @@ class AudioPreloader {
       }
     }
     this.maxPreloadCount = savedCount;
+    let savedQuality = 'original';
+    if (typeof localStorage !== 'undefined') {
+      const storedQuality = localStorage.getItem('mattlab_audio_quality');
+      if (storedQuality === 'data_saver' || storedQuality === 'original') {
+        savedQuality = storedQuality;
+      }
+    }
+    this.audioQuality = savedQuality;
+  }
+
+  setAudioQuality(quality) {
+    const q = quality === 'data_saver' ? 'data_saver' : 'original';
+    if (this.audioQuality !== q) {
+      this.audioQuality = q;
+      this.clearAll();
+    }
   }
 
   subscribe(listener) {
@@ -195,8 +211,10 @@ class AudioPreloader {
   }
 
   async preloadSingleTrack(track, signal) {
-    if (signal.aborted) return;
-    const streamUrl = track.stream_url || `/api/stream/${track.id}`;
+    const baseStreamUrl = track.stream_url || `/api/stream/${track.id}`;
+    const streamUrl = this.audioQuality === 'data_saver'
+      ? (baseStreamUrl.includes('?') ? `${baseStreamUrl}&quality=low` : `${baseStreamUrl}?quality=low`)
+      : baseStreamUrl;
     let audioBlob = null;
 
     // Try Cache API if available in browser
