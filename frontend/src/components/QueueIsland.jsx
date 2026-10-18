@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Play, Music, ListMusic, Compass, CheckCircle2, GripVertical } from 'lucide-react';
+import { X, Play, Music, ListMusic, Compass, CheckCircle2 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 
 export const QueueIsland = ({ 
@@ -131,16 +131,30 @@ export const QueueIsland = ({
               </div>
 
               {upcomingTracks.length > 0 ? (
-                <div className="space-y-1">
+                <div 
+                  onDragOver={(e) => {
+                    if (draggedUpcomingIdx !== null) {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                    }
+                  }}
+                  onDragEnter={(e) => {
+                    if (draggedUpcomingIdx !== null) {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                    }
+                  }}
+                  className="space-y-1"
+                >
                   {upcomingTracks.map((track, i) => {
-                    const isTargetAbove = dropTarget?.idx === i && dropTarget?.position === 'above';
-                    const isTargetBelow = dropTarget?.idx === i && dropTarget?.position === 'below';
+                    const isTargetAbove = dropTarget?.idx === i && dropTarget?.position === 'above' && draggedUpcomingIdx !== i;
+                    const isTargetBelow = dropTarget?.idx === i && dropTarget?.position === 'below' && draggedUpcomingIdx !== i;
                     const isBeingDragged = draggedUpcomingIdx === i;
 
                     return (
                       <React.Fragment key={`${track.id}-${i}`}>
                         {isTargetAbove && (
-                          <div className="h-0.5 w-full bg-brand-500 rounded-full my-1 shadow-sm shadow-brand-500/50" />
+                          <div className="h-0.5 w-full bg-brand-500 rounded-full my-1 shadow-sm shadow-brand-500/50 pointer-events-none" />
                         )}
                         <div
                           draggable="true"
@@ -203,6 +217,8 @@ export const QueueIsland = ({
                             }
                           }}
                           className={`flex items-center gap-2 p-2 rounded-md hover:bg-surface-elevated group cursor-pointer transition select-none border border-transparent ${
+                            draggedUpcomingIdx !== null ? '[&_*]:pointer-events-none' : ''
+                          } ${
                             isBeingDragged ? 'opacity-40 border-dashed border-white/20' : ''
                           }`}
                         >
@@ -239,15 +255,9 @@ export const QueueIsland = ({
                               {track.artist_name}
                             </p>
                           </div>
-                          <div 
-                            className="shrink-0 text-white/0 group-hover:text-white/30 hover:!text-white cursor-grab active:cursor-grabbing p-1 transition"
-                            title="Drag to rearrange queue order"
-                          >
-                            <GripVertical size={13} />
-                          </div>
                         </div>
                         {isTargetBelow && (
-                          <div className="h-0.5 w-full bg-brand-500 rounded-full my-1 shadow-sm shadow-brand-500/50" />
+                          <div className="h-0.5 w-full bg-brand-500 rounded-full my-1 shadow-sm shadow-brand-500/50 pointer-events-none" />
                         )}
                       </React.Fragment>
                     );

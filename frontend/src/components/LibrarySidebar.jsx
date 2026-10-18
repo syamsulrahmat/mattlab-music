@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Library, Plus, Heart, Music, Disc3, Mic2, X, Check, GripVertical, Search, ArrowUpDown } from 'lucide-react';
+import { Library, Plus, Heart, Music, Disc3, Mic2, X, Check, Search, ArrowUpDown } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { PlaylistCover } from './PlaylistCover';
 import { SpotifyIcon } from './SpotifyIcon';
@@ -345,6 +345,18 @@ export const LibrarySidebar = ({
             onContextMenu(e, 'library-blank', {});
           }
         }}
+        onDragOver={(e) => {
+          if (canReorder && draggedPlaylistIdx !== null) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+          }
+        }}
+        onDragEnter={(e) => {
+          if (canReorder && draggedPlaylistIdx !== null) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+          }
+        }}
         className="flex-1 min-h-0 overflow-y-auto px-2 py-2 space-y-1"
       >
         {/* Liked Songs Special Item */}
@@ -470,8 +482,8 @@ export const LibrarySidebar = ({
           const isSelected = activeTab === 'playlist-detail' && pl.id === selectedPlaylistId;
           const isPlayingThis = isPlaying && currentTrack?.playlist_id === pl.id;
           const isDragOverTrack = dragOverId === pl.id;
-          const isTargetAbove = playlistDropTarget?.idx === idx && playlistDropTarget?.position === 'above';
-          const isTargetBelow = playlistDropTarget?.idx === idx && playlistDropTarget?.position === 'below';
+          const isTargetAbove = playlistDropTarget?.idx === idx && playlistDropTarget?.position === 'above' && draggedPlaylistIdx !== idx;
+          const isTargetBelow = playlistDropTarget?.idx === idx && playlistDropTarget?.position === 'below' && draggedPlaylistIdx !== idx;
           const isBeingDragged = draggedPlaylistIdx === idx;
           const itemIndex = (showLikedSongs ? 1 : 0) + idx;
           const isItemFocused = focusedIndex === itemIndex;
@@ -479,10 +491,29 @@ export const LibrarySidebar = ({
           return (
             <React.Fragment key={pl.id}>
               {canReorder && isTargetAbove && (
-                <div className="h-0.5 w-full bg-brand-500 rounded-full my-1 shadow-sm shadow-brand-500/50" />
+                <div className="h-0.5 w-full bg-brand-500 rounded-full my-1 shadow-sm shadow-brand-500/50 pointer-events-none" />
               )}
               <div
                 id={`library-item-${itemIndex}`}
+                draggable={canReorder ? "true" : "false"}
+                onDragStart={(e) => {
+                  if (!canReorder) {
+                    e.preventDefault();
+                    return;
+                  }
+                  if (e.target.closest('button, a, input, [data-no-drag]')) {
+                    e.preventDefault();
+                    return;
+                  }
+                  e.dataTransfer.setData('application/x-playlist-id', String(pl.id));
+                  e.dataTransfer.setData('application/x-playlist-idx', String(idx));
+                  e.dataTransfer.effectAllowed = 'move';
+                  setDraggedPlaylistIdx(idx);
+                }}
+                onDragEnd={() => {
+                  setDraggedPlaylistIdx(null);
+                  setPlaylistDropTarget(null);
+                }}
                 onMouseEnter={() => librarySearchQuery.trim() && setFocusedIndex(itemIndex)}
                 onClick={() => {
                   onSelectPlaylist(pl.id);
@@ -603,7 +634,11 @@ export const LibrarySidebar = ({
                     }
                   }
                 }}
-                className={`flex items-center gap-2.5 p-2 rounded-md cursor-pointer group transition border relative ${
+                className={`flex items-center gap-2.5 p-2 rounded-md select-none group transition border relative ${
+                  draggedPlaylistIdx !== null ? '[&_*]:pointer-events-none' : ''
+                } ${
+                  canReorder ? (isBeingDragged ? 'cursor-grabbing' : 'cursor-pointer') : 'cursor-pointer'
+                } ${
                   isBeingDragged
                     ? 'opacity-40 border-dashed border-white/20'
                     : isDragOverTrack
@@ -666,30 +701,9 @@ export const LibrarySidebar = ({
                     <span>Playlist • {pl.track_count} {pl.track_count === 1 ? 'song' : 'songs'}</span>
                   </p>
                 </div>
-                {canReorder && (
-                  <div 
-                    draggable="true"
-                    onDragStart={(e) => {
-                      e.stopPropagation();
-                      e.dataTransfer.setData('application/x-playlist-id', String(pl.id));
-                      e.dataTransfer.setData('application/x-playlist-idx', String(idx));
-                      e.dataTransfer.effectAllowed = 'move';
-                      setDraggedPlaylistIdx(idx);
-                    }}
-                    onDragEnd={() => {
-                      setDraggedPlaylistIdx(null);
-                      setPlaylistDropTarget(null);
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="shrink-0 text-white/0 group-hover:text-white/30 hover:!text-white cursor-grab active:cursor-grabbing p-1 transition"
-                    title="Drag to rearrange playlist order"
-                  >
-                    <GripVertical size={14} />
-                  </div>
-                )}
               </div>
               {canReorder && isTargetBelow && (
-                <div className="h-0.5 w-full bg-brand-500 rounded-full my-1 shadow-sm shadow-brand-500/50" />
+                <div className="h-0.5 w-full bg-brand-500 rounded-full my-1 shadow-sm shadow-brand-500/50 pointer-events-none" />
               )}
             </React.Fragment>
           );
