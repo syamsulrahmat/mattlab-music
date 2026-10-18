@@ -115,6 +115,8 @@ const MainAppContent = () => {
     prevTrack,
     isMiniPlayerOpen,
     setIsMiniPlayerOpen,
+    toggleKaraoke,
+    togglePiP,
     toastMessage,
     showToast,
   } = usePlayer();
@@ -267,27 +269,77 @@ const MainAppContent = () => {
     }
   }, [historyIndex, history, applyHistoryState]);
 
+  const handleGoHome = useCallback(() => {
+    setIsLyricsOpen(false);
+    navigateTo({ tab: 'home', isLyricsOpen: false });
+  }, [navigateTo]);
+
   // Global Keyboard & Mouse Button Event Listeners
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Global Command Palette / Quick Search Modal: Ctrl + K or Cmd + K
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      const isMod = e.ctrlKey || e.metaKey;
+      const keyLower = e.key.toLowerCase();
+      const isTargetInput =
+        ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) ||
+        e.target.isContentEditable ||
+        e.target.closest('input, textarea, select, [contenteditable="true"]');
+
+      // 1. Chords available even while focused in inputs (or globally)
+      if (isMod && e.shiftKey && keyLower === 'k') {
+        // Focus Search Input: Ctrl + Shift + K / Cmd + Shift + K
+        e.preventDefault();
+        const searchInput = document.getElementById('global-search-input');
+        if (searchInput) {
+          setIsLyricsOpen(false);
+          searchInput.focus();
+          searchInput.select();
+        }
+        return;
+      }
+
+      if (isMod && !e.shiftKey && keyLower === 'k') {
+        // Global Command Palette / Quick Search Modal: Ctrl + K or Cmd + K
         e.preventDefault();
         setIsCommandPaletteOpen((prev) => !prev);
         return;
       }
 
-      // Do NOT intercept typing when the user is focused on any form input or editable field
-      if (
-        ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) ||
-        e.target.isContentEditable ||
-        e.target.closest('input, textarea, select, [contenteditable="true"]')
-      ) {
+      if (isMod && e.shiftKey && keyLower === 'l') {
+        // Toggle Karaoke Mode: Ctrl + Shift + L / Cmd + Shift + L
+        e.preventDefault();
+        toggleKaraoke();
         return;
       }
 
-      // Settings & Keyboard Shortcuts: Ctrl + , or ?
-      if (((e.ctrlKey || e.metaKey) && e.key === ',') || (!e.ctrlKey && !e.metaKey && !e.altKey && e.key === '?')) {
+      if (isMod && !e.shiftKey && keyLower === 'l') {
+        // Toggle Lyrics: Ctrl + L / Cmd + L (suppresses browser URL bar focus)
+        e.preventDefault();
+        setIsLyricsOpen((prev) => !prev);
+        return;
+      }
+
+      if (isMod && !e.shiftKey && keyLower === 'p') {
+        // Toggle Picture-in-Picture: Ctrl + P / Cmd + P (suppresses browser print dialog)
+        e.preventDefault();
+        togglePiP();
+        return;
+      }
+
+      // Do NOT intercept single-key navigation or typing when user is in any form input / editable field
+      if (isTargetInput) {
+        return;
+      }
+
+      // Settings Menu: Ctrl + , or Cmd + ,
+      if (isMod && e.key === ',') {
+        e.preventDefault();
+        setSettingsInitialTab('account');
+        setIsSettingsOpen((prev) => !prev);
+        return;
+      }
+
+      // Keyboard Shortcuts Cheat Sheet: ? or /
+      if (!isMod && !e.altKey && (e.key === '?' || e.key === '/')) {
         e.preventDefault();
         setSettingsInitialTab('shortcuts');
         setIsSettingsOpen((prev) => !prev);
@@ -306,16 +358,56 @@ const MainAppContent = () => {
         return;
       }
 
-      if ((e.ctrlKey || e.metaKey) && (e.code === 'ArrowUp' || e.key === 'ArrowUp')) {
+      // Home Navigation: Home key, Ctrl/Cmd + Home, or 'h' / 'H'
+      if (e.key === 'Home' || (isMod && e.key === 'Home') || (!isMod && !e.altKey && keyLower === 'h')) {
+        e.preventDefault();
+        handleGoHome();
+        return;
+      }
+
+      // Search Focus: 's' / 'S' (chords: Ctrl + Shift + K / Cmd + Shift + K)
+      if (!isMod && !e.altKey && keyLower === 's') {
+        e.preventDefault();
+        const searchInput = document.getElementById('global-search-input');
+        if (searchInput) {
+          setIsLyricsOpen(false);
+          searchInput.focus();
+          searchInput.select();
+        }
+        return;
+      }
+
+      // Toggle Lyrics (Single Key L)
+      if (!isMod && !e.altKey && !e.shiftKey && keyLower === 'l') {
+        e.preventDefault();
+        setIsLyricsOpen((prev) => !prev);
+        return;
+      }
+
+      // Toggle Karaoke Mode (Single Key K)
+      if (!isMod && !e.altKey && !e.shiftKey && keyLower === 'k') {
+        e.preventDefault();
+        toggleKaraoke();
+        return;
+      }
+
+      // Toggle PiP (Single Key P - isolated from Shift+P which is Previous Track)
+      if (!isMod && !e.altKey && !e.shiftKey && keyLower === 'p') {
+        e.preventDefault();
+        togglePiP();
+        return;
+      }
+
+      if (isMod && (e.code === 'ArrowUp' || e.key === 'ArrowUp')) {
         e.preventDefault();
         setVolume(Math.min(1, volume + 0.05));
-      } else if ((e.ctrlKey || e.metaKey) && (e.code === 'ArrowDown' || e.key === 'ArrowDown')) {
+      } else if (isMod && (e.code === 'ArrowDown' || e.key === 'ArrowDown')) {
         e.preventDefault();
         setVolume(Math.max(0, volume - 0.05));
-      } else if ((e.ctrlKey || e.metaKey) && (e.code === 'ArrowLeft' || e.key === 'ArrowLeft')) {
+      } else if (isMod && (e.code === 'ArrowLeft' || e.key === 'ArrowLeft')) {
         e.preventDefault();
         prevTrack();
-      } else if ((e.ctrlKey || e.metaKey) && (e.code === 'ArrowRight' || e.key === 'ArrowRight')) {
+      } else if (isMod && (e.code === 'ArrowRight' || e.key === 'ArrowRight')) {
         e.preventDefault();
         nextTrack();
       } else if (e.code === 'Space') {
@@ -333,13 +425,13 @@ const MainAppContent = () => {
       } else if (e.code === 'ArrowRight' || e.key === 'ArrowRight') {
         e.preventDefault();
         seek(Math.min(duration || 100, currentTime + 5));
-      } else if (e.key === 'm' || e.key === 'M') {
+      } else if (keyLower === 'm') {
         e.preventDefault();
         toggleMute();
-      } else if (e.shiftKey && (e.key === 'N' || e.key === 'n')) {
+      } else if (e.shiftKey && keyLower === 'n') {
         e.preventDefault();
         nextTrack();
-      } else if (e.shiftKey && (e.key === 'P' || e.key === 'p')) {
+      } else if (e.shiftKey && keyLower === 'p') {
         e.preventDefault();
         prevTrack();
       }
@@ -362,7 +454,7 @@ const MainAppContent = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [handleGoBack, handleGoForward, togglePlay, seek, currentTime, duration, volume, setVolume, toggleMute, nextTrack, prevTrack]);
+  }, [handleGoBack, handleGoForward, handleGoHome, togglePlay, seek, currentTime, duration, volume, setVolume, toggleMute, nextTrack, prevTrack, toggleKaraoke, togglePiP]);
 
   // Global Context Menu Interceptor (replaces browser right-click)
   useEffect(() => {
@@ -510,11 +602,6 @@ const MainAppContent = () => {
   };
 
   // Nav Handlers
-  const handleGoHome = () => {
-    setIsLyricsOpen(false);
-    navigateTo({ tab: 'home', isLyricsOpen: false });
-  };
-
   const handleSearchChange = (val) => {
     setSearchQuery(val);
   };

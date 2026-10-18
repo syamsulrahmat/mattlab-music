@@ -194,6 +194,7 @@ export const TopBar = ({
             <Search size={18} />
           </div>
           <input
+            id="global-search-input"
             ref={searchInputRef}
             type="text"
             value={searchQuery}

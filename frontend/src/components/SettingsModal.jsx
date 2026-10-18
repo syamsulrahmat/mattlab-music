@@ -106,6 +106,11 @@ const SHORTCUTS_DATA = [
         description: 'Restarts the current song or skips to the previous track',
         combos: [['Shift', 'P'], ['Ctrl', '←']],
       },
+      {
+        title: 'Toggle Karaoke Mode',
+        description: 'Toggles Demucs AI instrumental stem for active song',
+        combos: [['Ctrl', 'Shift', 'L'], ['⌘', 'Shift', 'L'], ['K']],
+      },
     ],
   },
   {
@@ -113,14 +118,29 @@ const SHORTCUTS_DATA = [
     categoryLabel: 'Navigation',
     items: [
       {
+        title: 'Focus Search',
+        description: 'Focus top bar search input to search tracks, albums, or artists',
+        combos: [['Ctrl', 'Shift', 'K'], ['⌘', 'Shift', 'K'], ['S']],
+      },
+      {
         title: 'Quick Search & Command Palette',
         description: 'Instantly search tracks, albums, artists, or request missing music',
         combos: [['Ctrl', 'K'], ['⌘', 'K']],
       },
       {
-        title: 'Open Settings & Shortcuts',
-        description: 'Opens this settings modal and keyboard shortcut cheat-sheet',
-        combos: [['Ctrl', ','], ['?']],
+        title: 'Navigate Home',
+        description: 'Navigate to Home library dashboard (clears detail view)',
+        combos: [['Home'], ['Ctrl', 'Home'], ['⌘', 'Home'], ['H']],
+      },
+      {
+        title: 'Open Settings Menu',
+        description: 'Opens preferences, account, audio quality, and system settings',
+        combos: [['Ctrl', ','], ['⌘', ',']],
+      },
+      {
+        title: 'Shortcuts Cheat Sheet',
+        description: 'Opens this keyboard shortcut reference cheat-sheet',
+        combos: [['?'], ['/']],
       },
       {
         title: 'History Back',
@@ -202,12 +222,12 @@ const SHORTCUTS_DATA = [
       {
         title: 'Picture-in-Picture Mini-Player',
         description: 'Float an always-on-top resizable mini player anywhere on screen',
-        combos: [['Click Mini-Player Icon']],
+        combos: [['Ctrl', 'P'], ['⌘', 'P'], ['P'], ['Click Mini-Player Icon']],
       },
       {
         title: 'Synced Lyrics Immersion',
         description: 'Full-screen karaoke synchronized lyric line tracker with glowing glow',
-        combos: [['Click Lyrics Mic Icon']],
+        combos: [['Ctrl', 'L'], ['⌘', 'L'], ['L'], ['Click Lyrics Mic Icon']],
       },
       {
         title: 'Queue Island Panel',
