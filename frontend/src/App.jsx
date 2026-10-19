@@ -873,10 +873,10 @@ const MainAppContent = () => {
         hasNotifications={hasResolvedNotifications}
       />
 
-      {/* 2. Three Floating Islands Body (grid: 280px 1fr 300px, gap: 8px, padding: 8px) */}
+      {/* 2. Three Floating Islands Body (grid: 280px 1fr 320px, gap: 8px, padding: 8px) */}
       <div className={`flex-1 min-h-0 grid gap-2 p-2 bg-surface-base overflow-hidden ${
         isQueueOpen
-          ? 'grid-cols-1 md:grid-cols-[280px_1fr] lg:grid-cols-[280px_1fr_300px]'
+          ? 'grid-cols-1 md:grid-cols-[280px_1fr] lg:grid-cols-[280px_1fr_320px]'
           : 'grid-cols-1 md:grid-cols-[280px_1fr]'
       }`}>
         {/* Island 1: Left Panel ("Your Library") */}

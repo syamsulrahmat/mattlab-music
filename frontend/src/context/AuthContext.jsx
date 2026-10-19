@@ -229,6 +229,21 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
+  const updatePreferences = async (newPrefs) => {
+    const res = await fetch('/api/auth/preferences', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newPrefs),
+      credentials: 'include',
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(parseApiError(data.detail, 'Failed to update preferences'));
+    }
+    setUser((prev) => prev ? { ...prev, preferences: data.preferences } : null);
+    return data;
+  };
+
   const isAdmin = user?.role === 'admin';
 
   return (
@@ -252,6 +267,7 @@ export const AuthProvider = ({ children }) => {
         changeOwnPassword,
         uploadAvatar,
         removeAvatar,
+        updatePreferences,
       }}
     >
       {children}

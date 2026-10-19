@@ -31,6 +31,8 @@ def on_startup():
     spotify_sync.start_scheduled_spotify_watcher()
     from app.lyrics_fetcher import start_background_lyrics_fetcher
     start_background_lyrics_fetcher()
+    from app.visualizer_crawler import start_background_visualizer_crawler
+    start_background_visualizer_crawler()
 
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
@@ -55,6 +57,8 @@ async def auth_middleware(request: Request, call_next):
         request.url.path in public_paths
         or request.url.path.startswith("/api/avatars/")
         or request.url.path.startswith("/api/covers/")
+        or request.url.path.startswith("/api/visualizers/")
+        or request.url.path.endswith("/visualizer.mp4")
     ):
         return await call_next(request)
 

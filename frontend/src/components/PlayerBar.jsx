@@ -506,7 +506,7 @@ export const PlayerBar = ({
             )}
           </div>
 
-          {/* Lyrics Toggle Button - immediately to left of queue button */}
+          {/* Lyrics Toggle Button */}
           <button
             onClick={() => setIsLyricsOpen && setIsLyricsOpen(!isLyricsOpen)}
             className={`p-2 rounded-lg transition ${
@@ -517,12 +517,13 @@ export const PlayerBar = ({
             <Mic2 size={18} />
           </button>
 
+          {/* Queue Toggle Button */}
           <button
             onClick={() => setIsQueueOpen(!isQueueOpen)}
             className={`p-2 rounded-lg transition ${
               isQueueOpen ? 'text-brand-500 bg-surface-elevated' : 'text-content-secondary hover:text-content-primary'
             }`}
-            title="Play Queue"
+            title={isQueueOpen ? "Close Queue" : "Play Queue"}
           >
             <ListMusic size={18} />
           </button>

@@ -145,6 +145,19 @@ def init_db() -> None:
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS track_videos (
+            track_id INTEGER PRIMARY KEY REFERENCES tracks(id) ON DELETE CASCADE,
+            visual_type TEXT DEFAULT 'youtube',
+            canvas_url TEXT,
+            spotify_track_id TEXT,
+            youtube_id TEXT,
+            video_title TEXT,
+            channel_name TEXT,
+            duration_seconds REAL DEFAULT 0.0,
+            available BOOLEAN DEFAULT 1,
+            fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE INDEX IF NOT EXISTS idx_tracks_album ON tracks(album_id);
         CREATE INDEX IF NOT EXISTS idx_tracks_artist ON tracks(artist_id);
         CREATE INDEX IF NOT EXISTS idx_albums_artist ON albums(artist_id);
@@ -154,6 +167,7 @@ def init_db() -> None:
         CREATE INDEX IF NOT EXISTS idx_spotify_sync_playlist ON spotify_sync_tracks(playlist_id, position);
         CREATE INDEX IF NOT EXISTS idx_bug_reports_user ON bug_reports(user_id);
         CREATE INDEX IF NOT EXISTS idx_bug_reports_status ON bug_reports(status);
+        CREATE INDEX IF NOT EXISTS idx_track_videos_track ON track_videos(track_id);
         """)
 
         cursor = conn.cursor()
@@ -282,6 +296,25 @@ def init_db() -> None:
                 print("[DB MIGRATION] Added user_deleted column to bug_reports.")
             except Exception as e:
                 print(f"[DB MIGRATION] Error adding user_deleted to bug_reports: {e}")
+
+        # Migrations for track_videos (visual_type, canvas_url, spotify_track_id)
+        cursor.execute("PRAGMA table_info(track_videos)")
+        tv_cols = [c["name"] for c in cursor.fetchall()]
+        if "visual_type" not in tv_cols:
+            try:
+                conn.execute("ALTER TABLE track_videos ADD COLUMN visual_type TEXT DEFAULT 'youtube'")
+            except Exception:
+                pass
+        if "canvas_url" not in tv_cols:
+            try:
+                conn.execute("ALTER TABLE track_videos ADD COLUMN canvas_url TEXT")
+            except Exception:
+                pass
+        if "spotify_track_id" not in tv_cols:
+            try:
+                conn.execute("ALTER TABLE track_videos ADD COLUMN spotify_track_id TEXT")
+            except Exception:
+                pass
 
         try:
             conn.execute("CREATE INDEX IF NOT EXISTS idx_playlists_user ON playlists(user_id)")

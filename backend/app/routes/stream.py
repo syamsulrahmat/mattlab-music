@@ -1,5 +1,8 @@
 import os
 import re
+import json
+import asyncio
+import logging
 from pathlib import Path
 from typing import Generator, Optional
 
@@ -7,6 +10,9 @@ from fastapi import APIRouter, HTTPException, Request, Response, status, Backgro
 from fastapi.responses import StreamingResponse, FileResponse, Response
 
 from app.database import get_db
+from app.config import VISUALIZERS_DIR
+
+logger = logging.getLogger("stream_routes")
 
 router = APIRouter(tags=["Streaming & Media"])
 
@@ -238,3 +244,316 @@ async def get_track_detail(track_id: int):
     track_dict["cover_url"] = f"/api/covers/{row['album_id']}"
     track_dict["stream_url"] = f"/api/stream/{row['id']}"
     return track_dict
+
+
+def get_spotify_sp_dc() -> Optional[str]:
+    """Retrieve configured sp_dc cookie from DB user preferences or environment."""
+    env_sp_dc = os.getenv("SPOTIFY_SP_DC", "").strip()
+    if env_sp_dc:
+        return env_sp_dc
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT preferences FROM users WHERE preferences LIKE '%spotify_sp_dc%' ORDER BY id ASC LIMIT 1")
+            row = cursor.fetchone()
+            if row and row["preferences"]:
+                prefs = json.loads(row["preferences"])
+                sp_dc = prefs.get("spotify_sp_dc", "").strip()
+                if sp_dc:
+                    return sp_dc
+    except Exception:
+        pass
+    return None
+
+
+def lookup_spotify_canvas(artist: str, title: str, sp_dc: Optional[str] = None) -> Optional[dict]:
+    """Search Spotify for track and retrieve official Spotify Canvas MP4 loop."""
+    if not sp_dc:
+        return None
+    try:
+        from spotify_scraper import SpotifyClient
+        client = SpotifyClient(cookies={"sp_dc": sp_dc})
+        clean_art = re.sub(r'[\(\[].*?[\)\]]', '', artist).strip()
+        clean_tit = re.sub(r'[\(\[].*?[\)\]]', '', title).strip()
+        query = f"{clean_art} {clean_tit}".strip()
+        res = client.search(query)
+        if res and hasattr(res, "tracks") and res.tracks:
+            top_track = res.tracks[0]
+            spotify_track_id = top_track.id
+            canvas = client.get_canvas(spotify_track_id)
+            if canvas and canvas.url:
+                artist_name = artist
+                if getattr(top_track, "artists", None) and len(top_track.artists) > 0:
+                    artist_name = top_track.artists[0].name
+                return {
+                    "visual_type": "canvas",
+                    "canvas_url": canvas.url,
+                    "spotify_track_id": spotify_track_id,
+                    "youtube_id": None,
+                    "video_title": f"{top_track.name} (Spotify Canvas)",
+                    "channel_name": artist_name,
+                    "duration_seconds": 0.0,
+                }
+    except Exception as e:
+        logger.warning(f"[SpotifyCanvas] Error fetching canvas for '{artist} - {title}': {e}")
+    return None
+
+
+def lookup_youtube_video(artist: str, title: str) -> Optional[dict]:
+    """Search YouTube for the official music video using yt-dlp flat search."""
+    import yt_dlp
+    ydl_opts = {
+        "quiet": True,
+        "extract_flat": True,
+        "no_warnings": True,
+        "socket_timeout": 8,
+    }
+    # Clean up parenthetical annotations like "(Remastered 2011)" or "[Official Audio]"
+    clean_artist = re.sub(r'[\(\[].*?[\)\]]', '', artist).strip()
+    clean_title = re.sub(r'[\(\[].*?[\)\]]', '', title).strip()
+
+    queries = [
+        f"ytsearch1:{clean_artist} {clean_title} official music video",
+        f"ytsearch1:{clean_artist} {clean_title} official video",
+        f"ytsearch1:{clean_artist} {clean_title}"
+    ]
+
+    for q in queries:
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                res = ydl.extract_info(q, download=False)
+                if res and "entries" in res and len(res["entries"]) > 0:
+                    entry = res["entries"][0]
+                    vid_id = entry.get("id")
+                    if vid_id and len(vid_id) == 11:
+                        return {
+                            "visual_type": "youtube",
+                            "canvas_url": None,
+                            "spotify_track_id": None,
+                            "youtube_id": vid_id,
+                            "video_title": entry.get("title") or f"{artist} - {title}",
+                            "channel_name": entry.get("channel") or entry.get("uploader") or "",
+                            "duration_seconds": float(entry.get("duration") or 0.0),
+                        }
+        except Exception as e:
+            logger.warning(f"[VideoLookup] Error searching '{q}': {e}")
+            continue
+    return None
+
+
+def resolve_track_visual(artist: str, title: str, sp_dc: Optional[str] = None) -> Optional[dict]:
+    """Hybrid visual resolver: Tier 1 Spotify Canvas -> Tier 2 YouTube Official Video."""
+    # 1. Tier 1: Spotify Canvas (looping visualizer)
+    if sp_dc:
+        canvas_result = lookup_spotify_canvas(artist, title, sp_dc)
+        if canvas_result:
+            return canvas_result
+
+    # 2. Tier 2: YouTube official video (synced visualizer)
+    yt_result = lookup_youtube_video(artist, title)
+    if yt_result:
+        return yt_result
+
+    return None
+
+
+@router.get("/tracks/{track_id}/visualizer.mp4")
+async def get_visualizer_clip(track_id: int):
+    """Serve cached lightweight MP4 visualizer clip for a track."""
+    clip_path = VISUALIZERS_DIR / f"{track_id}.mp4"
+    if not clip_path.exists() or clip_path.stat().st_size < 1000:
+        raise HTTPException(status_code=404, detail="Visualizer clip not available yet")
+    return FileResponse(
+        str(clip_path),
+        media_type="video/mp4",
+        headers={"Cache-Control": "public, max-age=604800, immutable"},
+    )
+
+
+@router.get("/visualizers/status")
+async def get_visualizer_crawler_status():
+    """Retrieve visualizer library auto-crawler progress and storage stats."""
+    from app.visualizer_crawler import visualizer_crawler
+    return visualizer_crawler.get_status()
+
+
+@router.get("/tracks/{track_id}/video")
+async def get_track_video(track_id: int):
+    """Retrieve or discover visualizer (Spotify Canvas loop or YouTube video clip) for a track."""
+    from app.visualizer_crawler import visualizer_crawler, download_canvas_clip
+
+    clip_file = VISUALIZERS_DIR / f"{track_id}.mp4"
+
+    # 1. Fast path: clip already cached on disk
+    if clip_file.exists() and clip_file.stat().st_size > 10000:
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM track_videos WHERE track_id = ?", (track_id,))
+            cached = cursor.fetchone()
+
+        v_type = cached["visual_type"] if (cached and cached["visual_type"]) else "clip"
+        sp_id = cached["spotify_track_id"] if cached and "spotify_track_id" in cached.keys() else None
+        yt_id = cached["youtube_id"] if cached else None
+        v_title = cached["video_title"] if cached else None
+        ch_name = cached["channel_name"] if cached else None
+        dur = cached["duration_seconds"] if cached else 0.0
+
+        return {
+            "track_id": track_id,
+            "type": v_type,
+            "video_url": f"/api/tracks/{track_id}/visualizer.mp4",
+            "canvas_url": None,
+            "spotify_track_id": sp_id,
+            "video_id": yt_id,
+            "video_title": v_title,
+            "channel_name": ch_name,
+            "duration_seconds": dur,
+            "available": True,
+        }
+
+    # 2. Check database cache
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM track_videos WHERE track_id = ?", (track_id,))
+        cached = cursor.fetchone()
+
+        if cached:
+            avail = bool(cached["available"])
+            if not avail:
+                return {
+                    "track_id": track_id,
+                    "type": "none",
+                    "video_url": None,
+                    "available": False,
+                }
+
+            canvas_url = cached["canvas_url"] if "canvas_url" in cached.keys() else None
+            spotify_track_id = cached["spotify_track_id"] if "spotify_track_id" in cached.keys() else None
+            youtube_id = cached["youtube_id"]
+            visual_type = cached["visual_type"] if "visual_type" in cached.keys() and cached["visual_type"] else ("canvas" if canvas_url else "youtube")
+
+            # If Canvas: download immediately (~0.3s) so it's ready on first hit
+            if visual_type == "canvas" and canvas_url:
+                loop = asyncio.get_running_loop()
+                success = await loop.run_in_executor(None, download_canvas_clip, track_id, canvas_url)
+                video_url = f"/api/tracks/{track_id}/visualizer.mp4" if (success or clip_file.exists()) else canvas_url
+                return {
+                    "track_id": track_id,
+                    "type": "canvas",
+                    "video_url": video_url,
+                    "canvas_url": canvas_url,
+                    "spotify_track_id": spotify_track_id,
+                    "video_id": None,
+                    "video_title": cached["video_title"],
+                    "channel_name": cached["channel_name"],
+                    "duration_seconds": cached["duration_seconds"],
+                    "available": True,
+                }
+            elif youtube_id:
+                # Queue high priority for crawler
+                visualizer_crawler.queue_high_priority(track_id)
+                return {
+                    "track_id": track_id,
+                    "type": "clip",
+                    "video_url": None,
+                    "canvas_url": None,
+                    "spotify_track_id": None,
+                    "video_id": youtube_id,
+                    "video_title": cached["video_title"],
+                    "channel_name": cached["channel_name"],
+                    "duration_seconds": cached["duration_seconds"],
+                    "available": False,
+                    "status": "processing",
+                }
+
+        # 3. If not in DB, get track metadata and resolve
+        cursor.execute("""
+            SELECT t.id, t.title, t.duration_seconds, ar.name AS artist_name
+            FROM tracks t
+            JOIN artists ar ON t.artist_id = ar.id
+            WHERE t.id = ?
+        """, (track_id,))
+        track = cursor.fetchone()
+
+    if not track:
+        raise HTTPException(status_code=404, detail="Track not found")
+
+    sp_dc = get_spotify_sp_dc()
+    loop = asyncio.get_running_loop()
+    result = await loop.run_in_executor(
+        None,
+        resolve_track_visual,
+        track["artist_name"],
+        track["title"],
+        sp_dc
+    )
+
+    with get_db() as conn:
+        if result and (result.get("canvas_url") or result.get("youtube_id")):
+            conn.execute("""
+                INSERT OR REPLACE INTO track_videos 
+                (track_id, visual_type, canvas_url, spotify_track_id, youtube_id, video_title, channel_name, duration_seconds, available)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+            """, (
+                track_id,
+                result.get("visual_type", "youtube"),
+                result.get("canvas_url"),
+                result.get("spotify_track_id"),
+                result.get("youtube_id"),
+                result.get("video_title"),
+                result.get("channel_name"),
+                result.get("duration_seconds", 0.0)
+            ))
+
+            v_type = result.get("visual_type", "youtube")
+            canvas_url = result.get("canvas_url")
+            youtube_id = result.get("youtube_id")
+
+            if v_type == "canvas" and canvas_url:
+                success = await loop.run_in_executor(None, download_canvas_clip, track_id, canvas_url)
+                video_url = f"/api/tracks/{track_id}/visualizer.mp4" if (success or clip_file.exists()) else canvas_url
+                return {
+                    "track_id": track_id,
+                    "type": "canvas",
+                    "video_url": video_url,
+                    "canvas_url": canvas_url,
+                    "spotify_track_id": result.get("spotify_track_id"),
+                    "video_id": None,
+                    "video_title": result.get("video_title"),
+                    "channel_name": result.get("channel_name"),
+                    "duration_seconds": result.get("duration_seconds", 0.0),
+                    "available": True,
+                }
+            elif youtube_id:
+                visualizer_crawler.queue_high_priority(track_id)
+                return {
+                    "track_id": track_id,
+                    "type": "clip",
+                    "video_url": None,
+                    "canvas_url": None,
+                    "spotify_track_id": None,
+                    "video_id": youtube_id,
+                    "video_title": result.get("video_title"),
+                    "channel_name": result.get("channel_name"),
+                    "duration_seconds": result.get("duration_seconds", 0.0),
+                    "available": False,
+                    "status": "processing",
+                }
+        else:
+            conn.execute("""
+                INSERT OR REPLACE INTO track_videos 
+                (track_id, visual_type, canvas_url, spotify_track_id, youtube_id, video_title, channel_name, duration_seconds, available)
+                VALUES (?, 'none', NULL, NULL, NULL, NULL, NULL, 0.0, 0)
+            """, (track_id,))
+            return {
+                "track_id": track_id,
+                "type": "none",
+                "video_url": None,
+                "canvas_url": None,
+                "spotify_track_id": None,
+                "video_id": None,
+                "video_title": None,
+                "channel_name": None,
+                "duration_seconds": 0.0,
+                "available": False,
+            }

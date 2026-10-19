@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, Play, Music, ListMusic, Compass, CheckCircle2 } from 'lucide-react';
+import { Compass, CheckCircle2 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
+import { NowPlayingVideo } from './NowPlayingVideo';
 
 export const QueueIsland = ({ 
   isOpen, 
@@ -8,9 +9,19 @@ export const QueueIsland = ({
   onDiscoverMusic,
   onSelectAlbum,
   onSelectArtist,
-  onContextMenu
+  onContextMenu,
 }) => {
-  const { queue, queueIndex, currentTrack, playTrack, isTrackPreloaded, reorderQueue } = usePlayer();
+  const { 
+    queue, 
+    queueIndex, 
+    currentTrack, 
+    playTrack, 
+    isTrackPreloaded, 
+    reorderQueue,
+    isFavorite,
+    toggleFavorite 
+  } = usePlayer();
+
   const [draggedUpcomingIdx, setDraggedUpcomingIdx] = useState(null);
   const [dropTarget, setDropTarget] = useState(null); // { idx, position: 'above' | 'below' }
 
@@ -20,24 +31,9 @@ export const QueueIsland = ({
   const isQueueEmpty = !currentTrack && queue.length === 0;
 
   return (
-    <aside className="hidden lg:flex flex-col h-full w-[300px] shrink-0 bg-surface-island rounded-lg overflow-hidden select-none border border-border-subtle">
-      {/* Header */}
-      <div className="px-4 py-3.5 flex items-center justify-between border-b border-border-subtle">
-        <div className="flex items-center gap-2">
-          <ListMusic size={18} className="text-brand-500" />
-          <h3 className="font-bold text-sm text-content-primary tracking-tight">Play Queue</h3>
-        </div>
-        <button
-          onClick={onClose}
-          className="w-8 h-8 rounded-full hover:bg-surface-elevated text-content-secondary hover:text-content-primary flex items-center justify-center transition"
-          title="Close Queue"
-        >
-          <X size={16} />
-        </button>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+    <aside className="hidden lg:flex flex-col h-full w-[320px] shrink-0 bg-surface-island rounded-lg overflow-hidden select-none border border-border-subtle shadow-xl">
+      {/* Content Area - Unified Continuous Scroll */}
+      <div className="flex-1 overflow-y-auto p-3.5 space-y-4">
         {isQueueEmpty ? (
           /* Centered Empty State with Green Button */
           <div className="h-full flex flex-col items-center justify-center text-center px-4 py-12">
@@ -57,77 +53,22 @@ export const QueueIsland = ({
           </div>
         ) : (
           <>
-            {/* Now Playing */}
-            <div>
-              <span className="text-xs font-bold text-content-secondary uppercase tracking-wider block mb-2.5">
-                Now Playing
-              </span>
-              {currentTrack ? (
-                <div 
-                  draggable="true"
-                  onDragStart={(e) => {
-                    e.dataTransfer.setData('application/json', JSON.stringify({
-                      id: currentTrack.id,
-                      title: currentTrack.title,
-                      artist_name: currentTrack.artist_name,
-                      album_id: currentTrack.album_id,
-                      album_title: currentTrack.album_title,
-                      cover_url: currentTrack.cover_url
-                    }));
-                    e.dataTransfer.setData('text/plain', String(currentTrack.id));
-                    e.dataTransfer.effectAllowed = 'copy';
-                  }}
-                  onContextMenu={(e) => {
-                    if (onContextMenu) {
-                      e.preventDefault();
-                      onContextMenu(e, 'track', currentTrack);
-                    }
-                  }}
-                  className="flex items-center gap-3 p-2.5 bg-surface-elevated rounded-lg border border-border-subtle shadow-sm group cursor-grab active:cursor-grabbing select-none"
-                >
-                  <img
-                    src={currentTrack.cover_url || '/api/covers/0'}
-                    alt={currentTrack.title}
-                    onClick={() => onSelectAlbum && onSelectAlbum(currentTrack.album_id)}
-                    className="w-12 h-12 rounded object-cover bg-surface-hover shrink-0 cursor-pointer hover:opacity-90 transition"
-                  />
-                  <div className="truncate flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 justify-between">
-                      <p 
-                        onClick={() => onSelectAlbum && onSelectAlbum(currentTrack.album_id)}
-                        className="text-xs font-bold text-brand-500 truncate cursor-pointer hover:underline"
-                      >
-                        {currentTrack.title}
-                      </p>
-                      {isTrackPreloaded(currentTrack.id) && (
-                        <span 
-                          title="Cached locally (offline ready)"
-                          className="shrink-0 inline-flex items-center gap-0.5 text-[9px] font-semibold text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded-full"
-                        >
-                          <CheckCircle2 size={10} />
-                          <span>Ready</span>
-                        </span>
-                      )}
-                    </div>
-                    <p 
-                      onClick={() => onSelectArtist && onSelectArtist(currentTrack.artist_id)}
-                      className="text-[11px] text-content-secondary truncate mt-0.5 cursor-pointer hover:text-content-primary hover:underline"
-                    >
-                      {currentTrack.artist_name}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-xs text-content-subtle">Nothing playing right now</p>
-              )}
-            </div>
+            {/* ================= SECTION 1: NOW PLAYING ================= */}
+            {currentTrack && (
+              <NowPlayingVideo track={currentTrack} onSelectAlbum={onSelectAlbum} />
+            )}
 
-            {/* Next Up */}
-            <div>
-              <div className="flex items-center justify-between mb-2.5">
-                <span className="text-xs font-bold text-content-secondary uppercase tracking-wider">
-                  Next Up ({upcomingTracks.length})
-                </span>
+            {/* ================= SECTION 2: QUEUE (NEXT IN QUEUE) ================= */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-xl sm:text-2xl font-bold text-content-primary tracking-tight">
+                  Next in queue
+                </h2>
+                {upcomingTracks.length > 0 && (
+                  <span className="inline-flex items-center justify-center text-[10px] font-mono font-semibold text-brand-400 bg-brand-500/10 border border-brand-500/20 px-2 py-0.5 rounded-full shrink-0 translate-y-[2px]">
+                    {upcomingTracks.length} {upcomingTracks.length === 1 ? 'track' : 'tracks'}
+                  </span>
+                )}
               </div>
 
               {upcomingTracks.length > 0 ? (
@@ -182,9 +123,10 @@ export const QueueIsland = ({
                               e.dataTransfer.dropEffect = 'move';
                               const rect = e.currentTarget.getBoundingClientRect();
                               const midY = rect.top + rect.height / 2;
-                              setDropTarget({
-                                idx: i,
-                                position: e.clientY < midY ? 'above' : 'below',
+                              const newPos = e.clientY < midY ? 'above' : 'below';
+                              setDropTarget((prev) => {
+                                if (prev && prev.idx === i && prev.position === newPos) return prev;
+                                return { idx: i, position: newPos };
                               });
                             }
                           }}
@@ -231,30 +173,20 @@ export const QueueIsland = ({
                             className="w-9 h-9 rounded object-cover bg-surface-elevated2 shrink-0"
                           />
                           <div className="truncate flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-1.5">
-                              <p className="text-xs font-medium text-content-primary group-hover:text-brand-400 truncate">
-                                {track.title}
-                              </p>
-                              {isTrackPreloaded(track.id) && (
-                                <span 
-                                  title="Preloaded & offline ready (will play even if connection drops)"
-                                  className="shrink-0 inline-flex items-center gap-0.5 text-[9px] font-medium text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded-full"
-                                >
-                                  <CheckCircle2 size={9} />
-                                  <span>Preloaded</span>
-                                </span>
-                              )}
-                            </div>
-                            <p 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (onSelectArtist) onSelectArtist(track.artist_id);
-                              }}
-                              className="text-[10px] text-content-secondary truncate hover:text-content-primary hover:underline cursor-pointer"
-                            >
+                            <p className="text-xs font-medium text-content-primary group-hover:text-brand-400 truncate">
+                              {track.title}
+                            </p>
+                            <p className="text-[11px] text-content-secondary truncate pointer-events-none select-none">
                               {track.artist_name}
                             </p>
                           </div>
+                          {isTrackPreloaded(track.id) && (
+                            <CheckCircle2 
+                              size={14} 
+                              className="text-brand-500 shrink-0 self-center" 
+                              title="Preloaded & offline ready"
+                            />
+                          )}
                         </div>
                         {isTargetBelow && (
                           <div className="h-0.5 w-full bg-brand-500 rounded-full my-1 shadow-sm shadow-brand-500/50 pointer-events-none" />
@@ -264,7 +196,7 @@ export const QueueIsland = ({
                   })}
                 </div>
               ) : (
-                <div className="text-xs text-content-subtle py-6 text-center">
+                <div className="text-xs text-content-subtle py-6 text-center bg-surface-elevated/40 rounded-xl border border-dashed border-border-subtle/50">
                   No upcoming songs in queue
                 </div>
               )}

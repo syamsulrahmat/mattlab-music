@@ -256,7 +256,8 @@ export const SettingsModal = ({
     updateProfile, 
     changeOwnPassword, 
     uploadAvatar, 
-    removeAvatar 
+    removeAvatar,
+    updatePreferences
   } = useAuth();
   const { 
     preloadCount, 
@@ -278,6 +279,34 @@ export const SettingsModal = ({
   const [activeTab, setActiveTab] = useState(initialTab || 'account');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+
+  // Spotify Canvas sp_dc state
+  const [spotifySpDc, setSpotifySpDc] = useState(user?.preferences?.spotify_sp_dc || '');
+  const [showSpDc, setShowSpDc] = useState(false);
+  const [isSavingSpDc, setIsSavingSpDc] = useState(false);
+  const [spDcSavedSuccess, setSpDcSavedSuccess] = useState(false);
+
+  useEffect(() => {
+    if (user?.preferences?.spotify_sp_dc !== undefined) {
+      setSpotifySpDc(user.preferences.spotify_sp_dc);
+    }
+  }, [user?.preferences?.spotify_sp_dc]);
+
+  const handleSaveSpotifySpDc = async (e) => {
+    e?.preventDefault();
+    if (!updatePreferences) return;
+    try {
+      setIsSavingSpDc(true);
+      await updatePreferences({ spotify_sp_dc: spotifySpDc.trim() });
+      setSpDcSavedSuccess(true);
+      if (showToast) showToast('Spotify Canvas cookie saved!');
+      setTimeout(() => setSpDcSavedSuccess(false), 3000);
+    } catch (err) {
+      console.error('Failed to save Spotify sp_dc:', err);
+    } finally {
+      setIsSavingSpDc(false);
+    }
+  };
 
   // Issues & Notes state
   const [issues, setIssues] = useState([]);
@@ -1844,6 +1873,89 @@ export const SettingsModal = ({
                       <span>{lyricsMessage}</span>
                     </div>
                   )}
+                </div>
+
+                {/* Spotify Canvas & Video Visualizer Card */}
+                <div className="p-5 rounded-2xl bg-surface-panel border border-border-subtle space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border-subtle">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-[#1DB954]/10 text-[#1DB954] border border-[#1DB954]/20 flex items-center justify-center shrink-0">
+                        <Sparkles size={18} />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                          <span>Spotify Canvas Visualizer</span>
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                            user?.preferences?.spotify_sp_dc
+                              ? 'bg-[#1DB954]/15 text-[#1DB954] border border-[#1DB954]/30'
+                              : 'bg-white/10 text-content-muted'
+                          }`}>
+                            {user?.preferences?.spotify_sp_dc ? 'Connected' : 'YouTube Fallback Active'}
+                          </span>
+                        </h4>
+                        <p className="text-xs text-content-muted mt-0.5">
+                          Enables official looping 9:16 Canvas MP4s directly from Spotify's CDN. Falls back to synced YouTube videos when no Canvas exists.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleSaveSpotifySpDc} className="space-y-3">
+                    <div>
+                      <label className="text-xs font-semibold text-content-secondary block mb-1.5">
+                        Spotify <code className="text-[#1DB954] font-mono text-[11px] bg-black/40 px-1.5 py-0.5 rounded">sp_dc</code> Cookie
+                      </label>
+                      <div className="relative flex items-center">
+                        <input
+                          type={showSpDc ? 'text' : 'password'}
+                          value={spotifySpDc}
+                          onChange={(e) => setSpotifySpDc(e.target.value)}
+                          placeholder="Paste your Spotify sp_dc cookie (starts with AQB...)"
+                          className="w-full bg-surface-island border border-border-subtle focus:border-brand-500 rounded-xl px-3.5 py-2.5 text-xs text-content-primary font-mono pr-20 placeholder:text-content-subtle focus:outline-none transition"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowSpDc(!showSpDc)}
+                          className="absolute right-3 text-content-muted hover:text-white transition p-1"
+                          title={showSpDc ? 'Hide cookie' : 'Show cookie'}
+                        >
+                          {showSpDc ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-content-muted mt-1.5 leading-relaxed">
+                        Found on <span className="text-white font-medium">open.spotify.com</span> via <kbd className="px-1 py-0.5 bg-surface-island rounded border border-border-subtle text-[10px] font-mono">F12</kbd> → <strong>Application</strong> → <strong>Cookies</strong> → <code className="text-[#1DB954] font-mono text-[10px]">sp_dc</code>.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[11px] text-content-subtle">
+                        {user?.preferences?.spotify_sp_dc ? '✓ High-definition looping video enabled' : 'ℹ YouTube official video visualizer is currently active'}
+                      </span>
+                      <button
+                        type="submit"
+                        disabled={isSavingSpDc}
+                        className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition ${
+                          spDcSavedSuccess
+                            ? 'bg-[#1DB954]/20 text-[#1DB954] border border-[#1DB954]/30'
+                            : 'bg-brand-500 hover:bg-brand-400 text-black font-bold'
+                        }`}
+                      >
+                        {spDcSavedSuccess ? (
+                          <>
+                            <Check size={14} className="text-[#1DB954]" />
+                            <span>Saved!</span>
+                          </>
+                        ) : isSavingSpDc ? (
+                          <>
+                            <Loader2 size={14} className="animate-spin" />
+                            <span>Saving...</span>
+                          </>
+                        ) : (
+                          <span>Save Cookie</span>
+                        )}
+                      </button>
+                    </div>
+                  </form>
                 </div>
               </div>
             )}
