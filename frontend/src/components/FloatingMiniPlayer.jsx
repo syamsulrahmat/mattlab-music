@@ -120,6 +120,21 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
     else handleSetSizeMode('lyrics-small');
   };
 
+  // Open and focus main MattLab Music web app window from PiP
+  const handleOpenWebApp = (e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    try {
+      window.focus();
+      if (pipWindow && pipWindow.opener) {
+        pipWindow.opener.focus();
+      }
+      return;
+    } catch (_) {}
+    try {
+      window.open(window.location.origin, '_blank');
+    } catch (_) {}
+  };
+
   // Listen for native OS window resize events on the PiP window to adapt layout & font scale
   useEffect(() => {
     if (!pipWindow) return;
@@ -285,49 +300,22 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
     return (
       <div
         ref={smallLyricsRef}
-        className={`w-full h-full flex flex-col justify-between bg-surface-island text-content-primary font-sans select-none box-border overflow-hidden ${containerPadding}`}
+        className={`relative w-full h-full flex flex-col justify-between bg-surface-island text-content-primary font-sans select-none box-border overflow-hidden ${containerPadding}`}
       >
-        {/* Top row: Track Info (hidden in minimal) & in-app utility icons */}
-        {(!isMinimalLayout || (!isPiP && onClose)) && (
-          <div className={`flex items-center ${isMinimalLayout ? 'justify-end' : 'justify-between'} w-full gap-1.5 shrink-0`}>
-            {!isMinimalLayout && (
-              <div className="flex items-center gap-1.5 truncate flex-1 min-w-0 pr-1">
-                <img
-                  src={currentTrack?.cover_url || '/api/covers/0'}
-                  alt=""
-                  style={{ width: `${coverSize}px`, height: `${coverSize}px` }}
-                  className="rounded object-cover bg-surface-elevated shrink-0 shadow-sm"
-                />
-                <div className="flex-1 min-w-0 truncate">
-                  <p
-                    style={{ fontSize: `${titleFontSize}px` }}
-                    className="font-bold text-content-primary truncate leading-tight"
-                  >
-                    {currentTrack?.title || 'No Track'}
-                  </p>
-                  <p
-                    style={{ fontSize: `${artistFontSize}px` }}
-                    className="text-content-secondary truncate leading-tight"
-                  >
-                    {currentTrack?.artist_name || ''}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* In-app fallback controls only (PiP uses native OS window controls) */}
-            {!isPiP && (
-              <div className="flex items-center gap-0.5 shrink-0">
-                {'documentPictureInPicture' in window && (
-                  <button
-                    type="button"
-                    onClick={togglePiP}
-                    className="p-1 text-content-muted hover:text-brand-400 rounded transition hover:bg-white/10"
-                    title="Pop out Picture-in-Picture window"
-                  >
-                    <PictureInPicture2 size={headerIconSize} />
-                  </button>
-                )}
+        {/* Absolute Back to tab button in minimal layout to avoid wasting vertical space */}
+        {isMinimalLayout && (
+          <div className="absolute top-1 right-1.5 z-20 flex items-center gap-0.5">
+            {isPiP ? (
+              <button
+                type="button"
+                onClick={handleOpenWebApp}
+                className="p-1 text-content-muted hover:text-brand-400 rounded transition hover:bg-white/10 shrink-0"
+                title="Back to tab"
+              >
+                <ExternalLink size={headerIconSize} />
+              </button>
+            ) : (
+              onClose && (
                 <button
                   type="button"
                   onClick={onClose}
@@ -336,15 +324,84 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                 >
                   <X size={headerIconSize} />
                 </button>
-              </div>
+              )
             )}
+          </div>
+        )}
+
+        {/* Standard top row: Track Info & action buttons (only when NOT minimal) */}
+        {!isMinimalLayout && (
+          <div className="flex items-center justify-between w-full gap-1.5 shrink-0 z-10">
+            <div 
+              onClick={isPiP ? handleOpenWebApp : undefined}
+              className={`flex items-center gap-1.5 truncate flex-1 min-w-0 pr-1 ${isPiP ? 'cursor-pointer group' : ''}`}
+              title={isPiP ? 'Back to tab' : undefined}
+            >
+              <img
+                src={currentTrack?.cover_url || '/api/covers/0'}
+                alt=""
+                style={{ width: `${coverSize}px`, height: `${coverSize}px` }}
+                className="rounded object-cover bg-surface-elevated shrink-0 shadow-sm group-hover:opacity-85 transition"
+              />
+              <div className="flex-1 min-w-0 truncate">
+                <p
+                  style={{ fontSize: `${titleFontSize}px` }}
+                  className="font-bold text-content-primary truncate leading-tight group-hover:underline"
+                >
+                  {currentTrack?.title || 'No Track'}
+                </p>
+                <p
+                  style={{ fontSize: `${artistFontSize}px` }}
+                  className="text-content-secondary truncate leading-tight"
+                >
+                  {currentTrack?.artist_name || ''}
+                </p>
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex items-center gap-0.5 shrink-0">
+              {isPiP ? (
+                <button
+                  type="button"
+                  onClick={handleOpenWebApp}
+                  className="p-1 text-content-muted hover:text-brand-400 rounded transition hover:bg-white/10 shrink-0"
+                  title="Back to tab"
+                >
+                  <ExternalLink size={headerIconSize} />
+                </button>
+              ) : (
+                <>
+                  {'documentPictureInPicture' in window && (
+                    <button
+                      type="button"
+                      onClick={togglePiP}
+                      className="p-1 text-content-muted hover:text-brand-400 rounded transition hover:bg-white/10"
+                      title="Pop out Picture-in-Picture window"
+                    >
+                      <PictureInPicture2 size={headerIconSize} />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="p-1 text-content-muted hover:text-content-primary rounded transition hover:bg-white/10"
+                    title="Close"
+                  >
+                    <X size={headerIconSize} />
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         )}
 
         {/* Center: The 2 Lines of Lyrics (Current sentence + Upcoming one) */}
         <div
           title={currentTrack ? `${currentTrack.title} • ${currentTrack.artist_name}` : undefined}
-          className="flex flex-col justify-center text-center my-auto py-0.5 space-y-0.5 min-h-0 overflow-hidden"
+          className={`flex flex-col justify-center text-center my-auto py-0.5 space-y-0.5 min-h-0 overflow-hidden flex-1 ${
+            isMinimalLayout ? 'px-6' : ''
+          }`}
         >
           {/* Line 1: Current Sentence */}
           <p
@@ -466,17 +523,21 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
       >
         {/* Header Bar */}
         <div className="flex items-center justify-between px-3.5 py-2.5 bg-surface-panel/80 backdrop-blur-md border-b border-white/5 shrink-0">
-          <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+          <div 
+            onClick={isPiP ? handleOpenWebApp : undefined}
+            className={`flex items-center gap-2.5 flex-1 min-w-0 pr-2 ${isPiP ? 'cursor-pointer group' : ''}`}
+            title={isPiP ? 'Back to tab' : undefined}
+          >
             <img
               src={currentTrack?.cover_url || '/api/covers/0'}
               alt=""
               style={{ width: `${headerThumbSize}px`, height: `${headerThumbSize}px` }}
-              className="rounded-md object-cover bg-surface-elevated shrink-0 shadow"
+              className="rounded-md object-cover bg-surface-elevated shrink-0 shadow group-hover:opacity-85 transition"
             />
             <div className="flex-1 min-w-0">
               <p
                 style={{ fontSize: `${headerTitleSize}px` }}
-                className="font-bold text-content-primary truncate leading-tight"
+                className="font-bold text-content-primary truncate leading-tight group-hover:underline"
               >
                 {currentTrack?.title || 'No Track'}
               </p>
@@ -489,27 +550,40 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
             </div>
           </div>
 
-          {/* Action buttons (only rendered in-app; PiP uses native OS window close button and resize) */}
-          {!isPiP && (
-            <div className="flex items-center gap-1 shrink-0">
+          {/* Action buttons (In PiP: only Back to tab, native titlebar provides the default close button) */}
+          <div className="flex items-center gap-1 shrink-0">
+            {isPiP ? (
               <button
                 type="button"
-                onClick={() => handleSetSizeMode('lyrics-small')}
-                className="p-1.5 text-content-muted hover:text-content-primary rounded-md transition hover:bg-white/10"
-                title="Shrink to 2-Line Lyrics Mode"
+                onClick={handleOpenWebApp}
+                className="p-1.5 text-content-muted hover:text-brand-400 rounded-md transition hover:bg-white/10"
+                title="Back to tab"
               >
-                <Minimize2 size={headerIconSize} />
+                <ExternalLink size={headerIconSize} />
               </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-1.5 text-content-muted hover:text-content-primary rounded-md transition hover:bg-white/10"
-                title="Close"
-              >
-                <X size={headerIconSize} />
-              </button>
-            </div>
-          )}
+            ) : (
+              <>
+                {'documentPictureInPicture' in window && (
+                  <button
+                    type="button"
+                    onClick={togglePiP}
+                    className="p-1.5 text-content-muted hover:text-brand-400 rounded-md transition hover:bg-white/10"
+                    title="Pop out Picture-in-Picture window"
+                  >
+                    <PictureInPicture2 size={headerIconSize} />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="p-1.5 text-content-muted hover:text-content-primary rounded-md transition hover:bg-white/10"
+                  title="Close"
+                >
+                  <X size={headerIconSize} />
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Lyrics Area (Scrollable) */}
@@ -642,30 +716,38 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
 
     if (sizeMode === 'micro') {
       return (
-        <div className="w-full h-full flex items-center justify-center px-3 py-1 bg-surface-island text-content-primary font-sans select-none box-border">
-          <div className="flex items-center gap-2 mx-auto">
+        <div className="relative w-full h-full flex items-center justify-center px-2 py-1 bg-surface-island text-content-primary font-sans select-none box-border overflow-hidden">
+          <div className="flex items-center gap-1.5 mx-auto">
             <button
               onClick={prevTrack}
-              className="p-1.5 text-content-secondary hover:text-content-primary rounded-full hover:bg-white/10 active:scale-95 transition"
+              className="p-1 text-content-secondary hover:text-content-primary rounded-full hover:bg-white/10 active:scale-95 transition shrink-0"
               title="Previous"
             >
-              <SkipBack size={15} />
+              <SkipBack size={13} />
             </button>
             <button
               onClick={togglePlay}
-              className="w-7 h-7 rounded-full bg-brand-500 text-black flex items-center justify-center hover:scale-105 active:scale-95 transition shadow"
+              className="w-6 h-6 rounded-full bg-brand-500 text-black flex items-center justify-center hover:scale-105 active:scale-95 transition shadow shrink-0"
               title={isPlaying ? 'Pause' : 'Play'}
             >
-              {isPlaying ? <Pause size={13} className="fill-black" /> : <Play size={13} className="fill-black ml-0.5" />}
+              {isPlaying ? <Pause size={12} className="fill-black" /> : <Play size={12} className="fill-black ml-0.5" />}
             </button>
             <button
               onClick={nextTrack}
-              className="p-1.5 text-content-secondary hover:text-content-primary rounded-full hover:bg-white/10 active:scale-95 transition"
+              className="p-1 text-content-secondary hover:text-content-primary rounded-full hover:bg-white/10 active:scale-95 transition shrink-0"
               title="Next"
             >
-              <SkipForward size={15} />
+              <SkipForward size={13} />
             </button>
           </div>
+          <button
+            type="button"
+            onClick={handleOpenWebApp}
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-content-muted hover:text-brand-400 rounded transition hover:bg-white/10 shrink-0 z-10"
+            title="Back to tab"
+          >
+            <ExternalLink size={12} />
+          </button>
         </div>
       );
     }
@@ -674,14 +756,18 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
       return (
         <div className="w-full h-full flex flex-col justify-between p-2.5 bg-surface-island text-content-primary font-sans select-none box-border space-y-1.5">
           <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+            <div 
+              onClick={handleOpenWebApp}
+              className="flex items-center gap-2.5 flex-1 min-w-0 pr-2 cursor-pointer group"
+              title="Back to tab"
+            >
               <img
                 src={currentTrack?.cover_url || '/api/covers/0'}
                 alt=""
-                className="w-10 h-10 rounded-lg object-cover shadow shrink-0 bg-surface-elevated2"
+                className="w-10 h-10 rounded-lg object-cover shadow shrink-0 bg-surface-elevated2 group-hover:opacity-85 transition"
               />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-content-primary truncate">
+                <p className="text-xs font-bold text-content-primary truncate group-hover:underline">
                   {currentTrack?.title || 'No Track'}
                 </p>
                 <p className="text-[10px] text-content-secondary truncate mt-0.5">
@@ -689,6 +775,15 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                 </p>
               </div>
             </div>
+
+            <button
+              type="button"
+              onClick={handleOpenWebApp}
+              className="p-1 text-content-muted hover:text-brand-400 rounded transition hover:bg-white/10 shrink-0"
+              title="Back to tab"
+            >
+              <ExternalLink size={13} />
+            </button>
           </div>
           {/* Scrubber progress */}
           <div className="w-full bg-white/10 rounded-full h-1 overflow-hidden">
@@ -728,16 +823,20 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
     // Default 'compact' mode
     return (
       <div className="w-full h-full flex items-center justify-between p-2.5 bg-surface-island text-content-primary font-sans select-none box-border">
-        <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+        <div 
+          onClick={handleOpenWebApp}
+          className="flex items-center gap-2.5 flex-1 min-w-0 pr-2 cursor-pointer group"
+          title="Back to tab"
+        >
           {currentTrack && (
             <img
               src={currentTrack?.cover_url || '/api/covers/0'}
               alt=""
-              className="w-10 h-10 rounded-lg object-cover shadow shrink-0 bg-surface-elevated2"
+              className="w-10 h-10 rounded-lg object-cover shadow shrink-0 bg-surface-elevated2 group-hover:opacity-85 transition"
             />
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-content-primary truncate">
+            <p className="text-xs font-bold text-content-primary truncate group-hover:underline">
               {currentTrack?.title || 'No Track'}
             </p>
             <p className="text-[10px] text-content-secondary truncate mt-0.5">
@@ -766,6 +865,14 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
             title="Next"
           >
             <SkipForward size={15} />
+          </button>
+          <button
+            type="button"
+            onClick={handleOpenWebApp}
+            className="p-1.5 rounded-full hover:bg-white/10 text-content-muted hover:text-brand-400 transition shrink-0"
+            title="Back to tab"
+          >
+            <ExternalLink size={13} />
           </button>
         </div>
       </div>
