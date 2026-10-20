@@ -31,6 +31,7 @@ import { PromptModal } from './components/PromptModal';
 import { Footer } from './components/Footer';
 import { BugReportModal } from './components/BugReportModal';
 import { MattLabLogo } from './components/MattLabLogo';
+import { GlobalTooltip } from './components/GlobalTooltip';
 import { PlayerProvider, usePlayer } from './context/PlayerContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
@@ -1222,7 +1223,7 @@ const MainAppContent = () => {
         isLoading={isTakingOwnership}
       />
 
-      {/* Floating In-App Toast Notification (Spotify-style bottom pill modal) */}
+      {/* Floating In-App Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] bg-neutral-900/95 text-white border border-white/20 shadow-[0_12px_40px_rgba(0,0,0,0.7)] backdrop-blur-md text-xs font-semibold px-4 py-2.5 rounded-full flex items-center gap-2 animate-in fade-in slide-in-from-bottom-3 duration-200 pointer-events-none select-none ring-1 ring-white/10">
           {typeof toastMessage === 'string' && toastMessage.startsWith('⚠️') ? (
@@ -1237,6 +1238,9 @@ const MainAppContent = () => {
           </span>
         </div>
       )}
+
+      {/* Global Stylized Tooltip System */}
+      <GlobalTooltip />
     </div>
   );
 };

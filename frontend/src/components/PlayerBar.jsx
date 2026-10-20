@@ -5,7 +5,8 @@ import {
   Loader2, X
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
-import { SpotifyScrubber } from './SpotifyScrubber';
+import { TimelineScrubber } from './TimelineScrubber';
+import { VolumeSlider } from './VolumeSlider';
 
 const formatTime = (seconds) => {
   if (!seconds || isNaN(seconds)) return '0:00';
@@ -132,8 +133,8 @@ export const PlayerBar = ({
     }
   }, [karaokeStemStatus, currentTrack?.id, missingStemHint.visible, missingStemHint.isExiting, dismissHint]);
 
-  const handleVolumeChange = (e) => {
-    setVolume(parseFloat(e.target.value));
+  const handleVolumeChange = (val) => {
+    setVolume(val);
   };
 
   const isFav = currentTrack ? isFavorite(currentTrack.id) : false;
@@ -181,7 +182,7 @@ export const PlayerBar = ({
                       type="button"
                       onClick={handleToggleAudioQuality}
                       className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0 uppercase tracking-wider active:scale-95 transition cursor-pointer select-none"
-                      title="Low Quality active (LQ / 128 kbps) • Tap to switch to HQ"
+                      title="Switch to HQ"
                     >
                       LQ
                     </button>
@@ -190,7 +191,7 @@ export const PlayerBar = ({
                       type="button"
                       onClick={handleToggleAudioQuality}
                       className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30 shrink-0 uppercase tracking-wider active:scale-95 transition cursor-pointer select-none"
-                      title="High Quality active • Tap to switch to LQ"
+                      title="Switch to LQ"
                     >
                       {currentTrack.file_format?.toLowerCase() === 'flac' ? 'FLAC' : 'HQ'}
                     </button>
@@ -217,7 +218,7 @@ export const PlayerBar = ({
                 className={`p-1.5 transition rounded-md ${
                   isKaraokeMode ? 'text-brand-500 bg-brand-500/15' : 'text-content-secondary hover:text-content-primary'
                 }`}
-                title={isKaraokeMode ? 'Karaoke Mode Active (Tap to restore vocals)' : 'Turn Karaoke Mode ON'}
+                title="Karaoke Mode"
               >
                 <MicOff size={17} />
               </button>
@@ -298,7 +299,7 @@ export const PlayerBar = ({
                       type="button"
                       onClick={handleToggleAudioQuality}
                       className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0 uppercase tracking-wider hover:bg-amber-500/35 hover:border-amber-500/60 active:scale-95 transition cursor-pointer select-none"
-                      title="Low Quality active (LQ / 128 kbps) • Click to switch to HQ"
+                      title="Switch to HQ"
                     >
                       LQ
                     </button>
@@ -307,7 +308,7 @@ export const PlayerBar = ({
                       type="button"
                       onClick={handleToggleAudioQuality}
                       className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30 shrink-0 uppercase tracking-wider hover:bg-brand-500/35 hover:border-brand-500/60 active:scale-95 transition cursor-pointer select-none"
-                      title="High Quality active • Click to switch to LQ"
+                      title="Switch to LQ"
                     >
                       {currentTrack.file_format?.toLowerCase() === 'flac' ? 'FLAC' : 'HQ'}
                     </button>
@@ -396,8 +397,8 @@ export const PlayerBar = ({
             </button>
           </div>
 
-          {/* Spotify Timeline Scrubber */}
-          <SpotifyScrubber
+          {/* Timeline Scrubber */}
+          <TimelineScrubber
             currentTime={currentTime}
             duration={duration}
             bufferedTime={bufferedTime}
@@ -414,7 +415,7 @@ export const PlayerBar = ({
             className={`p-2 rounded-lg transition ${
               isPiPActive ? 'text-brand-500 bg-surface-elevated' : 'text-content-secondary hover:text-content-primary'
             }`}
-            title={isPiPActive ? 'Close Picture-in-Picture' : 'Picture-in-Picture (Floating lyrics & music controls across apps)'}
+            title={isPiPActive ? 'Close Miniplayer' : 'Open Miniplayer'}
           >
             <PictureInPicture2 size={18} />
           </button>
@@ -429,13 +430,7 @@ export const PlayerBar = ({
                   ? 'text-brand-500 bg-surface-elevated ring-1 ring-brand-500/30 shadow-sm' 
                   : 'text-content-secondary hover:text-content-primary'
               }`}
-              title={
-                isKaraokeMode 
-                  ? 'Karaoke Active: Studio Instrumental (Click to restore vocals)' 
-                  : karaokeStemStatus[currentTrack?.id]?.exists
-                  ? 'Karaoke Mode (Click to play Studio Instrumental)'
-                  : 'Karaoke Mode'
-              }
+              title={isKaraokeMode ? 'Restore Vocals' : 'Karaoke Mode'}
             >
               {isGeneratingStems && (karaokeStemStatus[currentTrack?.id]?.status === 'processing' || karaokeStemStatus[currentTrack?.id]?.status === 'queued') ? (
                 <Loader2 size={18} className="animate-spin text-brand-500" />
@@ -525,14 +520,12 @@ export const PlayerBar = ({
             {isMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
           </button>
 
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={isMuted ? 0 : volume}
+          <VolumeSlider
+            volume={volume}
+            isMuted={isMuted}
             onChange={handleVolumeChange}
-            className="w-24 h-1 bg-surface-hover hover:bg-content-subtle rounded-lg appearance-none cursor-pointer accent-brand-500"
+            onUnmute={toggleMute}
+            className="w-24"
           />
         </div>
       </div>

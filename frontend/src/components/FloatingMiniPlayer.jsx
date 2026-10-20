@@ -5,7 +5,7 @@ import {
   ExternalLink, PictureInPicture2, MicOff, Mic2, Music 
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
-import { SpotifyScrubber } from './SpotifyScrubber';
+import { TimelineScrubber } from './TimelineScrubber';
 import { LYRICS_CONFIG } from '../config/lyricsConfig';
 import { DESIGN_TOKENS } from '../config/designTokens';
 
@@ -435,7 +435,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
           {/* Scrubber progress - only shown in standard mode */}
           {!isMinimalLayout && (
             <div className="flex-1 min-w-0 pr-1">
-              <SpotifyScrubber
+              <TimelineScrubber
                 currentTime={currentTime}
                 duration={duration}
                 bufferedTime={bufferedTime}
@@ -631,7 +631,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
         <div className="px-3.5 py-2.5 bg-surface-panel border-t border-white/5 shrink-0 flex flex-col gap-2">
           {/* Scrubber progress */}
           <div className="w-full">
-            <SpotifyScrubber
+            <TimelineScrubber
               currentTime={currentTime}
               duration={duration}
               bufferedTime={bufferedTime}

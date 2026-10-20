@@ -14,19 +14,20 @@ export const formatScrubberTime = (seconds, isNegative = false) => {
 };
 
 /**
- * SpotifyScrubber Component
+ * TimelineScrubber Component
  * 
- * Spotify-grade playback timeline scrubber featuring:
+ * Fluid playback timeline scrubber featuring:
  * - 16px vertical hit target with 4px visual track
  * - Buffered audio progress layer
  * - Idle state: solid white progress, hidden thumb knob
- * - Hover state: Spotify green (#1db954) progress, smoothly scaling thumb knob
+ * - Hover state: brand green progress, smoothly scaling thumb knob
  * - Floating hover timestamp pill with boundary clamping
  * - Smooth dragging with pointer capture (audio doesn't stutter, commits on release)
+ * - Click vs Drag gesture distinction: quick clicks jump immediately without cursor flicker
  * - Click duration timestamp to toggle between total length (3:45) and negative remaining (-2:15)
  * - Full keyboard navigation (ArrowLeft/Right, Shift+Arrows, Home, End)
  */
-export const SpotifyScrubber = ({
+export const TimelineScrubber = ({
   currentTime = 0,
   duration = 0,
   bufferedTime = 0,
@@ -39,7 +40,10 @@ export const SpotifyScrubber = ({
   gapClassName = 'gap-3',
 }) => {
   const trackRef = useRef(null);
+  const isPointerDownRef = useRef(false);
   const isDraggingRef = useRef(false);
+  const startXRef = useRef(0);
+  const clickTargetTimeRef = useRef(0);
   const dragTimeRef = useRef(0);
 
   // Remaining time toggle preference (persisted in localStorage)
@@ -107,12 +111,13 @@ export const SpotifyScrubber = ({
       e.currentTarget.setPointerCapture(e.pointerId);
     } catch (_) {}
 
-    isDraggingRef.current = true;
-    setIsDragging(true);
+    isPointerDownRef.current = true;
+    startXRef.current = e.clientX;
+    isDraggingRef.current = false;
 
     const { time, clampedX } = calculatePointerTime(e.clientX);
+    clickTargetTimeRef.current = time;
     dragTimeRef.current = time;
-    setDragTime(time);
     setHoverTime(time);
     setHoverClampedX(clampedX);
   }, [disabled, safeDuration, calculatePointerTime]);
@@ -124,34 +129,50 @@ export const SpotifyScrubber = ({
     setHoverTime(time);
     setHoverClampedX(clampedX);
 
-    if (isDraggingRef.current) {
-      dragTimeRef.current = time;
-      setDragTime(time);
+    if (isPointerDownRef.current) {
+      if (!isDraggingRef.current) {
+        if (Math.abs(e.clientX - startXRef.current) >= 3) {
+          isDraggingRef.current = true;
+          setIsDragging(true);
+        }
+      }
+
+      if (isDraggingRef.current) {
+        dragTimeRef.current = time;
+        setDragTime(time);
+      } else {
+        clickTargetTimeRef.current = time;
+      }
     }
   }, [disabled, safeDuration, calculatePointerTime]);
 
   const handlePointerUp = useCallback((e) => {
-    if (!isDraggingRef.current) return;
+    if (!isPointerDownRef.current) return;
 
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch (_) {}
 
+    const wasDragging = isDraggingRef.current;
+    const finalSeekTime = wasDragging ? dragTimeRef.current : clickTargetTimeRef.current;
+
+    isPointerDownRef.current = false;
     isDraggingRef.current = false;
     setIsDragging(false);
 
     if (onSeek) {
-      onSeek(dragTimeRef.current);
+      onSeek(finalSeekTime);
     }
   }, [onSeek]);
 
   const handlePointerCancel = useCallback((e) => {
-    if (!isDraggingRef.current) return;
+    if (!isPointerDownRef.current) return;
 
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch (_) {}
 
+    isPointerDownRef.current = false;
     isDraggingRef.current = false;
     setIsDragging(false);
   }, []);
@@ -191,6 +212,7 @@ export const SpotifyScrubber = ({
   // Clean up dragging if component unmounts
   useEffect(() => {
     return () => {
+      isPointerDownRef.current = false;
       isDraggingRef.current = false;
     };
   }, []);
@@ -244,7 +266,7 @@ export const SpotifyScrubber = ({
           style={{ width: `${bufferedPercent}%` }}
         />
 
-        {/* Played Bar (Idle: White, Hover/Drag: Spotify Green) */}
+        {/* Played Bar (Idle: White, Hover/Drag: Brand Green) */}
         <div
           className={`h-full rounded-full transition-colors duration-150 ${
             isHovering || isDragging ? 'bg-brand-500' : 'bg-white'

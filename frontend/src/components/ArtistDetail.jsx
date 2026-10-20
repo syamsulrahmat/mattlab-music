@@ -396,7 +396,7 @@ export const ArtistDetail = ({
                         {/* Unfocused state (group-hover:hidden) */}
                         <div className="flex items-center justify-center group-hover:hidden">
                           {isThisPlaying ? (
-                            /* Animated Spotify Equalizer Bars */
+                            /* Animated Equalizer Bars */
                             <div className="flex items-end justify-center gap-[2.5px] w-3.5 h-3.5 pb-0.5" title="Playing">
                               <span className="w-[3px] bg-brand-500 rounded-full animate-eq-1" />
                               <span className="w-[3px] bg-brand-500 rounded-full animate-eq-2" />

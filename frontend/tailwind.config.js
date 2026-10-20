@@ -6,7 +6,7 @@ import colors from 'tailwindcss/colors';
  * ========================================================
  * To change your main theme, just change the color below!
  * Available Tailwind color palettes:
- *   - colors.green    (Spotify Vibrant Green)
+ *   - colors.green    (Vibrant Green)
  *   - colors.emerald  (Sleek Mint / Deep Emerald)
  *   - colors.cyan     (Electric Cyan)
  *   - colors.purple   (Cyberpunk Neon Purple)

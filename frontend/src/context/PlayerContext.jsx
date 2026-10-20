@@ -585,6 +585,9 @@ export const PlayerProvider = ({ children }) => {
     setVolume((prev) => {
       const nextVol = typeof val === 'function' ? val(prev) : val;
       const clamped = Math.max(0, Math.min(1, nextVol));
+      if (clamped > 0) {
+        setIsMuted(false);
+      }
       saveUserPreference({ volume: clamped });
       return clamped;
     });
@@ -1307,7 +1310,7 @@ export const PlayerProvider = ({ children }) => {
   const fadeIntervalRef = useRef(null);
   const coverImageCacheRef = useRef({});
 
-  // Helper to draw YouTube/Spotify-style card on canvas for native OS Video PiP (16:9 aspect ratio: 640x360)
+  // Helper to draw media card on canvas for native OS Video PiP (16:9 aspect ratio: 640x360)
   const drawPiPCanvas = useCallback((track, time, totalDuration, lyricLine = null, upcomingLyric = null) => {
     let canvas = canvasRef.current;
     if (!canvas) {
@@ -1750,6 +1753,7 @@ export const PlayerProvider = ({ children }) => {
         setVolume: handleSetVolume,
         saveUserPreference,
         toggleMute,
+        setIsMuted,
         nextTrack,
         prevTrack,
         toggleShuffle,
