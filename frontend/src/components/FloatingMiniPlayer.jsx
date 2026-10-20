@@ -5,6 +5,7 @@ import {
   ExternalLink, PictureInPicture2, MicOff, Mic2, Music 
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
+import { SpotifyScrubber } from './SpotifyScrubber';
 import { LYRICS_CONFIG } from '../config/lyricsConfig';
 import { DESIGN_TOKENS } from '../config/designTokens';
 
@@ -21,6 +22,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
     isPlaying,
     currentTime,
     duration,
+    bufferedTime,
     togglePlay,
     nextTrack,
     prevTrack,
@@ -432,30 +434,17 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
         <div className={`flex items-center ${isMinimalLayout ? 'justify-center' : 'justify-between'} gap-1.5 pt-0.5 shrink-0`}>
           {/* Scrubber progress - only shown in standard mode */}
           {!isMinimalLayout && (
-            <div className="flex items-center gap-1 flex-1 min-w-0">
-              <span
-                style={{ fontSize: `${timeFontSize}px`, minWidth: `${Math.round(24 * scale)}px` }}
-                className="text-content-muted font-mono text-right shrink-0"
-              >
-                {formatTime(currentTime)}
-              </span>
-              <div className="flex-1 relative flex items-center group">
-                <input
-                  type="range"
-                  min={0}
-                  max={duration || 100}
-                  step={0.1}
-                  value={currentTime}
-                  onChange={(e) => seek(parseFloat(e.target.value))}
-                  className="w-full h-1 bg-white/15 group-hover:bg-white/25 rounded-full appearance-none cursor-pointer accent-brand-500 transition"
-                />
-              </div>
-              <span
-                style={{ fontSize: `${timeFontSize}px`, minWidth: `${Math.round(24 * scale)}px` }}
-                className="text-content-muted font-mono shrink-0"
-              >
-                {formatTime(duration)}
-              </span>
+            <div className="flex-1 min-w-0 pr-1">
+              <SpotifyScrubber
+                currentTime={currentTime}
+                duration={duration}
+                bufferedTime={bufferedTime}
+                onSeek={seek}
+                disabled={!currentTrack}
+                gapClassName="gap-1.5"
+                timeClassName="text-content-muted font-mono"
+                timeStyle={{ fontSize: `${timeFontSize}px`, minWidth: `${Math.round(24 * scale)}px` }}
+              />
             </div>
           )}
 
@@ -641,30 +630,17 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
         {/* Music Button Controls Footer */}
         <div className="px-3.5 py-2.5 bg-surface-panel border-t border-white/5 shrink-0 flex flex-col gap-2">
           {/* Scrubber progress */}
-          <div className="flex items-center gap-2">
-            <span
-              style={{ fontSize: `${footerTimeSize}px` }}
-              className="text-content-muted font-mono min-w-[28px] text-right"
-            >
-              {formatTime(currentTime)}
-            </span>
-            <div className="flex-1 relative flex items-center group">
-              <input
-                type="range"
-                min={0}
-                max={duration || 100}
-                step={0.1}
-                value={currentTime}
-                onChange={(e) => seek(parseFloat(e.target.value))}
-                className="w-full h-1 bg-white/15 group-hover:bg-white/25 rounded-full appearance-none cursor-pointer accent-brand-500 transition"
-              />
-            </div>
-            <span
-              style={{ fontSize: `${footerTimeSize}px` }}
-              className="text-content-muted font-mono min-w-[28px]"
-            >
-              {formatTime(duration)}
-            </span>
+          <div className="w-full">
+            <SpotifyScrubber
+              currentTime={currentTime}
+              duration={duration}
+              bufferedTime={bufferedTime}
+              onSeek={seek}
+              disabled={!currentTrack}
+              gapClassName="gap-2"
+              timeClassName="text-content-muted font-mono"
+              timeStyle={{ fontSize: `${footerTimeSize}px`, minWidth: '28px' }}
+            />
           </div>
 
           {/* Transport buttons */}

@@ -72,6 +72,7 @@ export const PlayerProvider = ({ children }) => {
   const [isBuffering, setIsBuffering] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => savedState?.currentTime || 0);
   const [duration, setDuration] = useState(() => savedState?.duration || 0);
+  const [bufferedTime, setBufferedTime] = useState(0);
   const [volume, setVolume] = useState(() => {
     const saved = localStorage.getItem('music_volume');
     return saved !== null ? parseFloat(saved) : 0.8;
@@ -716,6 +717,32 @@ export const PlayerProvider = ({ children }) => {
       audio.volume = isMuted ? 0 : volume;
     }
 
+    const updateBufferedTime = (el) => {
+      if (!el || !el.buffered || el.buffered.length === 0) {
+        setBufferedTime(0);
+        return;
+      }
+      const ct = el.currentTime;
+      for (let i = el.buffered.length - 1; i >= 0; i--) {
+        try {
+          if (el.buffered.start(i) <= ct && ct <= el.buffered.end(i)) {
+            setBufferedTime(el.buffered.end(i));
+            return;
+          }
+        } catch (_) {}
+      }
+      try {
+        setBufferedTime(el.buffered.end(el.buffered.length - 1));
+      } catch (_) {
+        setBufferedTime(0);
+      }
+    };
+
+    const handleProgress = (e) => {
+      if (e.target !== audioRef.current) return;
+      updateBufferedTime(e.target);
+    };
+
     const handleTimeUpdate = (e) => {
       if (e.target !== audioRef.current) return;
       // Guard: do not let an uninitialized paused audio element overwrite restored currentTime
@@ -724,6 +751,7 @@ export const PlayerProvider = ({ children }) => {
       }
       const t = e.target.currentTime;
       setCurrentTime(t);
+      updateBufferedTime(e.target);
       if (!e.target.paused && t > 0) {
         setIsBuffering(false);
       }
@@ -738,6 +766,7 @@ export const PlayerProvider = ({ children }) => {
       if (e.target !== audioRef.current) return;
       const d = e.target.duration || 0;
       if (d > 0) setDuration(d);
+      updateBufferedTime(e.target);
 
       if (initialSeekTimeRef.current > 0) {
         try {
@@ -790,6 +819,7 @@ export const PlayerProvider = ({ children }) => {
 
     const handleCanPlay = (e) => {
       if (e.target !== audioRef.current) return;
+      updateBufferedTime(e.target);
       if (initialSeekTimeRef.current > 0) {
         try {
           e.target.currentTime = initialSeekTimeRef.current;
@@ -811,6 +841,7 @@ export const PlayerProvider = ({ children }) => {
     elements.forEach((el) => {
       el.addEventListener('timeupdate', handleTimeUpdate);
       el.addEventListener('loadedmetadata', handleLoadedMetadata);
+      el.addEventListener('progress', handleProgress);
       el.addEventListener('ended', handleEnded);
       el.addEventListener('play', handlePlay);
       el.addEventListener('pause', handlePause);
@@ -825,6 +856,7 @@ export const PlayerProvider = ({ children }) => {
       elements.forEach((el) => {
         el.removeEventListener('timeupdate', handleTimeUpdate);
         el.removeEventListener('loadedmetadata', handleLoadedMetadata);
+        el.removeEventListener('progress', handleProgress);
         el.removeEventListener('ended', handleEnded);
         el.removeEventListener('play', handlePlay);
         el.removeEventListener('pause', handlePause);
@@ -848,6 +880,7 @@ export const PlayerProvider = ({ children }) => {
 
   // Prefetch karaoke stem status whenever current track changes
   useEffect(() => {
+    setBufferedTime(0);
     if (currentTrack?.id) {
       fetchKaraokeStatus(currentTrack.id);
     }
@@ -1699,6 +1732,7 @@ export const PlayerProvider = ({ children }) => {
         isBuffering,
         currentTime,
         duration,
+        bufferedTime,
         volume,
         isMuted,
         queue,

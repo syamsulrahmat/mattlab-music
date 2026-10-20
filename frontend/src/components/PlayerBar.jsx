@@ -5,6 +5,7 @@ import {
   Loader2, X
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
+import { SpotifyScrubber } from './SpotifyScrubber';
 
 const formatTime = (seconds) => {
   if (!seconds || isNaN(seconds)) return '0:00';
@@ -29,6 +30,7 @@ export const PlayerBar = ({
     isPlaying,
     currentTime,
     duration,
+    bufferedTime,
     volume,
     isMuted,
     isShuffle,
@@ -129,10 +131,6 @@ export const PlayerBar = ({
       dismissHint();
     }
   }, [karaokeStemStatus, currentTrack?.id, missingStemHint.visible, missingStemHint.isExiting, dismissHint]);
-
-  const handleSeekChange = (e) => {
-    seek(parseFloat(e.target.value));
-  };
 
   const handleVolumeChange = (e) => {
     setVolume(parseFloat(e.target.value));
@@ -398,23 +396,14 @@ export const PlayerBar = ({
             </button>
           </div>
 
-          {/* Scrub Bar */}
-          <div className="w-full flex items-center gap-3 text-xs font-mono text-content-secondary">
-            <span className="w-10 text-right text-[11px]">{formatTime(currentTime)}</span>
-            <div className="relative flex-1 group flex items-center">
-              <input
-                type="range"
-                min={0}
-                max={duration || 100}
-                step={0.1}
-                value={currentTime}
-                onChange={handleSeekChange}
-                disabled={!currentTrack}
-                className="w-full h-1 bg-surface-hover group-hover:bg-content-subtle rounded-lg appearance-none cursor-pointer accent-brand-500 transition disabled:opacity-30"
-              />
-            </div>
-            <span className="w-10 text-[11px]">{formatTime(duration)}</span>
-          </div>
+          {/* Spotify Timeline Scrubber */}
+          <SpotifyScrubber
+            currentTime={currentTime}
+            duration={duration}
+            bufferedTime={bufferedTime}
+            onSeek={seek}
+            disabled={!currentTrack}
+          />
         </div>
 
         {/* Right: PiP + Lyrics Button + Queue Drawer Toggle & Volume */}
