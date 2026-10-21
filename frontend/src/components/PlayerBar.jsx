@@ -4,7 +4,7 @@ import {
   Volume2, VolumeX, ListMusic, Heart, Mic2, MicOff, PictureInPicture2,
   Loader2, X
 } from 'lucide-react';
-import { usePlayer } from '../context/PlayerContext';
+import { usePlayer, resolveCoverUrl } from '../context/PlayerContext';
 import { TimelineScrubber } from './TimelineScrubber';
 import { VolumeSlider } from './VolumeSlider';
 
@@ -164,7 +164,7 @@ export const PlayerBar = ({
               }}
             >
               <img
-                src={currentTrack.cover_url || '/api/covers/0'}
+                src={resolveCoverUrl(currentTrack)}
                 alt=""
                 onClick={() => onSelectAlbum && onSelectAlbum(currentTrack.album_id)}
                 className="w-11 h-11 rounded-md object-cover bg-surface-elevated shrink-0 shadow cursor-pointer active:scale-95 transition"
@@ -279,7 +279,7 @@ export const PlayerBar = ({
           {currentTrack ? (
             <>
               <img
-                src={currentTrack.cover_url || '/api/covers/0'}
+                src={resolveCoverUrl(currentTrack)}
                 alt={currentTrack.album_title || 'Cover'}
                 onClick={() => onSelectAlbum && onSelectAlbum(currentTrack.album_id)}
                 className="w-14 h-14 rounded-md object-cover shadow-lg bg-surface-elevated shrink-0 cursor-pointer hover:opacity-90 hover:scale-[1.02] transition"

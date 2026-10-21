@@ -3,11 +3,22 @@ import logging
 from typing import Optional, List
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel
 from app.database import get_db
 
 logger = logging.getLogger("library_routes")
 
 router = APIRouter(tags=["Library & Catalog"])
+
+def make_cover_url(album_id: Optional[int], cover_path: Optional[str] = None) -> str:
+    """Builds cover artwork URL with content-hash query param to ensure instant browser cache busting."""
+    if not album_id:
+        return "/api/covers/0"
+    if cover_path:
+        stem = Path(cover_path).stem
+        if stem:
+            return f"/api/covers/{album_id}?v={stem}"
+    return f"/api/covers/{album_id}"
 
 @router.get("/stats")
 async def get_library_stats():
@@ -156,7 +167,7 @@ async def get_artist_detail(artist_id: int):
                 "id": row["id"],
                 "title": row["title"],
                 "year": row["year"],
-                "cover_url": f"/api/covers/{row['id']}",
+                "cover_url": make_cover_url(row["id"], row["cover_path"]),
             }
             for row in cursor.fetchall()
         ]
@@ -164,8 +175,8 @@ async def get_artist_detail(artist_id: int):
         cursor.execute("""
             SELECT 
                 t.id, t.title, t.track_number, t.duration_seconds, t.album_id,
-                t.file_format, t.bitrate,
-                a.title AS album_title
+                t.file_format, t.bitrate, t.mtime,
+                a.title AS album_title, a.cover_path
             FROM tracks t
             JOIN albums a ON t.album_id = a.id
             WHERE t.artist_id = ?
@@ -176,8 +187,8 @@ async def get_artist_detail(artist_id: int):
                 **dict(row),
                 "artist_id": artist_id,
                 "artist_name": artist["name"],
-                "cover_url": f"/api/covers/{row['album_id']}",
-                "stream_url": f"/api/stream/{row['id']}",
+                "cover_url": make_cover_url(row["album_id"], row["cover_path"]),
+                "stream_url": f"/api/stream/{row['id']}?v={int(row['mtime']) if row['mtime'] else 1}",
             }
             for row in cursor.fetchall()
         ]
@@ -200,7 +211,7 @@ async def get_home_shelves():
         cursor.execute("""
             SELECT 
                 MIN(a.id) AS id, a.title, MAX(a.year) AS year,
-                MIN(ar.name) AS artist_name,
+                MIN(ar.name) AS artist_name, MAX(a.cover_path) AS cover_path,
                 COUNT(t.id) AS track_count
             FROM albums a
             JOIN artists ar ON a.artist_id = ar.id
@@ -212,7 +223,7 @@ async def get_home_shelves():
         recently_added = [
             {
                 **dict(row),
-                "cover_url": f"/api/covers/{row['id']}",
+                "cover_url": make_cover_url(row["id"], row["cover_path"]),
             }
             for row in cursor.fetchall()
         ]
@@ -242,7 +253,7 @@ async def get_home_shelves():
         cursor.execute("""
             SELECT 
                 MIN(a.id) AS id, a.title, MAX(a.year) AS year,
-                MIN(ar.name) AS artist_name,
+                MIN(ar.name) AS artist_name, MAX(a.cover_path) AS cover_path,
                 COUNT(t.id) AS track_count
             FROM albums a
             JOIN artists ar ON a.artist_id = ar.id
@@ -254,7 +265,7 @@ async def get_home_shelves():
         featured_albums = [
             {
                 **dict(row),
-                "cover_url": f"/api/covers/{row['id']}",
+                "cover_url": make_cover_url(row["id"], row["cover_path"]),
             }
             for row in cursor.fetchall()
         ]
@@ -278,7 +289,7 @@ async def list_albums(
             cursor.execute("""
                 SELECT 
                     MIN(a.id) AS id, a.title, MAX(a.year) AS year, MIN(a.artist_id) AS artist_id,
-                    MIN(ar.name) AS artist_name,
+                    MIN(ar.name) AS artist_name, MAX(a.cover_path) AS cover_path,
                     COUNT(t.id) AS track_count,
                     COALESCE(SUM(t.duration_seconds), 0) AS duration_seconds
                 FROM albums a
@@ -293,7 +304,7 @@ async def list_albums(
             cursor.execute("""
                 SELECT 
                     MIN(a.id) AS id, a.title, MAX(a.year) AS year, MIN(a.artist_id) AS artist_id,
-                    MIN(ar.name) AS artist_name,
+                    MIN(ar.name) AS artist_name, MAX(a.cover_path) AS cover_path,
                     COUNT(t.id) AS track_count,
                     COALESCE(SUM(t.duration_seconds), 0) AS duration_seconds
                 FROM albums a
@@ -307,7 +318,7 @@ async def list_albums(
         albums = [
             {
                 **dict(row),
-                "cover_url": f"/api/covers/{row['id']}",
+                "cover_url": make_cover_url(row["id"], row["cover_path"]),
             }
             for row in cursor.fetchall()
         ]
@@ -321,7 +332,7 @@ async def get_album_detail(album_id: int):
         cursor = conn.cursor()
         cursor.execute("""
             SELECT 
-                a.id, a.title, a.year, a.artist_id,
+                a.id, a.title, a.year, a.artist_id, a.cover_path,
                 ar.name AS artist_name
             FROM albums a
             JOIN artists ar ON a.artist_id = ar.id
@@ -339,7 +350,7 @@ async def get_album_detail(album_id: int):
         cursor.execute(f"""
             SELECT 
                 t.id, t.title, t.track_number, t.disc_number, t.duration_seconds,
-                t.file_format, t.bitrate,
+                t.file_format, t.bitrate, t.mtime,
                 ar.name AS artist_name
             FROM tracks t
             JOIN artists ar ON t.artist_id = ar.id
@@ -347,13 +358,14 @@ async def get_album_detail(album_id: int):
             ORDER BY t.disc_number ASC, t.track_number ASC, t.title ASC
         """, matching_album_ids)
 
+        album_cover_url = make_cover_url(album_id, album["cover_path"])
         tracks = [
             {
                 **dict(row),
                 "album_id": album_id,
                 "album_title": album["title"],
-                "cover_url": f"/api/covers/{album_id}",
-                "stream_url": f"/api/stream/{row['id']}",
+                "cover_url": album_cover_url,
+                "stream_url": f"/api/stream/{row['id']}?v={int(row['mtime']) if row['mtime'] else 1}",
             }
             for row in cursor.fetchall()
         ]
@@ -364,7 +376,7 @@ async def get_album_detail(album_id: int):
         "year": album["year"],
         "artist_id": album["artist_id"],
         "artist_name": album["artist_name"],
-        "cover_url": f"/api/covers/{album_id}",
+        "cover_url": album_cover_url,
         "tracks": tracks,
     }
 
@@ -385,8 +397,8 @@ async def list_tracks(
         cursor = conn.cursor()
         cursor.execute(f"""
             SELECT 
-                t.id, t.title, t.track_number, t.duration_seconds, t.file_format,
-                a.id AS album_id, a.title AS album_title,
+                t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.mtime,
+                a.id AS album_id, a.title AS album_title, a.cover_path,
                 ar.id AS artist_id, ar.name AS artist_name
             FROM tracks t
             JOIN albums a ON t.album_id = a.id
@@ -398,8 +410,8 @@ async def list_tracks(
         tracks = [
             {
                 **dict(row),
-                "cover_url": f"/api/covers/{row['album_id']}",
-                "stream_url": f"/api/stream/{row['id']}",
+                "cover_url": make_cover_url(row["album_id"], row["cover_path"]),
+                "stream_url": f"/api/stream/{row['id']}?v={int(row['mtime']) if row['mtime'] else 1}",
             }
             for row in cursor.fetchall()
         ]
@@ -445,8 +457,8 @@ async def search_library(
         cursor.execute(f"""
             SELECT 
                 t.id, t.title, t.track_number, t.duration_seconds,
-                t.file_format, t.bitrate,
-                a.id AS album_id, a.title AS album_title,
+                t.file_format, t.bitrate, t.mtime,
+                a.id AS album_id, a.title AS album_title, a.cover_path,
                 ar.id AS artist_id, ar.name AS artist_name
             FROM tracks t
             JOIN albums a ON t.album_id = a.id
@@ -458,8 +470,8 @@ async def search_library(
         tracks = [
             {
                 **dict(row),
-                "cover_url": f"/api/covers/{row['album_id']}",
-                "stream_url": f"/api/stream/{row['id']}",
+                "cover_url": make_cover_url(row['album_id'], row['cover_path']),
+                "stream_url": f"/api/stream/{row['id']}?v={int(row['mtime']) if row['mtime'] else 1}",
                 "matched_in": "metadata",
             }
             for row in cursor.fetchall()
@@ -473,8 +485,8 @@ async def search_library(
                 cursor.execute("""
                     SELECT 
                         t.id, t.title, t.track_number, t.duration_seconds,
-                        t.file_format, t.bitrate,
-                        a.id AS album_id, a.title AS album_title,
+                        t.file_format, t.bitrate, t.mtime,
+                        a.id AS album_id, a.title AS album_title, a.cover_path,
                         ar.id AS artist_id, ar.name AS artist_name,
                         snippet(tracks_lyrics_fts, 4, '<mark class="bg-brand-500/25 text-brand-300 font-semibold px-0.5 rounded">', '</mark>', '...', 10) AS lyric_snippet,
                         bm25(tracks_lyrics_fts) AS rank
@@ -489,8 +501,8 @@ async def search_library(
                 for row in cursor.fetchall():
                     item = {
                         **dict(row),
-                        "cover_url": f"/api/covers/{row['album_id']}",
-                        "stream_url": f"/api/stream/{row['id']}",
+                        "cover_url": make_cover_url(row["album_id"], row["cover_path"]),
+                        "stream_url": f"/api/stream/{row['id']}?v={int(row['mtime']) if row['mtime'] else 1}",
                         "matched_in": "lyrics",
                     }
                     lyrics_matches.append(item)
@@ -516,7 +528,7 @@ async def search_library(
 
         cursor.execute(f"""
             SELECT 
-                a.id, a.title, a.year, a.artist_id,
+                a.id, a.title, a.year, a.artist_id, a.cover_path,
                 ar.name AS artist_name,
                 COUNT(t.id) AS track_count
             FROM albums a
@@ -530,7 +542,7 @@ async def search_library(
         albums = [
             {
                 **dict(row),
-                "cover_url": f"/api/covers/{row['id']}",
+                "cover_url": make_cover_url(row["id"], row["cover_path"]),
             }
             for row in cursor.fetchall()
         ]
@@ -594,7 +606,8 @@ async def search_library(
                         corrected_query = a_dict["name"]
 
                         cursor.execute("""
-                            SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                            SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, t.mtime,
+                                   a.id AS album_id, a.title AS album_title, a.cover_path, ar.id AS artist_id, ar.name AS artist_name
                             FROM tracks t
                             JOIN albums a ON t.album_id = a.id
                             JOIN artists ar ON t.artist_id = ar.id
@@ -605,15 +618,15 @@ async def search_library(
                         tracks = [
                             {
                                 **dict(r),
-                                "cover_url": f"/api/covers/{r['album_id']}",
-                                "stream_url": f"/api/stream/{r['id']}",
+                                "cover_url": make_cover_url(r['album_id'], r['cover_path']),
+                                "stream_url": f"/api/stream/{r['id']}?v={int(r['mtime']) if r['mtime'] else 1}",
                                 "matched_in": "artist_catalog",
                             }
                             for r in cursor.fetchall()
                         ]
 
                         cursor.execute("""
-                            SELECT a.id, a.title, a.year, a.artist_id, ar.name AS artist_name, COUNT(t.id) AS track_count
+                            SELECT a.id, a.title, a.year, a.artist_id, a.cover_path, ar.name AS artist_name, COUNT(t.id) AS track_count
                             FROM albums a
                             JOIN artists ar ON a.artist_id = ar.id
                             LEFT JOIN tracks t ON t.album_id = a.id
@@ -622,7 +635,7 @@ async def search_library(
                             ORDER BY a.year DESC, a.title ASC
                             LIMIT 15
                         """, (a_dict["id"],))
-                        albums = [{**dict(r), "cover_url": f"/api/covers/{r['id']}"} for r in cursor.fetchall()]
+                        albums = [{**dict(r), "cover_url": make_cover_url(r['id'], r['cover_path'])} for r in cursor.fetchall()]
 
         # 5. Intelligent local fuzzy matching & general word spell correction fallback
         if not primary_artist and len(tracks) == 0 and len(lyrics_matches) == 0 and len(artists) == 0 and len(albums) == 0:
@@ -655,7 +668,8 @@ async def search_library(
 
                 # Specific matched track first
                 cursor.execute("""
-                    SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                    SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, t.mtime,
+                           a.id AS album_id, a.title AS album_title, a.cover_path, ar.id AS artist_id, ar.name AS artist_name
                     FROM tracks t
                     JOIN albums a ON t.album_id = a.id
                     JOIN artists ar ON t.artist_id = ar.id
@@ -665,14 +679,15 @@ async def search_library(
                 if target_row:
                     tracks.append({
                         **dict(target_row),
-                        "cover_url": f"/api/covers/{target_row['album_id']}",
-                        "stream_url": f"/api/stream/{target_row['id']}",
+                        "cover_url": make_cover_url(target_row["album_id"], target_row["cover_path"]),
+                        "stream_url": f"/api/stream/{target_row['id']}?v={int(target_row['mtime']) if target_row['mtime'] else 1}",
                         "matched_in": "fuzzy_compound",
                     })
 
                 # Additional tracks by this artist
                 cursor.execute("""
-                    SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                    SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, t.mtime,
+                           a.id AS album_id, a.title AS album_title, a.cover_path, ar.id AS artist_id, ar.name AS artist_name
                     FROM tracks t
                     JOIN albums a ON t.album_id = a.id
                     JOIN artists ar ON t.artist_id = ar.id
@@ -683,14 +698,14 @@ async def search_library(
                 for row in cursor.fetchall():
                     tracks.append({
                         **dict(row),
-                        "cover_url": f"/api/covers/{row['album_id']}",
-                        "stream_url": f"/api/stream/{row['id']}",
+                        "cover_url": make_cover_url(row["album_id"], row["cover_path"]),
+                        "stream_url": f"/api/stream/{row['id']}?v={int(row['mtime']) if row['mtime'] else 1}",
                         "matched_in": "artist_catalog",
                     })
 
                 # Artist albums
                 cursor.execute("""
-                    SELECT a.id, a.title, a.year, a.artist_id, ar.name AS artist_name, COUNT(t.id) AS track_count
+                    SELECT a.id, a.title, a.year, a.artist_id, a.cover_path, ar.name AS artist_name, COUNT(t.id) AS track_count
                     FROM albums a
                     JOIN artists ar ON a.artist_id = ar.id
                     LEFT JOIN tracks t ON t.album_id = a.id
@@ -699,7 +714,7 @@ async def search_library(
                     ORDER BY a.year DESC, a.title ASC
                     LIMIT 15
                 """, (c_art["id"],))
-                albums = [{**dict(r), "cover_url": f"/api/covers/{r['id']}"} for r in cursor.fetchall()]
+                albums = [{**dict(r), "cover_url": make_cover_url(r['id'], r['cover_path'])} for r in cursor.fetchall()]
 
             # B. Artist match (e.g. 'Tylor switf' -> 'Taylor Swift')
             elif res_type == "artist":
@@ -722,7 +737,8 @@ async def search_library(
 
                 # Fetch artist's library songs
                 cursor.execute("""
-                    SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                    SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, t.mtime,
+                           a.id AS album_id, a.title AS album_title, a.cover_path, ar.id AS artist_id, ar.name AS artist_name
                     FROM tracks t
                     JOIN albums a ON t.album_id = a.id
                     JOIN artists ar ON t.artist_id = ar.id
@@ -733,8 +749,8 @@ async def search_library(
                 tracks = [
                     {
                         **dict(r),
-                        "cover_url": f"/api/covers/{r['album_id']}",
-                        "stream_url": f"/api/stream/{r['id']}",
+                        "cover_url": make_cover_url(r["album_id"], r["cover_path"]),
+                        "stream_url": f"/api/stream/{r['id']}?v={int(r['mtime']) if r['mtime'] else 1}",
                         "matched_in": "artist_catalog",
                     }
                     for r in cursor.fetchall()
@@ -742,7 +758,7 @@ async def search_library(
 
                 # Fetch artist's library albums
                 cursor.execute("""
-                    SELECT a.id, a.title, a.year, a.artist_id, ar.name AS artist_name, COUNT(t.id) AS track_count
+                    SELECT a.id, a.title, a.year, a.artist_id, a.cover_path, ar.name AS artist_name, COUNT(t.id) AS track_count
                     FROM albums a
                     JOIN artists ar ON a.artist_id = ar.id
                     LEFT JOIN tracks t ON t.album_id = a.id
@@ -751,7 +767,7 @@ async def search_library(
                     ORDER BY a.year DESC, a.title ASC
                     LIMIT 15
                 """, (a_dict["id"],))
-                albums = [{**dict(r), "cover_url": f"/api/covers/{r['id']}"} for r in cursor.fetchall()]
+                albums = [{**dict(r), "cover_url": make_cover_url(r['id'], r['cover_path'])} for r in cursor.fetchall()]
 
             # C. Track match (e.g. 'blanck space' -> 'Blank Space', 'love stroy' -> 'Love Story')
             elif res_type == "track":
@@ -760,7 +776,8 @@ async def search_library(
                 match_type = "track"
 
                 cursor.execute("""
-                    SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                    SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, t.mtime,
+                           a.id AS album_id, a.title AS album_title, a.cover_path, ar.id AS artist_id, ar.name AS artist_name
                     FROM tracks t
                     JOIN albums a ON t.album_id = a.id
                     JOIN artists ar ON t.artist_id = ar.id
@@ -770,14 +787,15 @@ async def search_library(
                 if target_row:
                     tracks.append({
                         **dict(target_row),
-                        "cover_url": f"/api/covers/{target_row['album_id']}",
-                        "stream_url": f"/api/stream/{target_row['id']}",
+                        "cover_url": make_cover_url(target_row["album_id"], target_row["cover_path"]),
+                        "stream_url": f"/api/stream/{target_row['id']}?v={int(target_row['mtime']) if target_row['mtime'] else 1}",
                         "matched_in": "fuzzy_track",
                     })
 
                 # Also fetch other tracks sharing base title or artist
                 cursor.execute("""
-                    SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                    SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, t.mtime,
+                           a.id AS album_id, a.title AS album_title, a.cover_path, ar.id AS artist_id, ar.name AS artist_name
                     FROM tracks t
                     JOIN albums a ON t.album_id = a.id
                     JOIN artists ar ON t.artist_id = ar.id
@@ -788,8 +806,8 @@ async def search_library(
                 for r in cursor.fetchall():
                     tracks.append({
                         **dict(r),
-                        "cover_url": f"/api/covers/{r['album_id']}",
-                        "stream_url": f"/api/stream/{r['id']}",
+                        "cover_url": make_cover_url(r["album_id"], r["cover_path"]),
+                        "stream_url": f"/api/stream/{r['id']}?v={int(r['mtime']) if r['mtime'] else 1}",
                         "matched_in": "related_track",
                     })
 
@@ -803,7 +821,8 @@ async def search_library(
                     for tok in corr_tokens:
                         c_params.extend([f"%{tok}%", f"%{tok}%", f"%{tok}%"])
                     cursor.execute(f"""
-                        SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                        SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, t.mtime,
+                               a.id AS album_id, a.title AS album_title, a.cover_path, ar.id AS artist_id, ar.name AS artist_name
                         FROM tracks t
                         JOIN albums a ON t.album_id = a.id
                         JOIN artists ar ON t.artist_id = ar.id
@@ -814,8 +833,8 @@ async def search_library(
                     c_tracks = [
                         {
                             **dict(r),
-                            "cover_url": f"/api/covers/{r['album_id']}",
-                            "stream_url": f"/api/stream/{r['id']}",
+                            "cover_url": make_cover_url(r['album_id'], r['cover_path']),
+                            "stream_url": f"/api/stream/{r['id']}?v={int(r['mtime']) if r['mtime'] else 1}",
                             "matched_in": "spellcheck_corrected",
                         }
                         for r in cursor.fetchall()
@@ -830,7 +849,8 @@ async def search_library(
                     if c_fts:
                         try:
                             cursor.execute("""
-                                SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name,
+                                SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, t.mtime,
+                                       a.id AS album_id, a.title AS album_title, a.cover_path, ar.id AS artist_id, ar.name AS artist_name,
                                        bm25(tracks_lyrics_fts) AS rank
                                 FROM tracks_lyrics_fts fts
                                 JOIN tracks t ON fts.track_id = t.id
@@ -845,8 +865,8 @@ async def search_library(
                                 if r["id"] not in existing_ids:
                                     tracks.append({
                                         **dict(r),
-                                        "cover_url": f"/api/covers/{r['album_id']}",
-                                        "stream_url": f"/api/stream/{r['id']}",
+                                        "cover_url": make_cover_url(r['album_id'], r['cover_path']),
+                                        "stream_url": f"/api/stream/{r['id']}?v={int(r['mtime']) if r['mtime'] else 1}",
                                         "matched_in": "lyrics",
                                     })
                                     existing_ids.add(r["id"])
@@ -883,7 +903,8 @@ async def search_library(
 
                             # Fetch artist's library songs
                             cursor.execute("""
-                                SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                                SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, t.mtime,
+                                       a.id AS album_id, a.title AS album_title, a.cover_path, ar.id AS artist_id, ar.name AS artist_name
                                 FROM tracks t
                                 JOIN albums a ON t.album_id = a.id
                                 JOIN artists ar ON t.artist_id = ar.id
@@ -894,8 +915,8 @@ async def search_library(
                             tracks = [
                                 {
                                     **dict(r),
-                                    "cover_url": f"/api/covers/{r['album_id']}",
-                                    "stream_url": f"/api/stream/{r['id']}",
+                                    "cover_url": make_cover_url(r['album_id'], r['cover_path']),
+                                    "stream_url": f"/api/stream/{r['id']}?v={int(r['mtime']) if r['mtime'] else 1}",
                                     "matched_in": "artist_catalog",
                                 }
                                 for r in cursor.fetchall()
@@ -903,7 +924,8 @@ async def search_library(
 
                         # Check if specific track exists in local library
                         cursor.execute("""
-                            SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                            SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, t.mtime,
+                                   a.id AS album_id, a.title AS album_title, a.cover_path, ar.id AS artist_id, ar.name AS artist_name
                             FROM tracks t
                             JOIN albums a ON t.album_id = a.id
                             JOIN artists ar ON t.artist_id = ar.id
@@ -914,8 +936,8 @@ async def search_library(
                         extra_tracks = [
                             {
                                 **dict(row),
-                                "cover_url": f"/api/covers/{row['album_id']}",
-                                "stream_url": f"/api/stream/{row['id']}",
+                                "cover_url": make_cover_url(row['album_id'], row['cover_path']),
+                                "stream_url": f"/api/stream/{row['id']}?v={int(row['mtime']) if row['mtime'] else 1}",
                                 "matched_in": "canonical_lookup",
                             }
                             for row in cursor.fetchall()
@@ -947,7 +969,7 @@ async def search_library(
                     if matched_id:
                         cursor.execute("""
                             SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate,
-                                   a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                                   a.id AS album_id, a.title AS album_title, a.cover_path, ar.id AS artist_id, ar.name AS artist_name
                             FROM tracks t
                             JOIN albums a ON t.album_id = a.id
                             JOIN artists ar ON t.artist_id = ar.id
@@ -961,8 +983,9 @@ async def search_library(
                                 "id": l_row["id"],
                                 "album_id": l_row["album_id"],
                                 "artist_id": l_row["artist_id"],
-                                "cover_url": f"/api/covers/{l_row['album_id']}",
+                                "cover_url": make_cover_url(l_row['album_id'], l_row['cover_path']),
                                 "stream_url": f"/api/stream/{l_row['id']}",
+                                "duration_seconds": l_row["duration_seconds"],
                             })
                             continue
 
@@ -1042,4 +1065,61 @@ async def search_library(
         resp["did_you_mean"] = did_you_mean
 
     return resp
+
+
+@router.get("/library/health")
+def get_library_health():
+    """Returns count and list of broken tracks, plus live healer background status."""
+    from app.auto_healer import find_broken_tracks, get_healer_status
+    broken = find_broken_tracks()
+    status = get_healer_status()
+    return {
+        "broken_count": len(broken),
+        "broken_tracks": broken[:50],
+        "status": status,
+    }
+
+
+@router.post("/library/heal")
+def trigger_library_healing():
+    """Triggers background auto-healing for all broken tracks in the library."""
+    from app.auto_healer import start_auto_heal_background, get_healer_status
+    started = start_auto_heal_background()
+    return {
+        "started": started,
+        "message": "Auto-healing started in background" if started else "Auto-healing is already in progress",
+        "status": get_healer_status(),
+    }
+
+
+@router.post("/library/heal-track/{track_id}")
+def heal_single_track(track_id: int):
+    """Triggers background repair for a specific track ID."""
+    import threading
+    from app.auto_healer import heal_track
+    thread = threading.Thread(target=heal_track, args=(track_id,), daemon=True)
+    thread.start()
+    return {
+        "success": True,
+        "message": f"Repair started for track #{track_id}",
+    }
+
+
+class ReportBrokenRequest(BaseModel):
+    track_id: int
+    error: Optional[str] = None
+
+
+@router.post("/library/report-broken")
+def report_broken_track(req: ReportBrokenRequest):
+    """Silent on-playback reporting: queues a track for background auto-repair if player hits decode errors."""
+    import threading
+    from app.auto_healer import heal_track, unmark_track_healed
+    unmark_track_healed(req.track_id)
+    thread = threading.Thread(target=heal_track, args=(req.track_id,), daemon=True)
+    thread.start()
+    return {
+        "success": True,
+        "message": f"Track #{req.track_id} queued for auto-repair",
+    }
 

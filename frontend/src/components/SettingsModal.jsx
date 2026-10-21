@@ -2243,6 +2243,21 @@ export const SettingsModal = ({
                       Unified Spotify sync engine fetching real-time global charts, matching local audio signatures, and keeping playlist tracks synced.
                     </p>
                   </div>
+
+                  <div className="p-4 rounded-xl bg-surface-panel border border-border-subtle space-y-2 sm:col-span-2">
+                    <div className="font-bold text-white flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Sparkles size={15} className="text-emerald-400" />
+                        <span>Self-Healing Library & Media Integrity</span>
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                        Active & Monitoring
+                      </span>
+                    </div>
+                    <p className="text-content-muted text-[11px] leading-relaxed">
+                      Automatically detects corrupted audio files, truncated rips, and broken cover art in the background. Damaged tracks are seamlessly re-fetched and upgraded to pristine 320k releases with zero user intervention.
+                    </p>
+                  </div>
                 </div>
 
                 {/* User Session Info Card */}

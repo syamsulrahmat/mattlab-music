@@ -1,8 +1,10 @@
 from typing import Optional, List, Dict, Any
+from pathlib import Path
 from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel
 from app.database import get_db
 from app.auth import get_current_user
+from app.routes.library import make_cover_url
 
 router = APIRouter(tags=["Playlists & Favorites"])
 
@@ -38,8 +40,8 @@ async def get_favorites(current_user: Dict[str, Any] = Depends(get_current_user)
         cursor = conn.cursor()
         cursor.execute("""
             SELECT 
-                t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate,
-                a.id AS album_id, a.title AS album_title,
+                t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, t.mtime,
+                a.id AS album_id, a.title AS album_title, a.cover_path,
                 ar.id AS artist_id, ar.name AS artist_name,
                 f.created_at AS favorited_at
             FROM favorites f
@@ -52,8 +54,8 @@ async def get_favorites(current_user: Dict[str, Any] = Depends(get_current_user)
         tracks = [
             {
                 **dict(row),
-                "cover_url": f"/api/covers/{row['album_id']}",
-                "stream_url": f"/api/stream/{row['id']}",
+                "cover_url": make_cover_url(row["album_id"], row["cover_path"]),
+                "stream_url": f"/api/stream/{row['id']}?v={int(row['mtime']) if row['mtime'] else 1}",
             }
             for row in cursor.fetchall()
         ]
@@ -162,8 +164,8 @@ async def get_playlist_detail(playlist_id: int, current_user: Dict[str, Any] = D
 
         cursor.execute("""
             SELECT 
-                t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate,
-                a.id AS album_id, a.title AS album_title,
+                t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, t.mtime,
+                a.id AS album_id, a.title AS album_title, a.cover_path,
                 ar.id AS artist_id, ar.name AS artist_name,
                 pt.position, pt.added_at
             FROM playlist_tracks pt
@@ -177,8 +179,8 @@ async def get_playlist_detail(playlist_id: int, current_user: Dict[str, Any] = D
         tracks = [
             {
                 **dict(row),
-                "cover_url": f"/api/covers/{row['album_id']}",
-                "stream_url": f"/api/stream/{row['id']}",
+                "cover_url": make_cover_url(row["album_id"], row["cover_path"]),
+                "stream_url": f"/api/stream/{row['id']}?v={int(row['mtime']) if row['mtime'] else 1}",
             }
             for row in cursor.fetchall()
         ]

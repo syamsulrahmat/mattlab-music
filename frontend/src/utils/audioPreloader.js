@@ -10,7 +10,7 @@
  * - Seamless offline playback if connection drops or Unraid server goes offline.
  */
 
-const CACHE_NAME = 'mattlab-audio-preload-v2';
+const CACHE_NAME = 'mattlab-audio-preload-v4';
 const DEFAULT_PRELOAD_COUNT = 3;
 
 class AudioPreloader {
@@ -21,6 +21,17 @@ class AudioPreloader {
     this.isPreloading = false;
     this.lastQueue = null;
     this.lastCurrentIndex = -1;
+
+    // Automatically purge legacy CacheStorage namespaces from older buggy builds
+    if (typeof window !== 'undefined' && 'caches' in window) {
+      caches.keys().then((keys) => {
+        for (const key of keys) {
+          if (key.startsWith('mattlab-audio-preload-') && key !== CACHE_NAME) {
+            caches.delete(key).catch(() => {});
+          }
+        }
+      }).catch(() => {});
+    }
 
     // Load user preload preference from localStorage (0 = disabled, 1..10 = songs)
     let savedCount = DEFAULT_PRELOAD_COUNT;
@@ -217,7 +228,7 @@ class AudioPreloader {
   }
 
   async preloadSingleTrack(track, signal) {
-    const baseStreamUrl = track.stream_url || `/api/stream/${track.id}`;
+    const baseStreamUrl = track.stream_url || (track.mtime ? `/api/stream/${track.id}?v=${Math.floor(track.mtime)}` : `/api/stream/${track.id}`);
     const streamUrl = this.audioQuality === 'data_saver'
       ? (baseStreamUrl.includes('?') ? `${baseStreamUrl}&quality=low` : `${baseStreamUrl}?quality=low`)
       : baseStreamUrl;

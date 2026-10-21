@@ -33,6 +33,8 @@ def on_startup():
     start_background_lyrics_fetcher()
     from app.visualizer_crawler import start_background_visualizer_crawler
     start_background_visualizer_crawler()
+    from app.auto_healer import start_auto_heal_background
+    start_auto_heal_background()
     # Pre-wake the music drive on container startup so it's spinning
     # before any client connects (eliminates HDD cold-start delay)
     from app.routes.stream import _wake_drive_sync
@@ -58,6 +60,8 @@ async def auth_middleware(request: Request, call_next):
         "/api/client-error",
         "/api/covers-sample",
         "/api/wake",
+        "/api/library/report-broken",
+        "/api/library/health",
     }
     if (
         request.url.path in public_paths

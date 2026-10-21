@@ -22,6 +22,16 @@ const PlayerContext = createContext(null);
 
 const LAST_PLAYBACK_STATE_KEY = 'mattlab_playback_state';
 
+export const resolveCoverUrl = (track) => {
+  if (!track) return '/api/covers/0';
+  let url = track.cover_url || (track.album_id ? `/api/covers/${track.album_id}` : '/api/covers/0');
+  if (track.cover_path && !url.includes('?v=')) {
+    const filename = track.cover_path.split('/').pop().replace(/\.[^/.]+$/, '');
+    if (filename) url = `${url.split('?')[0]}?v=${filename}`;
+  }
+  return url;
+};
+
 const loadSavedPlaybackState = () => {
   try {
     const raw = localStorage.getItem(LAST_PLAYBACK_STATE_KEY);
@@ -29,7 +39,10 @@ const loadSavedPlaybackState = () => {
       const parsed = JSON.parse(raw);
       if (parsed && parsed.track && typeof parsed.track.id === 'number') {
         const rawTime = typeof parsed.currentTime === 'number' && !isNaN(parsed.currentTime) ? parsed.currentTime : 0;
-        const dur = typeof parsed.duration === 'number' && !isNaN(parsed.duration) ? parsed.duration : (parsed.track.duration_seconds || 0);
+        const trackDur = typeof parsed.track?.duration_seconds === 'number' && parsed.track.duration_seconds > 0 
+          ? parsed.track.duration_seconds 
+          : 0;
+        const dur = trackDur > 0 ? trackDur : (typeof parsed.duration === 'number' && !isNaN(parsed.duration) ? parsed.duration : 0);
         // If the track was saved at or near the end (within 2 seconds of finishing), reset to 0:00
         const isAtEnd = dur > 5 && rawTime >= dur - 2.0;
         const time = isAtEnd ? 0 : Math.max(0, rawTime);
@@ -37,7 +50,11 @@ const loadSavedPlaybackState = () => {
         const q = Array.isArray(parsed.queue) && parsed.queue.length > 0 ? parsed.queue : [parsed.track];
         const qIdx = typeof parsed.queueIndex === 'number' && parsed.queueIndex >= 0 && parsed.queueIndex < q.length ? parsed.queueIndex : 0;
         return {
-          track: parsed.track,
+          track: {
+            ...parsed.track,
+            cover_url: resolveCoverUrl(parsed.track),
+            duration_seconds: dur,
+          },
           currentTime: time,
           duration: dur,
           queue: q,
@@ -108,8 +125,14 @@ export const PlayerProvider = ({ children }) => {
   const getTrackStreamUrl = useCallback((track, qualityOverride = null) => {
     if (!track?.id) return '';
     const q = qualityOverride || audioQuality;
-    const base = `/api/stream/${track.id}`;
-    return q === 'data_saver' ? `${base}?quality=low` : base;
+    let base = track.stream_url;
+    if (!base) {
+      const v = track.mtime ? `?v=${Math.floor(track.mtime)}` : '';
+      base = `/api/stream/${track.id}${v}`;
+    }
+    return q === 'data_saver' 
+      ? (base.includes('?') ? `${base}&quality=low` : `${base}?quality=low`)
+      : base;
   }, [audioQuality]);
 
   // Karaoke Mode (Pure Demucs AI Instrumental Toggle - starts OFF by default on load/reload)
@@ -492,7 +515,7 @@ export const PlayerProvider = ({ children }) => {
         album_title: track.album_title || '',
         duration_seconds: track.duration_seconds || dur || 0,
         cover_path: track.cover_path || null,
-        cover_url: track.cover_url || null,
+        cover_url: resolveCoverUrl(track),
         file_path: track.file_path || '',
         file_format: track.file_format || null,
         bitrate: track.bitrate || null,
@@ -508,7 +531,7 @@ export const PlayerProvider = ({ children }) => {
         album_id: t.album_id || null,
         album_title: t.album_title || '',
         duration_seconds: t.duration_seconds || 0,
-        cover_url: t.cover_url || null,
+        cover_url: resolveCoverUrl(t),
         file_format: t.file_format || null,
         bitrate: t.bitrate || null,
         stream_url: t.stream_url || `/api/stream/${t.id}`,
@@ -796,6 +819,21 @@ export const PlayerProvider = ({ children }) => {
     const handleEnded = (e) => {
       if (e.target !== audioRef.current || isCrossfadingRef.current) return;
       setIsBuffering(false);
+
+      // Silent auto-healing beacon if track abruptly ended prematurely
+      if (currentTrack?.id && duration > 60 && e.target.currentTime < duration - 15) {
+        try {
+          fetch('/api/library/report-broken', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              track_id: currentTrack.id,
+              error: `premature_ended_${Math.round(e.target.currentTime)}s_of_${Math.round(duration)}s`,
+            }),
+          }).catch(() => {});
+        } catch (_) {}
+      }
+
       setCurrentTime(0);
       initialSeekTimeRef.current = 0;
       if (currentTrack) {
@@ -852,6 +890,20 @@ export const PlayerProvider = ({ children }) => {
       if (e.target !== audioRef.current || isCrossfadingRef.current) return;
       setIsBuffering(false);
       setIsPlaying(false);
+
+      // Silent auto-healing beacon if track hits decode or media error
+      if (currentTrack?.id) {
+        try {
+          fetch('/api/library/report-broken', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              track_id: currentTrack.id,
+              error: e.target?.error?.message || 'media_decode_error',
+            }),
+          }).catch(() => {});
+        } catch (_) {}
+      }
     };
 
     const elements = [audioRef.current, standbyAudioRef.current].filter(Boolean);
@@ -1011,7 +1063,14 @@ export const PlayerProvider = ({ children }) => {
       }
     }
 
-    setCurrentTrack(track);
+    const cleanedTrack = {
+      ...track,
+      cover_url: resolveCoverUrl(track),
+    };
+    setCurrentTrack(cleanedTrack);
+    if (typeof track.duration_seconds === 'number' && track.duration_seconds > 0) {
+      setDuration(track.duration_seconds);
+    }
     setIsBuffering(true);
 
     initialSeekTimeRef.current = 0;

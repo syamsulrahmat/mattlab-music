@@ -138,6 +138,7 @@ async def stream_track(
                 pass
 
     range_header = request.headers.get("Range")
+    stream_etag = f'"{int(file_path.stat().st_mtime)}-{file_size}"'
     if not range_header:
         # Standard full stream (client didn't request a range)
         return StreamingResponse(
@@ -148,7 +149,8 @@ async def stream_track(
                 "Content-Length": str(file_size),
                 "Content-Disposition": f'inline; filename="{file_path.name}"',
                 "X-Accel-Buffering": "no",
-                "Cache-Control": "public, max-age=86400, no-transform",
+                "Cache-Control": "public, max-age=3600, no-transform",
+                "ETag": stream_etag,
             },
         )
 
@@ -174,7 +176,8 @@ async def stream_track(
         "Content-Length": str(content_length),
         "Content-Type": media_type,
         "X-Accel-Buffering": "no",
-        "Cache-Control": "public, max-age=86400, no-transform",
+        "Cache-Control": "public, max-age=3600, no-transform",
+        "ETag": stream_etag,
     }
 
     return StreamingResponse(
@@ -246,7 +249,7 @@ async def get_sample_album_covers(limit: int = 30):
     }
 
 @router.get("/covers/{album_id}")
-async def get_album_cover(album_id: int):
+async def get_album_cover(album_id: int, request: Request, v: Optional[str] = None):
     """Serve album artwork with disk caching and fallback SVG placeholder."""
     with get_db() as conn:
         cursor = conn.cursor()
@@ -256,10 +259,20 @@ async def get_album_cover(album_id: int):
     if row and row["cover_path"]:
         cover_path = Path(row["cover_path"])
         if cover_path.exists() and cover_path.is_file():
+            stat = cover_path.stat()
+            etag = f'"{int(stat.st_mtime)}-{stat.st_size}"'
+            
+            # Check If-None-Match for 304 response
+            if request.headers.get("if-none-match") == etag:
+                return Response(status_code=status.HTTP_304_NOT_MODIFIED)
+
             return FileResponse(
                 path=str(cover_path),
                 media_type="image/jpeg",
-                headers={"Cache-Control": "public, max-age=604800, immutable"},
+                headers={
+                    "Cache-Control": "public, max-age=86400, stale-while-revalidate=86400",
+                    "ETag": etag,
+                },
             )
 
     # Fallback vinyl SVG placeholder
@@ -287,7 +300,8 @@ async def get_track_detail(track_id: int):
         raise HTTPException(status_code=404, detail="Track not found")
 
     track_dict = dict(row)
-    track_dict["cover_url"] = f"/api/covers/{row['album_id']}"
+    cover_stem = Path(row["cover_path"]).stem if row["cover_path"] else str(row["album_id"])
+    track_dict["cover_url"] = f"/api/covers/{row['album_id']}?v={cover_stem}"
     track_dict["stream_url"] = f"/api/stream/{row['id']}"
     return track_dict
 

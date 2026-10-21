@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Compass, CheckCircle2 } from 'lucide-react';
-import { usePlayer } from '../context/PlayerContext';
+import { usePlayer, resolveCoverUrl } from '../context/PlayerContext';
 import { NowPlayingVideo } from './NowPlayingVideo';
 
 export const QueueIsland = ({ 
@@ -168,7 +168,7 @@ export const QueueIsland = ({
                           {i + 1}
                         </span>
                         <img
-                          src={track.cover_url || '/api/covers/0'}
+                          src={resolveCoverUrl(track)}
                           alt=""
                           className="w-9 h-9 rounded object-cover bg-surface-elevated2 shrink-0"
                         />

@@ -4,7 +4,7 @@ import {
   Play, Pause, SkipBack, SkipForward, X, Maximize2, Minimize2, 
   ExternalLink, PictureInPicture2, MicOff, Mic2, Music 
 } from 'lucide-react';
-import { usePlayer } from '../context/PlayerContext';
+import { usePlayer, resolveCoverUrl } from '../context/PlayerContext';
 import { TimelineScrubber } from './TimelineScrubber';
 import { LYRICS_CONFIG } from '../config/lyricsConfig';
 import { DESIGN_TOKENS } from '../config/designTokens';
@@ -340,7 +340,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
               title={isPiP ? 'Back to tab' : undefined}
             >
               <img
-                src={currentTrack?.cover_url || '/api/covers/0'}
+                src={resolveCoverUrl(currentTrack)}
                 alt=""
                 style={{ width: `${coverSize}px`, height: `${coverSize}px` }}
                 className="rounded object-cover bg-surface-elevated shrink-0 shadow-sm group-hover:opacity-85 transition"
@@ -518,7 +518,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
             title={isPiP ? 'Back to tab' : undefined}
           >
             <img
-              src={currentTrack?.cover_url || '/api/covers/0'}
+              src={resolveCoverUrl(currentTrack)}
               alt=""
               style={{ width: `${headerThumbSize}px`, height: `${headerThumbSize}px` }}
               className="rounded-md object-cover bg-surface-elevated shrink-0 shadow group-hover:opacity-85 transition"
@@ -738,7 +738,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
               title="Back to tab"
             >
               <img
-                src={currentTrack?.cover_url || '/api/covers/0'}
+                src={resolveCoverUrl(currentTrack)}
                 alt=""
                 className="w-10 h-10 rounded-lg object-cover shadow shrink-0 bg-surface-elevated2 group-hover:opacity-85 transition"
               />
@@ -806,7 +806,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
         >
           {currentTrack && (
             <img
-              src={currentTrack?.cover_url || '/api/covers/0'}
+              src={resolveCoverUrl(currentTrack)}
               alt=""
               className="w-10 h-10 rounded-lg object-cover shadow shrink-0 bg-surface-elevated2 group-hover:opacity-85 transition"
             />
@@ -977,7 +977,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
           {sizeMode === 'compact' && (
             <div className="flex items-center gap-3 p-2 min-w-[260px] max-w-[320px]">
               <img
-                src={currentTrack?.cover_url || '/api/covers/0'}
+                src={resolveCoverUrl(currentTrack)}
                 alt=""
                 className="w-10 h-10 rounded-lg object-cover bg-surface-elevated shrink-0 shadow-sm"
               />
@@ -1062,7 +1062,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5 truncate flex-1 min-w-0">
                   <img
-                    src={currentTrack?.cover_url || '/api/covers/0'}
+                    src={resolveCoverUrl(currentTrack)}
                     alt=""
                     className="w-11 h-11 rounded-lg object-cover bg-surface-elevated shrink-0 shadow-md"
                   />
