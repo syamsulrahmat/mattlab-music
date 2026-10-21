@@ -807,19 +807,14 @@ export const SettingsModal = ({
             {isDevUnlocked && (
               <button
                 onClick={() => setActiveTab('experiments')}
-                className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-left shrink-0 md:shrink md:w-full ${
+                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-left shrink-0 md:shrink md:w-full ${
                   activeTab === 'experiments'
                     ? 'bg-amber-500 text-black shadow-md font-bold'
                     : 'text-amber-400 hover:text-amber-300 hover:bg-amber-500/10'
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <FlaskConical size={16} />
-                  <span>Experiments</span>
-                </div>
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase">
-                  Flags
-                </span>
+                <FlaskConical size={16} />
+                <span>Experiments</span>
               </button>
             )}
 

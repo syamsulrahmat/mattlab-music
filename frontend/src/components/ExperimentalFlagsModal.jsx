@@ -60,14 +60,9 @@ export const ExperimentalFlagsModal = ({ isOpen, onClose, showToast }) => {
               <FlaskConical size={20} />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
-                  Experimental Flags
-                </h2>
-                <span className="text-[10px] font-mono font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded-full uppercase">
-                  mattlab://flags
-                </span>
-              </div>
+              <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
+                Experimental Flags
+              </h2>
               <p className="text-xs text-content-secondary mt-0.5">
                 Internal developer switches & custom appearance overrides
               </p>
