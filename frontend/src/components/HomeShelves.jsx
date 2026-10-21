@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Play, Pause, Disc3, Mic2 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
+import { HomeGreeting } from './HomeGreeting';
 
 export const HomeShelves = ({
   onSelectAlbum,
@@ -72,7 +73,10 @@ export const HomeShelves = ({
   const { recently_added = [], popular_artists = [], featured_albums = [] } = homeData;
 
   return (
-    <div className="space-y-10 p-4 sm:p-6 select-none">
+    <div className="space-y-8 p-4 sm:p-6 select-none">
+      {/* Dynamic Greeting & Live Clock Banner */}
+      <HomeGreeting />
+
       {/* 1. Trending / Recently Added Shelf */}
       <section>
         <div className="flex items-baseline justify-between mb-4">
