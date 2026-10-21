@@ -19,6 +19,7 @@ export const ContextMenu = ({
   onSelectTab,
   onAddToPlaylist,
   onEditLyrics,
+  onOpenLyrics,
   onPlaylistUpdated,
   onPlaylistDeleted,
   onPromptDeletePlaylist,
@@ -32,6 +33,7 @@ export const ContextMenu = ({
     currentTrack, 
     isPlaying, 
     playTrack, 
+    playTrackWithKaraoke,
     togglePlay, 
     addToQueue, 
     playNextInQueue, 
@@ -242,71 +244,37 @@ export const ContextMenu = ({
 
           <div className="h-[1px] bg-white/10 my-1 mx-2" />
 
-          {/* Karaoke Toggle / Pre-cache */}
+          {/* Karaoke Toggle */}
           {(() => {
-            const stemInfo = data?.id ? karaokeStemStatus[data.id] : null;
             const isCurrentTrack = currentTrack?.id === data?.id;
-
-            if (stemInfo?.exists) {
-              if (isCurrentTrack) {
-                return (
-                  <button
-                    onClick={() => {
-                      toggleKaraoke();
-                      onClose();
-                    }}
-                    className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center justify-between transition text-brand-400 hover:text-brand-300"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      {isKaraokeMode ? <MicOff size={15} className="text-brand-500" /> : <Mic size={15} className="text-brand-500" />}
-                      <span>{isKaraokeMode ? 'Turn off Karaoke' : 'Turn on Karaoke'}</span>
-                    </div>
-                    <span className="text-[9px] uppercase font-bold tracking-wider bg-brand-500/20 text-brand-300 px-1.5 py-0.5 rounded">
-                      {isKaraokeMode ? 'Active' : 'Ready'}
-                    </span>
-                  </button>
-                );
-              }
-
-              return (
-                <button
-                  onClick={() => {
-                    playTrack(data);
-                    if (!isKaraokeMode) toggleKaraoke();
-                    onClose();
-                  }}
-                  className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center justify-between transition text-brand-400 hover:text-brand-300"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Mic size={15} className="text-brand-500" />
-                    <span>Play with Karaoke</span>
-                  </div>
-                  <span className="text-[9px] uppercase font-bold tracking-wider bg-brand-500/20 text-brand-300 px-1.5 py-0.5 rounded">
-                    Ready
-                  </span>
-                </button>
-              );
-            }
-
-            if (stemInfo?.status === 'processing' || stemInfo?.status === 'queued') {
-              return (
-                <div className="w-full text-left px-3.5 py-2 flex items-center gap-2.5 text-brand-400 cursor-default">
-                  <Loader2 size={15} className="animate-spin text-brand-500" />
-                  <span>Preparing Karaoke...</span>
-                </div>
-              );
-            }
+            const isCurrentlyActive = isCurrentTrack && isKaraokeMode;
 
             return (
               <button
-                onClick={() => {
-                  generateKaraokeStems(data.id);
+                onClick={async () => {
                   onClose();
+                  if (isCurrentlyActive) {
+                    toggleKaraoke();
+                  } else if (isCurrentTrack) {
+                    const success = await toggleKaraoke();
+                    if (success && onOpenLyrics) {
+                      onOpenLyrics();
+                    }
+                  } else {
+                    const success = await playTrackWithKaraoke(data);
+                    if (success && onOpenLyrics) {
+                      onOpenLyrics();
+                    }
+                  }
                 }}
                 className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition text-brand-400 hover:text-brand-300"
               >
-                <Mic size={15} className="text-brand-500" />
-                <span>Pre-cache Karaoke</span>
+                {isCurrentlyActive ? (
+                  <MicOff size={15} className="text-brand-500" />
+                ) : (
+                  <Mic size={15} className="text-brand-500" />
+                )}
+                <span>{isCurrentlyActive ? 'Turn off Karaoke' : 'Turn on Karaoke'}</span>
               </button>
             );
           })()}

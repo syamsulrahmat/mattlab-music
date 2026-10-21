@@ -74,64 +74,32 @@ export const PlayerBar = ({
     }
   };
 
-  const handleToggleKaraoke = () => {
+  const handleToggleKaraoke = async () => {
     const turningOn = !isKaraokeMode;
-    toggleKaraoke();
-    if (turningOn && setIsLyricsOpen) {
+    const success = await toggleKaraoke();
+    if (turningOn && success && setIsLyricsOpen) {
       setIsLyricsOpen(true);
     }
   };
 
-  const [missingStemHint, setMissingStemHint] = useState({ visible: false, isExiting: false, trackId: null });
-  const hintTimeoutRef = useRef(null);
-  const exitTimeoutRef = useRef(null);
   const prevTrackIdRef = useRef(currentTrack?.id);
-
-  const dismissHint = useCallback(() => {
-    setMissingStemHint((prev) => {
-      if (!prev.visible || prev.isExiting) return prev;
-      return { ...prev, isExiting: true };
-    });
-    if (exitTimeoutRef.current) clearTimeout(exitTimeoutRef.current);
-    exitTimeoutRef.current = setTimeout(() => {
-      setMissingStemHint({ visible: false, isExiting: false, trackId: null });
-    }, 300);
-  }, []);
 
   // Detect track change when Karaoke mode is active
   useEffect(() => {
-    if (!currentTrack?.id) {
-      setMissingStemHint({ visible: false, isExiting: false, trackId: null });
-      return;
-    }
+    if (!currentTrack?.id) return;
 
     if (prevTrackIdRef.current !== currentTrack.id) {
       prevTrackIdRef.current = currentTrack.id;
 
       if (isKaraokeMode) {
         fetchKaraokeStatus(currentTrack.id).then((status) => {
-          if (status && !status.exists) {
-            setMissingStemHint({ visible: true, isExiting: false, trackId: currentTrack.id });
-            if (hintTimeoutRef.current) clearTimeout(hintTimeoutRef.current);
-            hintTimeoutRef.current = setTimeout(() => {
-              dismissHint();
-            }, 3000);
-          } else {
-            dismissHint();
+          if (status && !status.exists && showToast) {
+            showToast(`⚠️ Instrumental not available for "${currentTrack.title}"; playing with vocals`, 3500);
           }
         });
-      } else {
-        dismissHint();
       }
     }
-  }, [currentTrack?.id, isKaraokeMode, fetchKaraokeStatus, dismissHint]);
-
-  // If stems become ready while hint is visible, smoothly auto-close the hint
-  useEffect(() => {
-    if (missingStemHint.visible && !missingStemHint.isExiting && currentTrack?.id && karaokeStemStatus[currentTrack.id]?.exists) {
-      dismissHint();
-    }
-  }, [karaokeStemStatus, currentTrack?.id, missingStemHint.visible, missingStemHint.isExiting, dismissHint]);
+  }, [currentTrack?.id, currentTrack?.title, isKaraokeMode, fetchKaraokeStatus, showToast]);
 
   const handleVolumeChange = (val) => {
     setVolume(val);
@@ -420,75 +388,26 @@ export const PlayerBar = ({
             <PictureInPicture2 size={18} />
           </button>
 
-          {/* Karaoke Mode Toggle & Transient Hint */}
-          <div className="relative flex items-center">
-            <button
-              onClick={handleToggleKaraoke}
-              disabled={!currentTrack}
-              className={`p-2 rounded-lg transition relative disabled:opacity-40 ${
-                isKaraokeMode 
-                  ? 'text-brand-500 bg-surface-elevated ring-1 ring-brand-500/30 shadow-sm' 
-                  : 'text-content-secondary hover:text-content-primary'
-              }`}
-              title={isKaraokeMode ? 'Restore Vocals' : 'Karaoke Mode'}
-            >
-              {isGeneratingStems && (karaokeStemStatus[currentTrack?.id]?.status === 'processing' || karaokeStemStatus[currentTrack?.id]?.status === 'queued') ? (
-                <Loader2 size={18} className="animate-spin text-brand-500" />
-              ) : (
-                <MicOff size={18} />
-              )}
-              {isKaraokeMode && (
-                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse" />
-              )}
-            </button>
-
-            {/* Transient Missing-Stems Hint Card */}
-            {missingStemHint.visible && currentTrack && !karaokeStemStatus[currentTrack.id]?.exists && (
-              <div 
-                className={`absolute bottom-full mb-3 right-0 w-64 bg-surface-panel/95 backdrop-blur-md border border-brand-500/30 rounded-xl p-3 shadow-2xl z-50 text-left select-none transition-all duration-300 transform ${
-                  missingStemHint.isExiting
-                    ? 'opacity-0 translate-y-2 scale-95 pointer-events-none'
-                    : 'opacity-100 translate-y-0 scale-100'
-                }`}
-                onMouseEnter={() => {
-                  if (hintTimeoutRef.current) clearTimeout(hintTimeoutRef.current);
-                }}
-              >
-                <div className="flex items-start justify-between gap-2 mb-1">
-                  <div className="flex items-center gap-1.5 text-brand-400 font-bold text-xs">
-                    <MicOff size={13} className="text-brand-500 shrink-0" />
-                    <span>Karaoke track not pre-cached</span>
-                  </div>
-                  <button 
-                    onClick={dismissHint}
-                    className="text-content-muted hover:text-content-primary p-0.5 rounded transition"
-                    title="Dismiss"
-                  >
-                    <X size={12} />
-                  </button>
-                </div>
-
-                <p className="text-[11px] text-content-secondary leading-relaxed mb-2.5">
-                  Playing original version with vocals.
-                </p>
-
-                <button
-                  onClick={() => generateKaraokeStems(currentTrack.id)}
-                  disabled={isGeneratingStems || karaokeStemStatus[currentTrack.id]?.status === 'queued' || karaokeStemStatus[currentTrack.id]?.status === 'processing'}
-                  className="w-full text-xs font-semibold bg-brand-500 hover:bg-brand-400 disabled:opacity-50 text-black rounded-lg py-1.5 px-2.5 flex items-center justify-center gap-1.5 transition active:scale-95 shadow"
-                >
-                  {isGeneratingStems || karaokeStemStatus[currentTrack.id]?.status === 'processing' || karaokeStemStatus[currentTrack.id]?.status === 'queued' ? (
-                    <>
-                      <Loader2 size={12} className="animate-spin text-black" />
-                      <span>Separating (~1.5 min)...</span>
-                    </>
-                  ) : (
-                    <span>Generate Instrumental</span>
-                  )}
-                </button>
-              </div>
+          {/* Karaoke Mode Toggle */}
+          <button
+            onClick={handleToggleKaraoke}
+            disabled={!currentTrack}
+            className={`p-2 rounded-lg transition relative disabled:opacity-40 ${
+              isKaraokeMode 
+                ? 'text-brand-500 bg-surface-elevated ring-1 ring-brand-500/30 shadow-sm' 
+                : 'text-content-secondary hover:text-content-primary'
+            }`}
+            title={isKaraokeMode ? 'Restore Vocals' : 'Turn on Karaoke'}
+          >
+            {isGeneratingStems && (karaokeStemStatus[currentTrack?.id]?.status === 'processing' || karaokeStemStatus[currentTrack?.id]?.status === 'queued') ? (
+              <Loader2 size={18} className="animate-spin text-brand-500" />
+            ) : (
+              <MicOff size={18} />
             )}
-          </div>
+            {isKaraokeMode && (
+              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse" />
+            )}
+          </button>
 
           {/* Lyrics Toggle Button */}
           <button

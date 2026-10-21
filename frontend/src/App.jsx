@@ -116,6 +116,7 @@ const MainAppContent = () => {
     prevTrack,
     isMiniPlayerOpen,
     setIsMiniPlayerOpen,
+    isKaraokeMode,
     toggleKaraoke,
     togglePiP,
     toastMessage,
@@ -308,7 +309,12 @@ const MainAppContent = () => {
       if (isMod && e.shiftKey && keyLower === 'l') {
         // Toggle Karaoke Mode: Ctrl + Shift + L / Cmd + Shift + L
         e.preventDefault();
-        toggleKaraoke();
+        const turningOn = !isKaraokeMode;
+        toggleKaraoke().then((success) => {
+          if (turningOn && success) {
+            setIsLyricsOpen(true);
+          }
+        });
         return;
       }
 
@@ -388,7 +394,12 @@ const MainAppContent = () => {
       // Toggle Karaoke Mode (Single Key K)
       if (!isMod && !e.altKey && !e.shiftKey && keyLower === 'k') {
         e.preventDefault();
-        toggleKaraoke();
+        const turningOn = !isKaraokeMode;
+        toggleKaraoke().then((success) => {
+          if (turningOn && success) {
+            setIsLyricsOpen(true);
+          }
+        });
         return;
       }
 
@@ -1093,6 +1104,7 @@ const MainAppContent = () => {
           onSelectTab={handleSelectTab}
           onAddToPlaylist={(track) => setModalTrack(track)}
           onEditLyrics={(track) => setLyricsTrackToEdit(track)}
+          onOpenLyrics={() => setIsLyricsOpen(true)}
           onPlaylistUpdated={fetchPlaylists}
           onPlaylistDeleted={handlePlaylistDeleted}
           onPromptDeletePlaylist={(pl) => setPlaylistToDelete(pl)}
