@@ -292,7 +292,6 @@ export const SettingsModal = ({
 
   const handleVersionClick = () => {
     if (isDevUnlocked) {
-      if (showToast) showToast('✨ Developer Mode is already unlocked');
       setActiveTab('experiments');
       return;
     }
@@ -300,14 +299,11 @@ export const SettingsModal = ({
     if (versionClickTimerRef.current) clearTimeout(versionClickTimerRef.current);
     versionClickCountRef.current += 1;
 
-    const remaining = 5 - versionClickCountRef.current;
-    if (remaining > 0 && remaining <= 3) {
-      if (showToast) showToast(`You are ${remaining} tap${remaining === 1 ? '' : 's'} away from Developer Mode...`, 1500);
-    } else if (remaining <= 0) {
+    if (versionClickCountRef.current >= 5) {
       versionClickCountRef.current = 0;
       unlockDevMode();
       setActiveTab('experiments');
-      if (showToast) showToast('🎉 Developer Mode & Experimental Flags Unlocked!', 4000);
+      showToast?.('🎉 Developer Mode & Experimental Flags Unlocked!', 4000);
       return;
     }
 
@@ -2242,8 +2238,7 @@ export const SettingsModal = ({
                         <span>MattLab Music</span>
                         <span 
                           onClick={handleVersionClick}
-                          className="text-xs font-bold bg-brand-500 text-black px-2 py-0.5 rounded-full cursor-pointer hover:scale-105 active:scale-95 transition select-none"
-                          title={isDevUnlocked ? 'Developer Mode Unlocked' : 'Click 5 times to unlock Developer Mode'}
+                          className="text-xs font-bold bg-brand-500 text-black px-2 py-0.5 rounded-full cursor-default select-none"
                         >
                           v1.0.0
                         </span>
@@ -2386,7 +2381,7 @@ export const SettingsModal = ({
                     <button
                       onClick={() => {
                         resetAllFlags();
-                        if (showToast) showToast('✨ All flags reset to default');
+                        showToast?.('✨ All flags reset to default');
                       }}
                       className="px-3 py-2 rounded-xl text-xs font-semibold bg-surface-panel hover:bg-surface-hover text-content-secondary hover:text-white border border-border-subtle flex items-center gap-1.5 transition active:scale-95"
                     >
@@ -2395,9 +2390,9 @@ export const SettingsModal = ({
                     </button>
                     <button
                       onClick={() => {
-                        lockDevMode();
                         setActiveTab('about');
-                        if (showToast) showToast('🔒 Developer Mode locked');
+                        lockDevMode();
+                        showToast?.('🔒 Developer Mode locked');
                       }}
                       className="px-3 py-2 rounded-xl text-xs font-semibold text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 flex items-center gap-1.5 transition active:scale-95"
                     >

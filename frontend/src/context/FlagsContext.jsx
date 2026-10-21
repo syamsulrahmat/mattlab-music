@@ -12,40 +12,40 @@ export const DEFAULT_FLAGS = {
 
 const THEME_ACCENTS = {
   default: {
-    primary: '#22c55e',
-    hover: '#4ade80',
-    dark: '#15803d',
-    light: '#86efac',
+    500: '34 197 94',
+    400: '74 222 128',
+    300: '134 239 172',
+    700: '21 128 61',
   },
   emerald: {
-    primary: '#10b981',
-    hover: '#34d399',
-    dark: '#047857',
-    light: '#6ee7b7',
+    500: '16 185 129',
+    400: '52 211 153',
+    300: '110 231 183',
+    700: '4 120 87',
   },
   cyan: {
-    primary: '#06b6d4',
-    hover: '#22d3ee',
-    dark: '#0e7490',
-    light: '#67e8f9',
+    500: '6 182 212',
+    400: '34 211 238',
+    300: '103 232 249',
+    700: '14 116 144',
   },
   purple: {
-    primary: '#a855f7',
-    hover: '#c084fc',
-    dark: '#7e22ce',
-    light: '#d8b4fe',
+    500: '168 85 247',
+    400: '192 132 252',
+    300: '216 180 254',
+    700: '126 34 206',
   },
   amber: {
-    primary: '#f59e0b',
-    hover: '#fbbf24',
-    dark: '#b45309',
-    light: '#fcd34d',
+    500: '245 158 11',
+    400: '251 191 36',
+    300: '252 211 77',
+    700: '180 83 9',
   },
   rose: {
-    primary: '#f43f5e',
-    hover: '#fb7185',
-    dark: '#be123c',
-    light: '#fda4af',
+    500: '244 63 94',
+    400: '251 113 133',
+    300: '253 164 175',
+    700: '190 18 60',
   },
 };
 
@@ -136,17 +136,23 @@ export const FlagsProvider = ({ children }) => {
   const applyCSSVariables = useCallback((currentFlags) => {
     if (typeof document === 'undefined') return;
     const root = document.documentElement;
+    const safeFlags = currentFlags || DEFAULT_FLAGS;
 
     // 1. Font Family
-    const fontStr = FONT_FAMILIES[currentFlags.font_family] || FONT_FAMILIES.circular;
+    const fontStr = FONT_FAMILIES[safeFlags.font_family] || FONT_FAMILIES.circular;
     root.style.setProperty('--font-family-sans', fontStr);
 
     // 2. Theme Accent
-    const palette = THEME_ACCENTS[currentFlags.theme_accent] || THEME_ACCENTS.default;
-    root.style.setProperty('--brand-primary', palette.primary);
-    root.style.setProperty('--brand-hover', palette.hover);
-    root.style.setProperty('--brand-dark', palette.dark);
-    root.style.setProperty('--brand-light', palette.light);
+    const palette = THEME_ACCENTS[safeFlags.theme_accent] || THEME_ACCENTS.default;
+    root.style.setProperty('--brand-500', palette[500]);
+    root.style.setProperty('--brand-400', palette[400]);
+    root.style.setProperty('--brand-300', palette[300]);
+    root.style.setProperty('--brand-700', palette[700]);
+
+    root.style.setProperty('--brand-primary', `rgb(${palette[500]})`);
+    root.style.setProperty('--brand-hover', `rgb(${palette[400]})`);
+    root.style.setProperty('--brand-dark', `rgb(${palette[700]})`);
+    root.style.setProperty('--brand-light', `rgb(${palette[300]})`);
   }, []);
 
   useEffect(() => {
@@ -168,8 +174,7 @@ export const FlagsProvider = ({ children }) => {
       localStorage.removeItem(FLAGS_STORAGE_KEY);
     } catch (_) {}
     setFlags(DEFAULT_FLAGS);
-    applyCSSVariables(DEFAULT_FLAGS);
-  }, [applyCSSVariables]);
+  }, []);
 
   const setFlag = useCallback((key, value) => {
     setFlags((prev) => {
@@ -177,18 +182,16 @@ export const FlagsProvider = ({ children }) => {
       try {
         localStorage.setItem(FLAGS_STORAGE_KEY, JSON.stringify(updated));
       } catch (_) {}
-      applyCSSVariables(updated);
       return updated;
     });
-  }, [applyCSSVariables]);
+  }, []);
 
   const resetAllFlags = useCallback(() => {
     setFlags(DEFAULT_FLAGS);
     try {
       localStorage.removeItem(FLAGS_STORAGE_KEY);
     } catch (_) {}
-    applyCSSVariables(DEFAULT_FLAGS);
-  }, [applyCSSVariables]);
+  }, []);
 
   return (
     <FlagsContext.Provider

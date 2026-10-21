@@ -36,13 +36,13 @@ export const ExperimentalFlagsModal = ({ isOpen, onClose, showToast }) => {
 
   const handleResetAll = () => {
     resetAllFlags();
-    if (showToast) showToast('✨ All experimental flags reset to default');
+    showToast?.('✨ All experimental flags reset to default');
   };
 
   const handleLock = () => {
-    lockDevMode();
     onClose();
-    if (showToast) showToast('🔒 Developer Mode locked');
+    lockDevMode();
+    showToast?.('🔒 Developer Mode locked');
   };
 
   return (

@@ -29,10 +29,14 @@ export default {
         // Master brand palette (bg-brand-500, text-brand-700, hover:bg-brand-600, etc.)
         brand: {
           ...ACTIVE_THEME,
-          DEFAULT: ACTIVE_THEME[500],
-          hover: ACTIVE_THEME[400],
-          dark: ACTIVE_THEME[700],
-          light: ACTIVE_THEME[300],
+          300: 'rgb(var(--brand-300, 134 239 172) / <alpha-value>)',
+          400: 'rgb(var(--brand-400, 74 222 128) / <alpha-value>)',
+          500: 'rgb(var(--brand-500, 34 197 94) / <alpha-value>)',
+          700: 'rgb(var(--brand-700, 21 128 61) / <alpha-value>)',
+          DEFAULT: 'rgb(var(--brand-500, 34 197 94) / <alpha-value>)',
+          hover: 'rgb(var(--brand-400, 74 222 128) / <alpha-value>)',
+          dark: 'rgb(var(--brand-700, 21 128 61) / <alpha-value>)',
+          light: 'rgb(var(--brand-300, 134 239 172) / <alpha-value>)',
         },
 
         // Semantic surface background hierarchy (pure black -> island -> panel -> elevated -> hover)
@@ -52,7 +56,7 @@ export default {
           secondary: '#b3b3b3',
           muted: '#888888',
           subtle: '#666666',
-          accent: ACTIVE_THEME[400],
+          accent: 'rgb(var(--brand-400, 74 222 128) / <alpha-value>)',
         },
 
         // Semantic borders & dividers
@@ -60,12 +64,12 @@ export default {
           subtle: 'rgba(255, 255, 255, 0.05)',
           medium: 'rgba(255, 255, 255, 0.10)',
           strong: 'rgba(255, 255, 255, 0.20)',
-          brand: ACTIVE_THEME[500],
+          brand: 'rgb(var(--brand-500, 34 197 94) / <alpha-value>)',
         },
 
         // Legacy & Spotify aliases linked directly to the active brand theme
         spotify: {
-          green: ACTIVE_THEME[500],
+          green: 'rgb(var(--brand-500, 34 197 94) / <alpha-value>)',
           base: "#000000",
           island: "#121212",
           elevated: "#1f1f1f",

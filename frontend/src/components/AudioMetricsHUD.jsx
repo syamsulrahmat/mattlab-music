@@ -10,8 +10,6 @@ export const AudioMetricsHUD = () => {
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef({ startX: 0, startY: 0, initialX: 20, initialY: 80 });
 
-  if (!flags.audio_hud) return null;
-
   const handleMouseDown = (e) => {
     setIsDragging(true);
     dragRef.current = {
@@ -46,7 +44,13 @@ export const AudioMetricsHUD = () => {
     };
   }, [isDragging]);
 
-  const bufferPct = duration > 0 ? Math.min(100, Math.round((bufferedTime / duration) * 100)) : 0;
+  // Early return must happen AFTER all hooks to adhere to React Rules of Hooks
+  if (!flags?.audio_hud) return null;
+
+  const safeDuration = Number(duration) || 0;
+  const safeCurrentTime = Number(currentTime) || 0;
+  const safeBufferedTime = Number(bufferedTime) || 0;
+  const bufferPct = safeDuration > 0 ? Math.min(100, Math.round((safeBufferedTime / safeDuration) * 100)) : 0;
 
   return (
     <div
@@ -83,18 +87,18 @@ export const AudioMetricsHUD = () => {
 
         <div className="flex justify-between">
           <span className="text-content-secondary">Position:</span>
-          <span>{Math.round(currentTime)}s / {Math.round(duration)}s</span>
+          <span>{Math.round(safeCurrentTime)}s / {Math.round(safeDuration)}s</span>
         </div>
 
         <div className="flex justify-between">
           <span className="text-content-secondary">Buffer:</span>
-          <span className="text-emerald-400">{bufferPct}% ({Math.round(bufferedTime)}s)</span>
+          <span className="text-emerald-400">{bufferPct}% ({Math.round(safeBufferedTime)}s)</span>
         </div>
 
         <div className="flex justify-between">
           <span className="text-content-secondary">Quality:</span>
           <span className="uppercase text-brand-300 font-bold">
-            {currentTrack?.file_format || audioQuality}
+            {currentTrack?.file_format || audioQuality || 'original'}
           </span>
         </div>
 
@@ -107,7 +111,7 @@ export const AudioMetricsHUD = () => {
 
         <div className="flex justify-between pt-1 border-t border-white/10 text-[10px] text-content-muted">
           <span>Font:</span>
-          <span className="text-white font-sans">{flags.font_family}</span>
+          <span className="text-white font-sans">{flags?.font_family || 'circular'}</span>
         </div>
       </div>
     </div>

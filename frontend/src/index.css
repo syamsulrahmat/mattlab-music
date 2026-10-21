@@ -41,10 +41,15 @@
   :root {
     --font-family-sans: "Circular Std", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 
-    --brand-primary: theme('colors.brand.DEFAULT');
-    --brand-hover: theme('colors.brand.hover');
-    --brand-dark: theme('colors.brand.dark');
-    --brand-light: theme('colors.brand.light');
+    --brand-500: 34 197 94;
+    --brand-400: 74 222 128;
+    --brand-300: 134 239 172;
+    --brand-700: 21 128 61;
+
+    --brand-primary: rgb(var(--brand-500));
+    --brand-hover: rgb(var(--brand-400));
+    --brand-dark: rgb(var(--brand-700));
+    --brand-light: rgb(var(--brand-300));
 
     --surface-base: theme('colors.surface.base');
     --surface-island: theme('colors.surface.island');
