@@ -36,12 +36,17 @@ import {
   Bug,
   CheckCircle2,
   Circle,
-  Plus
+  Plus,
+  FlaskConical,
+  AlertTriangle,
+  RotateCcw,
+  Lock
 } from 'lucide-react';
 import { MattLabLogo } from './MattLabLogo';
 import { UserAvatar } from './UserAvatar';
 import { useAuth } from '../context/AuthContext';
 import { usePlayer } from '../context/PlayerContext';
+import { useDevFlags } from '../context/FlagsContext';
 
 const SHORTCUT_CATEGORIES = [
   { id: 'all', label: 'All Shortcuts' },
@@ -272,6 +277,45 @@ export const SettingsModal = ({
     isPiPActive
   } = usePlayer();
   const [clearingCache, setClearingCache] = useState(false);
+  const { 
+    isDevUnlocked, 
+    unlockDevMode, 
+    lockDevMode, 
+    flags, 
+    setFlag, 
+    resetAllFlags, 
+    flagSpecs 
+  } = useDevFlags();
+  const [flagsFilter, setFlagsFilter] = useState('');
+  const versionClickCountRef = useRef(0);
+  const versionClickTimerRef = useRef(null);
+
+  const handleVersionClick = () => {
+    if (isDevUnlocked) {
+      if (showToast) showToast('✨ Developer Mode is already unlocked');
+      setActiveTab('experiments');
+      return;
+    }
+
+    if (versionClickTimerRef.current) clearTimeout(versionClickTimerRef.current);
+    versionClickCountRef.current += 1;
+
+    const remaining = 5 - versionClickCountRef.current;
+    if (remaining > 0 && remaining <= 3) {
+      if (showToast) showToast(`You are ${remaining} tap${remaining === 1 ? '' : 's'} away from Developer Mode...`, 1500);
+    } else if (remaining <= 0) {
+      versionClickCountRef.current = 0;
+      unlockDevMode();
+      setActiveTab('experiments');
+      if (showToast) showToast('🎉 Developer Mode & Experimental Flags Unlocked!', 4000);
+      return;
+    }
+
+    versionClickTimerRef.current = setTimeout(() => {
+      versionClickCountRef.current = 0;
+    }, 3000);
+  };
+
   const [cacheClearedSuccess, setCacheClearedSuccess] = useState(false);
   const [transcodeCacheStats, setTranscodeCacheStats] = useState({ file_count: 0, size_mb: 0 });
   const [clearingTranscodeCache, setClearingTranscodeCache] = useState(false);
@@ -763,6 +807,25 @@ export const SettingsModal = ({
               <Info size={16} />
               <span>About & System</span>
             </button>
+
+            {isDevUnlocked && (
+              <button
+                onClick={() => setActiveTab('experiments')}
+                className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-left shrink-0 md:shrink md:w-full ${
+                  activeTab === 'experiments'
+                    ? 'bg-amber-500 text-black shadow-md font-bold'
+                    : 'text-amber-400 hover:text-amber-300 hover:bg-amber-500/10'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <FlaskConical size={16} />
+                  <span>Experiments</span>
+                </div>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase">
+                  Flags
+                </span>
+              </button>
+            )}
 
             {isAdmin && (
               <div className="hidden md:block mt-auto pt-3 border-t border-border-medium">
@@ -2177,7 +2240,11 @@ export const SettingsModal = ({
                     <div>
                       <h3 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
                         <span>MattLab Music</span>
-                        <span className="text-xs font-bold bg-brand-500 text-black px-2 py-0.5 rounded-full">
+                        <span 
+                          onClick={handleVersionClick}
+                          className="text-xs font-bold bg-brand-500 text-black px-2 py-0.5 rounded-full cursor-pointer hover:scale-105 active:scale-95 transition select-none"
+                          title={isDevUnlocked ? 'Developer Mode Unlocked' : 'Click 5 times to unlock Developer Mode'}
+                        >
                           v1.0.0
                         </span>
                       </h3>
@@ -2289,6 +2356,135 @@ export const SettingsModal = ({
                       Manage Users
                     </button>
                   )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'experiments' && (
+              <div className="space-y-6">
+                {/* Warning Banner */}
+                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-3 text-xs text-amber-300 leading-relaxed">
+                  <AlertTriangle size={20} className="shrink-0 text-amber-400 mt-0.5" />
+                  <div>
+                    <span className="font-bold">WARNING: EXPERIMENTAL FEATURES AHEAD!</span> By enabling these feature flags, you are customizing internal typography and audio pipelines. Changes apply immediately in real-time.
+                  </div>
+                </div>
+
+                {/* Search Bar & Action Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="relative flex-1">
+                    <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-content-muted" />
+                    <input
+                      type="text"
+                      value={flagsFilter}
+                      onChange={(e) => setFlagsFilter(e.target.value)}
+                      placeholder="Search available flags..."
+                      className="w-full bg-surface-panel hover:bg-surface-elevated focus:bg-surface-elevated text-white pl-10 pr-4 py-2 rounded-xl text-xs font-medium outline-none border border-border-subtle focus:border-brand-500/50 transition placeholder-content-muted"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => {
+                        resetAllFlags();
+                        if (showToast) showToast('✨ All flags reset to default');
+                      }}
+                      className="px-3 py-2 rounded-xl text-xs font-semibold bg-surface-panel hover:bg-surface-hover text-content-secondary hover:text-white border border-border-subtle flex items-center gap-1.5 transition active:scale-95"
+                    >
+                      <RotateCcw size={13} />
+                      <span>Reset All</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        lockDevMode();
+                        setActiveTab('about');
+                        if (showToast) showToast('🔒 Developer Mode locked');
+                      }}
+                      className="px-3 py-2 rounded-xl text-xs font-semibold text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 flex items-center gap-1.5 transition active:scale-95"
+                    >
+                      <Lock size={13} />
+                      <span>Lock Dev Mode</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Flags Cards Grid */}
+                <div className="space-y-3">
+                  {flagSpecs
+                    .filter((spec) => {
+                      if (!flagsFilter.trim()) return true;
+                      const q = flagsFilter.toLowerCase();
+                      return (
+                        spec.title.toLowerCase().includes(q) ||
+                        spec.description.toLowerCase().includes(q) ||
+                        spec.category.toLowerCase().includes(q)
+                      );
+                    })
+                    .map((spec) => {
+                      const currentValue = flags[spec.id] !== undefined ? flags[spec.id] : spec.default;
+                      const isModified = currentValue !== spec.default;
+
+                      return (
+                        <div 
+                          key={spec.id}
+                          className={`p-4 rounded-xl border transition ${
+                            isModified 
+                              ? 'bg-surface-panel/90 border-brand-500/30' 
+                              : 'bg-surface-panel/40 border-border-subtle'
+                          }`}
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div className="space-y-1 pr-2">
+                              <div className="flex items-center gap-2">
+                                <h4 className="text-sm font-bold text-white tracking-tight">
+                                  {spec.title}
+                                </h4>
+                                {isModified && (
+                                  <span className="text-[9px] font-bold bg-brand-500/20 text-brand-300 px-1.5 py-0.5 rounded-full uppercase">
+                                    Modified
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-content-secondary leading-relaxed">
+                                {spec.description}
+                              </p>
+                              <div className="text-[10px] text-content-muted font-semibold tracking-wider uppercase pt-0.5">
+                                #{spec.id} • {spec.category}
+                              </div>
+                            </div>
+
+                            <div className="shrink-0 sm:w-60">
+                              {spec.type === 'select' ? (
+                                <select
+                                  value={currentValue}
+                                  onChange={(e) => {
+                                    const val = isNaN(Number(e.target.value)) || e.target.value === '' 
+                                      ? e.target.value 
+                                      : Number(e.target.value);
+                                    setFlag(spec.id, val);
+                                  }}
+                                  className="w-full bg-surface-elevated hover:bg-surface-hover text-white text-xs font-semibold px-3 py-2 rounded-xl border border-border-medium outline-none cursor-pointer focus:border-brand-500 transition"
+                                >
+                                  {spec.options.map((opt) => (
+                                    <option key={opt.value} value={opt.value} className="bg-surface-island text-white">
+                                      {opt.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : spec.type === 'boolean' ? (
+                                <select
+                                  value={currentValue ? 'true' : 'false'}
+                                  onChange={(e) => setFlag(spec.id, e.target.value === 'true')}
+                                  className="w-full bg-surface-elevated hover:bg-surface-hover text-white text-xs font-semibold px-3 py-2 rounded-xl border border-border-medium outline-none cursor-pointer focus:border-brand-500 transition"
+                                >
+                                  <option value="false" className="bg-surface-island text-white">Disabled</option>
+                                  <option value="true" className="bg-surface-island text-brand-400 font-bold">Enabled</option>
+                                </select>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
             )}

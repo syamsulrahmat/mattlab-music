@@ -3,6 +3,7 @@ import { audioPreloader } from '../utils/audioPreloader';
 import { shuffleArray } from '../utils/shuffle';
 import { parseLrc, findActiveLyricIndex } from '../utils/lyrics';
 import { useAuth } from './AuthContext';
+import { useDevFlags } from './FlagsContext';
 import { LYRICS_CONFIG } from '../config/lyricsConfig';
 import { DESIGN_TOKENS } from '../config/designTokens';
 
@@ -70,6 +71,7 @@ const loadSavedPlaybackState = () => {
 
 export const PlayerProvider = ({ children }) => {
   const { user, isAuthenticated } = useAuth();
+  const { flags } = useDevFlags();
   const loadedUserIdRef = useRef(null);
   const debouncePrefTimerRef = useRef(null);
 
@@ -341,7 +343,18 @@ export const PlayerProvider = ({ children }) => {
       isHandled = true;
       cleanupFallback();
 
-      const durationMs = 260; // Studio seamless equal-power crossfade
+      const durationMs = typeof flags?.crossfade_curve === 'number' ? flags.crossfade_curve : 260;
+      if (durationMs <= 0) {
+        currentAudio.pause();
+        currentAudio.volume = 0;
+        standbyAudio.volume = baseVolume;
+        audioRef.current = standbyAudio;
+        standbyAudioRef.current = currentAudio;
+        isCrossfadingRef.current = false;
+        crossfadeTimerRef.current = null;
+        return;
+      }
+
       const startTime = performance.now();
 
       const crossfadeStep = (now) => {
@@ -433,7 +446,7 @@ export const PlayerProvider = ({ children }) => {
     } else {
       standbyAudio.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
     }
-  }, [currentTrack, volume, isMuted]);
+  }, [currentTrack, volume, isMuted, flags?.crossfade_curve]);
 
   const generateKaraokeStems = useCallback(async (trackId) => {
     if (!trackId) return;

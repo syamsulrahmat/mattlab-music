@@ -12,8 +12,10 @@ import {
   ChevronRight,
   TrendingUp,
   Loader2,
+  FlaskConical,
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
+import { useDevFlags } from '../context/FlagsContext';
 
 const formatDuration = (seconds) => {
   if (!seconds || isNaN(seconds)) return '';
@@ -28,7 +30,9 @@ export const CommandPaletteModal = ({
   onSelectAlbum,
   onSelectArtist,
   onRequestMusic,
+  onOpenFlags,
 }) => {
+  const { isDevUnlocked } = useDevFlags();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState({
     tracks: [],
@@ -201,6 +205,9 @@ export const CommandPaletteModal = ({
   // Flat linear list of navigable items for Up/Down selection
   const navigableItems = useMemo(() => {
     const items = [];
+    if (isDevUnlocked && (query.toLowerCase().includes('flag') || query.toLowerCase().includes('dev'))) {
+      items.push({ type: 'flags' });
+    }
     if (topResult) {
       if (topResult.type === 'track') {
         items.push({ type: 'top_track', data: topResult });
@@ -219,7 +226,7 @@ export const CommandPaletteModal = ({
       });
     }
     return items;
-  }, [topResult, tracks, trendingTracks, albums, otherArtists, query, results.correctedQuery]);
+  }, [isDevUnlocked, topResult, tracks, trendingTracks, albums, otherArtists, query, results.correctedQuery]);
 
   // Auto-scroll selected element into view
   useEffect(() => {
@@ -233,6 +240,11 @@ export const CommandPaletteModal = ({
 
   const executeItem = (item) => {
     if (!item) return;
+    if (item.type === 'flags') {
+      onClose();
+      if (onOpenFlags) onOpenFlags();
+      return;
+    }
     if (item.type === 'top_track' || item.type === 'track' || item.type === 'trending_track') {
       const track = item.data;
       if (track.in_library || track.id) {
@@ -323,6 +335,36 @@ export const CommandPaletteModal = ({
 
         {/* Search Results Body */}
         <div className="flex-1 overflow-y-auto p-3 space-y-4">
+          {/* Developer Flags Quick Action */}
+          {isDevUnlocked && (query.toLowerCase().includes('flag') || query.toLowerCase().includes('dev')) && (
+            <div
+              id="cp-item-0"
+              onClick={() => {
+                onClose();
+                if (onOpenFlags) onOpenFlags();
+              }}
+              onMouseEnter={() => setSelectedIndex(0)}
+              className={`p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition shadow-md group ${
+                selectedIndex === 0
+                  ? 'bg-amber-500/25 border-amber-500/50 scale-[1.01]'
+                  : 'bg-amber-500/15 border-amber-500/30'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400">
+                  <FlaskConical size={18} />
+                </div>
+                <div>
+                  <div className="font-bold text-xs flex items-center gap-2 text-white">
+                    <span>Experimental Flags Dashboard</span>
+                    <span className="text-[9px] bg-amber-500/30 text-amber-300 px-1.5 py-0.2 rounded font-mono">mattlab://flags</span>
+                  </div>
+                  <div className="text-[11px] text-content-secondary mt-0.5">Configure developer switches, Circular Std font, and theme overrides</div>
+                </div>
+              </div>
+              <ChevronRight size={16} className="text-amber-400 group-hover:translate-x-0.5 transition" />
+            </div>
+          )}
           {isLoading && (
             <div className="flex items-center justify-center py-8 text-content-muted gap-2">
               <div className="animate-spin rounded-full h-4 w-4 border-2 border-brand-500 border-t-transparent" />

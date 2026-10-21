@@ -32,8 +32,11 @@ import { Footer } from './components/Footer';
 import { BugReportModal } from './components/BugReportModal';
 import { MattLabLogo } from './components/MattLabLogo';
 import { GlobalTooltip } from './components/GlobalTooltip';
+import { AudioMetricsHUD } from './components/AudioMetricsHUD';
+import { ExperimentalFlagsModal } from './components/ExperimentalFlagsModal';
 import { PlayerProvider, usePlayer } from './context/PlayerContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { FlagsProvider, useDevFlags } from './context/FlagsContext';
 
 const MainAppContent = () => {
   // Navigation & View States
@@ -122,6 +125,7 @@ const MainAppContent = () => {
     toastMessage,
     showToast,
   } = usePlayer();
+  const { isDevUnlocked, isFlagsModalOpen, setIsFlagsModalOpen } = useDevFlags();
 
   const fetchStats = async () => {
     try {
@@ -329,6 +333,13 @@ const MainAppContent = () => {
         // Toggle Picture-in-Picture: Ctrl + P / Cmd + P (suppresses browser print dialog)
         e.preventDefault();
         togglePiP();
+        return;
+      }
+
+      if (isDevUnlocked && isMod && e.shiftKey && keyLower === 'd') {
+        // Toggle Experimental Flags: Ctrl + Shift + D / Cmd + Shift + D
+        e.preventDefault();
+        setIsFlagsModalOpen((prev) => !prev);
         return;
       }
 
@@ -1171,6 +1182,7 @@ const MainAppContent = () => {
         onSelectAlbum={handleSelectAlbum}
         onSelectArtist={handleSelectArtist}
         onRequestMusic={(q) => handleOpenRequestMusic(q || '')}
+        onOpenFlags={() => setIsFlagsModalOpen(true)}
       />
 
       {/* Admin User Management Modal */}
@@ -1261,6 +1273,16 @@ const MainAppContent = () => {
         </div>
       )}
 
+      {/* Floating Audio Telemetry Diagnostics HUD */}
+      <AudioMetricsHUD />
+
+      {/* Standalone Experimental Flags Modal (mattlab://flags) */}
+      <ExperimentalFlagsModal
+        isOpen={isFlagsModalOpen}
+        onClose={() => setIsFlagsModalOpen(false)}
+        showToast={showToast}
+      />
+
       {/* Global Stylized Tooltip System */}
       <GlobalTooltip />
     </div>
@@ -1270,9 +1292,11 @@ const MainAppContent = () => {
 export const App = () => {
   return (
     <AuthProvider>
-      <PlayerProvider>
-        <MainAppContent />
-      </PlayerProvider>
+      <FlagsProvider>
+        <PlayerProvider>
+          <MainAppContent />
+        </PlayerProvider>
+      </FlagsProvider>
     </AuthProvider>
   );
 };
