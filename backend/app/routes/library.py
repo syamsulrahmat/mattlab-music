@@ -420,7 +420,11 @@ def sanitize_fts5_query(user_query: str) -> str:
 
 
 @router.get("/search")
-async def search_library(q: str = Query(..., min_length=1), limit: int = Query(25, ge=1, le=100)):
+async def search_library(
+    q: str = Query(..., min_length=1),
+    limit: int = Query(25, ge=1, le=100),
+    include_trending: bool = Query(True)
+):
     """Search across tracks, lyrics, artists, and albums simultaneously with FTS5 and smart typo resolution."""
     from app.routes.request_music import resolve_smart_canonical_query
 
@@ -921,9 +925,112 @@ async def search_library(q: str = Query(..., min_length=1), limit: int = Query(2
                 except Exception as e:
                     logger.warning(f"[Search] Canonical typo check error: {e}")
 
+    # 6. Hybrid Spotify Trending Lookup & Cross-matching
+    trending_tracks = []
+    if include_trending and len(cleaned_q) >= 2:
+        try:
+            import asyncio
+            from app.trending_search import fetch_trending_search_sync
+            from app.routes.spotify_sync import find_track_in_local_db
+
+            # Fetch trending predictions with 2.5s timeout (cached for 5m)
+            trending_data = await asyncio.wait_for(
+                asyncio.to_thread(fetch_trending_search_sync, cleaned_q, 8),
+                timeout=2.5
+            )
+            raw_trending = trending_data.get("tracks", [])
+
+            with get_db() as conn:
+                cursor = conn.cursor()
+                for st in raw_trending:
+                    matched_id = find_track_in_local_db(cursor, st["title"], st["artist_name"])
+                    if matched_id:
+                        cursor.execute("""
+                            SELECT t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate,
+                                   a.id AS album_id, a.title AS album_title, ar.id AS artist_id, ar.name AS artist_name
+                            FROM tracks t
+                            JOIN albums a ON t.album_id = a.id
+                            JOIN artists ar ON t.artist_id = ar.id
+                            WHERE t.id = ?
+                        """, (matched_id,))
+                        l_row = cursor.fetchone()
+                        if l_row:
+                            trending_tracks.append({
+                                **st,
+                                "in_library": True,
+                                "id": l_row["id"],
+                                "album_id": l_row["album_id"],
+                                "artist_id": l_row["artist_id"],
+                                "cover_url": f"/api/covers/{l_row['album_id']}",
+                                "stream_url": f"/api/stream/{l_row['id']}",
+                            })
+                            continue
+
+                    trending_tracks.append({
+                        **st,
+                        "in_library": False,
+                        "id": None,
+                        "stream_url": None,
+                    })
+        except Exception as e:
+            logger.warning(f"[Search] Trending lookup error: {e}")
+
+    # 7. Spotify-grade Top Result (Best Match) determination
+    top_result = None
+
+    # Priority 1: Check if top trending track title starts with query (e.g. query "train" -> "Training Season" by Dua Lipa)
+    if trending_tracks and trending_tracks[0]["title"].lower().startswith(cleaned_q.lower()):
+        top_result = {
+            "type": "track",
+            **trending_tracks[0],
+        }
+    # Priority 2: Exact Artist Match (e.g. query "eminem" or "dua lipa")
+    elif primary_artist and cleaned_q.lower() == primary_artist["name"].strip().lower():
+        top_result = {
+            "type": "artist",
+            "id": primary_artist["id"],
+            "name": primary_artist["name"],
+            "image_url": primary_artist.get("image_url"),
+            "track_count": primary_artist.get("track_count", 0),
+            "album_count": primary_artist.get("album_count", 0),
+            "in_library": True,
+        }
+    # Priority 3: General trending track match
+    elif trending_tracks:
+        first_trending = trending_tracks[0]
+        t_low = first_trending["title"].lower()
+        q_low = cleaned_q.lower()
+        if q_low in t_low or len(q_low) >= 3:
+            top_result = {
+                "type": "track",
+                **first_trending,
+            }
+        elif primary_artist:
+            top_result = {
+                "type": "artist",
+                "id": primary_artist["id"],
+                "name": primary_artist["name"],
+                "image_url": primary_artist.get("image_url"),
+                "track_count": primary_artist.get("track_count", 0),
+                "album_count": primary_artist.get("album_count", 0),
+                "in_library": True,
+            }
+
+    # C. Fallback to top local song if no top_result yet
+    if not top_result and tracks:
+        exact_track = next((t for t in tracks if t["title"].strip().lower() == cleaned_q.lower()), None)
+        chosen = exact_track or tracks[0]
+        top_result = {
+            "type": "track",
+            **chosen,
+            "in_library": True,
+        }
+
     resp = {
         "query": q,
+        "top_result": top_result,
         "tracks": tracks,
+        "trending_tracks": trending_tracks,
         "lyrics_matches": lyrics_matches,
         "albums": albums,
         "artists": artists,

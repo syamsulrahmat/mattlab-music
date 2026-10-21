@@ -1,5 +1,18 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Search, Play, Pause, Disc3, Mic2, DownloadCloud, X, Music, Sparkles, ChevronRight } from 'lucide-react';
+import {
+  Search,
+  Play,
+  Pause,
+  Disc3,
+  Mic2,
+  DownloadCloud,
+  X,
+  Music,
+  Sparkles,
+  ChevronRight,
+  TrendingUp,
+  Loader2,
+} from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 
 const formatDuration = (seconds) => {
@@ -17,18 +30,78 @@ export const CommandPaletteModal = ({
   onRequestMusic,
 }) => {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState({ tracks: [], albums: [], artists: [] });
+  const [results, setResults] = useState({
+    tracks: [],
+    albums: [],
+    artists: [],
+    trending_tracks: [],
+    top_result: null,
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [downloadingIds, setDownloadingIds] = useState(new Set());
   const inputRef = useRef(null);
   const debounceRef = useRef(null);
-  const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayer();
+  const { currentTrack, isPlaying, playTrack, togglePlay, showToast } = usePlayer();
+
+  const handleQuickDownload = async (track, e) => {
+    if (e) e.stopPropagation();
+    const trackKey = track.spotify_id || `${track.artist_name}-${track.title}`;
+    if (downloadingIds.has(trackKey)) return;
+
+    setDownloadingIds((prev) => new Set(prev).add(trackKey));
+    if (showToast) {
+      showToast(`⚡ Dispatching 320k download for "${track.title}"...`);
+    }
+
+    try {
+      const res = await fetch('/api/request/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          album: {
+            artist_name: track.artist_name,
+            title: track.album_title || track.title,
+            source_track: track.title,
+            cover_url: track.cover_url,
+            force_direct: true,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        if (showToast) {
+          showToast(`✅ Queued "${track.title}" via Lidarr/qBittorrent!`);
+        }
+      } else {
+        if (showToast) {
+          showToast(`⚠️ ${data.detail || 'Download request failed'}`);
+        }
+      }
+    } catch (err) {
+      if (showToast) {
+        showToast(`⚠️ Failed to request download: ${err.message}`);
+      }
+    } finally {
+      setDownloadingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(trackKey);
+        return next;
+      });
+    }
+  };
 
   // Auto-focus input when modal opens
   useEffect(() => {
     if (isOpen) {
       setQuery('');
-      setResults({ tracks: [], albums: [], artists: [] });
+      setResults({
+        tracks: [],
+        albums: [],
+        artists: [],
+        trending_tracks: [],
+        top_result: null,
+      });
       setSelectedIndex(0);
       setTimeout(() => {
         if (inputRef.current) inputRef.current.focus();
@@ -51,11 +124,17 @@ export const CommandPaletteModal = ({
 
   // Live search debounced
   useEffect(() => {
-    if (!isOpen) return;
     const q = query.trim();
     if (!q) {
-      setResults({ tracks: [], albums: [], artists: [] });
+      setResults({
+        tracks: [],
+        albums: [],
+        artists: [],
+        trending_tracks: [],
+        top_result: null,
+      });
       setIsLoading(false);
+      setSelectedIndex(0);
       return;
     }
 
@@ -68,6 +147,8 @@ export const CommandPaletteModal = ({
         if (res.ok) {
           const data = await res.json();
           setResults({
+            top_result: data.top_result || null,
+            trending_tracks: Array.isArray(data.trending_tracks) ? data.trending_tracks : [],
             tracks: Array.isArray(data.tracks) ? data.tracks.slice(0, 5) : [],
             albums: Array.isArray(data.albums) ? data.albums.slice(0, 4) : [],
             artists: Array.isArray(data.artists) ? data.artists.slice(0, 4) : [],
@@ -89,19 +170,48 @@ export const CommandPaletteModal = ({
     };
   }, [query, isOpen]);
 
+  const topResult =
+    results.top_result ||
+    (results.primary_artist ? { type: 'artist', ...results.primary_artist } : null);
+  const hasTopResult = Boolean(topResult);
+  const topResultOffset = hasTopResult ? 1 : 0;
+
+  const rawTracks = results.tracks || [];
+  const tracks = rawTracks.filter(
+    (t) => !(topResult?.type === 'track' && topResult.id === t.id)
+  );
+
+  const rawTrending = results.trending_tracks || [];
+  const trendingTracks = rawTrending
+    .slice(0, 4)
+    .filter(
+      (t) =>
+        !(
+          topResult?.type === 'track' &&
+          (topResult.spotify_id === t.spotify_id || (topResult.id && topResult.id === t.id))
+        )
+    );
+
+  const albums = results.albums || [];
+  const topArtistId = topResult?.type === 'artist' ? topResult.id : results.primary_artist?.id;
+  const otherArtists = (results.artists || []).filter(
+    (a) => !topArtistId || a.id !== topArtistId
+  );
+
   // Flat linear list of navigable items for Up/Down selection
   const navigableItems = useMemo(() => {
     const items = [];
-    if (results.primary_artist) {
-      items.push({ type: 'artist', data: results.primary_artist });
-    }
-    results.tracks?.forEach((track) => items.push({ type: 'track', data: track }));
-    results.albums?.forEach((album) => items.push({ type: 'album', data: album }));
-    results.artists?.forEach((artist) => {
-      if (!results.primary_artist || artist.id !== results.primary_artist.id) {
-        items.push({ type: 'artist', data: artist });
+    if (topResult) {
+      if (topResult.type === 'track') {
+        items.push({ type: 'top_track', data: topResult });
+      } else if (topResult.type === 'artist') {
+        items.push({ type: 'artist', data: topResult });
       }
-    });
+    }
+    tracks.forEach((track) => items.push({ type: 'track', data: track }));
+    trendingTracks.forEach((trend) => items.push({ type: 'trending_track', data: trend }));
+    albums.forEach((album) => items.push({ type: 'album', data: album }));
+    otherArtists.forEach((artist) => items.push({ type: 'artist', data: artist }));
     if (query.trim().length > 0) {
       items.push({
         type: 'request',
@@ -109,7 +219,7 @@ export const CommandPaletteModal = ({
       });
     }
     return items;
-  }, [results, query]);
+  }, [topResult, tracks, trendingTracks, albums, otherArtists, query, results.correctedQuery]);
 
   // Auto-scroll selected element into view
   useEffect(() => {
@@ -123,13 +233,17 @@ export const CommandPaletteModal = ({
 
   const executeItem = (item) => {
     if (!item) return;
-    if (item.type === 'track') {
-      if (currentTrack?.id === item.data.id) {
-        togglePlay();
+    if (item.type === 'top_track' || item.type === 'track' || item.type === 'trending_track') {
+      const track = item.data;
+      if (track.in_library || track.id) {
+        if (currentTrack?.id === track.id) {
+          togglePlay();
+        } else {
+          playTrack(track, results.tracks || [track]);
+        }
       } else {
-        playTrack(item.data, results.tracks);
+        handleQuickDownload(track);
       }
-      // Stay in modal until user dismisses
     } else if (item.type === 'album') {
       if (onSelectAlbum) onSelectAlbum(item.data.id);
       onClose();
@@ -167,15 +281,8 @@ export const CommandPaletteModal = ({
 
   if (!isOpen) return null;
 
-  const primaryArtist = results.primary_artist;
-  const hasPrimary = Boolean(primaryArtist);
-  const primaryOffset = hasPrimary ? 1 : 0;
-  const otherArtists = (results.artists || []).filter((a) => !primaryArtist || a.id !== primaryArtist.id);
   const totalResults =
-    primaryOffset +
-    (results.tracks?.length || 0) +
-    (results.albums?.length || 0) +
-    otherArtists.length;
+    topResultOffset + tracks.length + trendingTracks.length + albums.length + otherArtists.length;
 
   return (
     <div
@@ -195,7 +302,7 @@ export const CommandPaletteModal = ({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleInputKeyDown}
-            placeholder="Search tracks, albums, artists, or type to request..."
+            placeholder="Search tracks, trends, albums, artists, or type to request..."
             className="flex-1 bg-transparent text-content-primary placeholder:text-content-muted text-base font-medium outline-none"
           />
           {query && (
@@ -219,7 +326,7 @@ export const CommandPaletteModal = ({
           {isLoading && (
             <div className="flex items-center justify-center py-8 text-content-muted gap-2">
               <div className="animate-spin rounded-full h-4 w-4 border-2 border-brand-500 border-t-transparent" />
-              <span className="text-xs">Searching library...</span>
+              <span className="text-xs">Searching library & live trends...</span>
             </div>
           )}
 
@@ -248,69 +355,193 @@ export const CommandPaletteModal = ({
           {!query && (
             <div className="py-8 px-4 text-center text-content-subtle">
               <Sparkles size={28} className="mx-auto mb-2 text-content-subtle" />
-              <p className="text-xs font-medium">Quick search your library or request new songs.</p>
-              <p className="text-[11px] text-content-subtle mt-1">Press <kbd className="bg-white/10 px-1 rounded text-white/70">Ctrl+K</kbd> anytime to open.</p>
+              <p className="text-xs font-medium">Quick search your library or discover trending music.</p>
+              <p className="text-[11px] text-content-subtle mt-1">
+                Press <kbd className="bg-white/10 px-1 rounded text-white/70">Ctrl+K</kbd> anytime to open.
+              </p>
             </div>
           )}
 
-          {/* Top Result / Primary Artist Section */}
-          {primaryArtist && (
+          {/* Top Result / Best Match Section */}
+          {topResult && (
             <div>
               <p className="text-[11px] font-bold uppercase text-content-muted px-3 mb-1.5 tracking-wider">
                 Top Result
               </p>
-              <div
-                id="cp-item-0"
-                onMouseEnter={() => setSelectedIndex(0)}
-                onClick={() => {
-                  if (onSelectArtist) onSelectArtist(primaryArtist.id);
-                  onClose();
-                }}
-                className={`flex items-center justify-between p-3 rounded-2xl cursor-pointer group transition ${
-                  selectedIndex === 0
-                    ? 'bg-white/15 ring-1 ring-brand-500/40'
-                    : 'bg-surface-elevated hover:bg-white/10'
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <img
-                    src={primaryArtist.image_url || `/api/artists/${primaryArtist.id}/image`}
-                    alt=""
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = '/api/covers/0';
-                    }}
-                    className="w-12 h-12 rounded-full object-cover bg-surface-elevated2 shadow-md shrink-0 border border-white/10"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded-full border border-brand-500/20">
-                      Artist
-                    </span>
-                    <p className="text-sm font-bold text-white truncate mt-0.5 group-hover:text-brand-400 transition">
-                      {primaryArtist.name}
-                    </p>
-                    <p className="text-[11px] text-content-secondary truncate">
-                      {primaryArtist.track_count || 0} songs • {primaryArtist.album_count || 0} albums
-                    </p>
+
+              {topResult.type === 'track' ? (
+                <div
+                  id="cp-item-0"
+                  onMouseEnter={() => setSelectedIndex(0)}
+                  onClick={() => {
+                    if (topResult.in_library || topResult.id) {
+                      playTrack(topResult, results.tracks || [topResult]);
+                    } else {
+                      handleQuickDownload(topResult);
+                    }
+                  }}
+                  className={`p-3.5 rounded-2xl cursor-pointer group transition border ${
+                    selectedIndex === 0
+                      ? 'bg-white/15 ring-1 ring-brand-500/50 border-brand-500/40 shadow-lg'
+                      : 'bg-surface-elevated hover:bg-white/10 border-border-subtle'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                      <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-surface-elevated2 shadow-md shrink-0 border border-white/10">
+                        <img
+                          src={topResult.cover_url || '/api/covers/0'}
+                          alt={topResult.title}
+                          className="w-full h-full object-cover"
+                        />
+                        {(topResult.in_library || topResult.id) && (
+                          <div
+                            className={`absolute inset-0 bg-black/60 flex items-center justify-center transition-opacity ${
+                              currentTrack?.id === topResult.id && isPlaying
+                                ? 'opacity-100'
+                                : selectedIndex === 0
+                                ? 'opacity-100'
+                                : 'opacity-0 group-hover:opacity-100'
+                            }`}
+                          >
+                            {currentTrack?.id === topResult.id && isPlaying ? (
+                              <Pause size={18} className="text-white fill-white" />
+                            ) : (
+                              <Play size={18} className="text-white fill-white ml-0.5" />
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded-full border border-brand-500/20">
+                            Song
+                          </span>
+                          {topResult.is_trending && (
+                            <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1">
+                              <TrendingUp size={10} />
+                              <span>Trending</span>
+                            </span>
+                          )}
+                          {topResult.in_library ? (
+                            <span className="text-[10px] font-semibold text-white/70 bg-white/10 px-2 py-0.5 rounded-full">
+                              In Library
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-semibold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                              320k Available
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm font-bold text-white truncate group-hover:text-brand-400 transition">
+                          {topResult.title}
+                        </p>
+                        <p className="text-xs text-content-secondary truncate mt-0.5">
+                          {topResult.artist_name} {topResult.album_title ? `• ${topResult.album_title}` : ''}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0">
+                      {topResult.in_library || topResult.id ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            playTrack(topResult, results.tracks || [topResult]);
+                          }}
+                          className="w-10 h-10 rounded-full bg-brand-500 hover:bg-brand-400 text-black flex items-center justify-center shadow-lg transition active:scale-95 group-hover:scale-105"
+                          title="Play Track"
+                        >
+                          {currentTrack?.id === topResult.id && isPlaying ? (
+                            <Pause size={18} className="fill-black" />
+                          ) : (
+                            <Play size={18} className="fill-black ml-0.5" />
+                          )}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => handleQuickDownload(topResult, e)}
+                          disabled={downloadingIds.has(
+                            topResult.spotify_id || `${topResult.artist_name}-${topResult.title}`
+                          )}
+                          className="px-3.5 py-1.5 rounded-full bg-brand-500 hover:bg-brand-400 disabled:opacity-50 text-black font-bold text-xs flex items-center gap-1.5 shadow-md transition active:scale-95"
+                          title="Download 320k MP3"
+                        >
+                          {downloadingIds.has(
+                            topResult.spotify_id || `${topResult.artist_name}-${topResult.title}`
+                          ) ? (
+                            <>
+                              <Loader2 size={13} className="animate-spin" />
+                              <span>Queuing...</span>
+                            </>
+                          ) : (
+                            <>
+                              <DownloadCloud size={13} />
+                              <span>Download</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className="shrink-0 flex items-center text-content-muted group-hover:text-brand-400 text-xs font-semibold gap-1">
-                  <span>View</span>
-                  <ChevronRight size={14} />
+              ) : (
+                <div
+                  id="cp-item-0"
+                  onMouseEnter={() => setSelectedIndex(0)}
+                  onClick={() => {
+                    if (onSelectArtist) onSelectArtist(topResult.id);
+                    onClose();
+                  }}
+                  className={`flex items-center justify-between p-3 rounded-2xl cursor-pointer group transition border ${
+                    selectedIndex === 0
+                      ? 'bg-white/15 ring-1 ring-brand-500/40 border-brand-500/40'
+                      : 'bg-surface-elevated hover:bg-white/10 border-border-subtle'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <img
+                      src={topResult.image_url || `/api/artists/${topResult.id}/image`}
+                      alt=""
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = '/api/covers/0';
+                      }}
+                      className="w-12 h-12 rounded-full object-cover bg-surface-elevated2 shadow-md shrink-0 border border-white/10"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded-full border border-brand-500/20">
+                        Artist
+                      </span>
+                      <p className="text-sm font-bold text-white truncate mt-0.5 group-hover:text-brand-400 transition">
+                        {topResult.name}
+                      </p>
+                      <p className="text-[11px] text-content-secondary truncate">
+                        {topResult.track_count || 0} songs • {topResult.album_count || 0} albums
+                      </p>
+                    </div>
+                  </div>
+                  <div className="shrink-0 flex items-center text-content-muted group-hover:text-brand-400 text-xs font-semibold gap-1">
+                    <span>View</span>
+                    <ChevronRight size={14} />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
           {/* Tracks Section */}
-          {results.tracks?.length > 0 && (
+          {tracks.length > 0 && (
             <div>
               <p className="text-[11px] font-bold uppercase text-content-muted px-3 mb-1.5 tracking-wider">
-                {primaryArtist ? `Songs by ${primaryArtist.name}` : 'Tracks'}
+                {topResult?.type === 'artist' ? `Songs by ${topResult.name}` : 'Tracks in Library'}
               </p>
               <div className="space-y-1">
-                {results.tracks.map((track, idx) => {
-                  const itemIndex = primaryOffset + idx;
+                {tracks.map((track, idx) => {
+                  const itemIndex = topResultOffset + idx;
                   const isSelected = selectedIndex === itemIndex;
                   const isCurrentTrack = currentTrack?.id === track.id;
                   const isThisPlaying = isCurrentTrack && isPlaying;
@@ -333,7 +564,6 @@ export const CommandPaletteModal = ({
                       }`}
                     >
                       <div className="flex items-center gap-3 truncate flex-1 min-w-0">
-                        {/* Spotify-style Cover Artwork with Play/Pause overlay */}
                         <div className="relative w-10 h-10 rounded overflow-hidden bg-surface-elevated2 shrink-0 shadow-sm">
                           <img
                             src={track.cover_url || '/api/covers/0'}
@@ -375,7 +605,6 @@ export const CommandPaletteModal = ({
                         </div>
                       </div>
 
-                      {/* Track Duration on right */}
                       {track.duration > 0 && (
                         <span className="text-xs text-content-muted group-hover:text-white shrink-0 ml-3 font-mono">
                           {formatDuration(track.duration)}
@@ -388,15 +617,129 @@ export const CommandPaletteModal = ({
             </div>
           )}
 
+          {/* Trending Global Hits Section */}
+          {trendingTracks.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between px-3 mb-1.5">
+                <p className="text-[11px] font-bold uppercase text-content-muted tracking-wider flex items-center gap-1.5">
+                  <TrendingUp size={12} className="text-emerald-400" />
+                  <span>Trending Global Hits</span>
+                </p>
+                <span className="text-[10px] text-content-subtle">Spotify Live Charts</span>
+              </div>
+              <div className="space-y-1">
+                {trendingTracks.map((track, idx) => {
+                  const itemIndex = topResultOffset + tracks.length + idx;
+                  const isSelected = selectedIndex === itemIndex;
+                  const isCurrent = currentTrack?.id === track.id;
+                  const isThisPlaying = isCurrent && isPlaying;
+                  const isDownloading = downloadingIds.has(
+                    track.spotify_id || `${track.artist_name}-${track.title}`
+                  );
+
+                  return (
+                    <div
+                      id={`cp-item-${itemIndex}`}
+                      key={track.spotify_id || `${track.title}-${idx}`}
+                      onMouseEnter={() => setSelectedIndex(itemIndex)}
+                      onClick={() => {
+                        if (track.in_library) {
+                          playTrack(track, results.tracks || [track]);
+                        } else {
+                          handleQuickDownload(track);
+                        }
+                      }}
+                      className={`flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer group transition ${
+                        isSelected ? 'bg-white/15 ring-1 ring-white/20' : 'hover:bg-white/10'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 truncate flex-1 min-w-0">
+                        <div className="relative w-10 h-10 rounded overflow-hidden bg-surface-elevated2 shrink-0 shadow-sm">
+                          <img
+                            src={track.cover_url || '/api/covers/0'}
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
+                          {track.in_library && (
+                            <div
+                              className={`absolute inset-0 bg-black/60 flex items-center justify-center transition-opacity ${
+                                isThisPlaying ? 'opacity-100' : isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                              }`}
+                            >
+                              {isThisPlaying ? (
+                                <Pause size={16} className="text-white fill-white" />
+                              ) : (
+                                <Play size={16} className="text-white fill-white ml-0.5" />
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="truncate flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p
+                              className={`text-sm font-semibold truncate transition ${
+                                isThisPlaying
+                                  ? 'text-brand-400 font-bold'
+                                  : isSelected
+                                  ? 'text-brand-400'
+                                  : 'text-white group-hover:text-brand-400'
+                              }`}
+                            >
+                              {track.title}
+                            </p>
+                            {track.in_library && (
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20 shrink-0">
+                                In Library
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-content-secondary truncate mt-0.5">
+                            {track.artist_name} {track.album_title ? `• ${track.album_title}` : ''}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0 ml-2">
+                        {track.in_library ? (
+                          track.duration > 0 && (
+                            <span className="text-xs text-content-muted group-hover:text-white font-mono">
+                              {formatDuration(track.duration)}
+                            </span>
+                          )
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => handleQuickDownload(track, e)}
+                            disabled={isDownloading}
+                            className="px-2.5 py-1 rounded-full bg-white/10 hover:bg-brand-500 hover:text-black text-white text-[11px] font-bold transition flex items-center gap-1"
+                            title="Download 320k via Lidarr"
+                          >
+                            {isDownloading ? (
+                              <Loader2 size={11} className="animate-spin" />
+                            ) : (
+                              <DownloadCloud size={11} />
+                            )}
+                            <span>320k</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Albums Section */}
-          {results.albums?.length > 0 && (
+          {albums.length > 0 && (
             <div>
               <p className="text-[11px] font-bold uppercase text-content-muted px-3 mb-1.5 tracking-wider">
-                {primaryArtist ? `Albums by ${primaryArtist.name}` : 'Albums'}
+                {topResult?.type === 'artist' ? `Albums by ${topResult.name}` : 'Albums'}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                {results.albums.map((album, idx) => {
-                  const itemIndex = primaryOffset + (results.tracks?.length || 0) + idx;
+                {albums.map((album, idx) => {
+                  const itemIndex = topResultOffset + tracks.length + trendingTracks.length + idx;
                   const isSelected = selectedIndex === itemIndex;
                   return (
                     <div
@@ -441,11 +784,12 @@ export const CommandPaletteModal = ({
           {otherArtists.length > 0 && (
             <div>
               <p className="text-[11px] font-bold uppercase text-content-muted px-3 mb-1.5 tracking-wider">
-                {primaryArtist ? 'Other Artists' : 'Artists'}
+                {topResult?.type === 'artist' ? 'Other Artists' : 'Artists'}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {otherArtists.map((artist, idx) => {
-                  const itemIndex = primaryOffset + (results.tracks?.length || 0) + (results.albums?.length || 0) + idx;
+                  const itemIndex =
+                    topResultOffset + tracks.length + trendingTracks.length + albums.length + idx;
                   const isSelected = selectedIndex === itemIndex;
                   return (
                     <div
@@ -488,11 +832,16 @@ export const CommandPaletteModal = ({
             </div>
           )}
 
-          {/* Quick Request Button at the bottom if user typed query */}
+          {/* Quick Request Button at Bottom */}
           {query.trim().length > 0 && (
             <div className="pt-2 border-t border-border-subtle">
               {(() => {
-                const requestIndex = primaryOffset + (results.tracks?.length || 0) + (results.albums?.length || 0) + otherArtists.length;
+                const requestIndex =
+                  topResultOffset +
+                  tracks.length +
+                  trendingTracks.length +
+                  albums.length +
+                  otherArtists.length;
                 const isSelected = selectedIndex === requestIndex;
                 return (
                   <button
@@ -531,11 +880,11 @@ export const CommandPaletteModal = ({
         </div>
 
         {/* Keyboard Navigation Footer Hints */}
-        <div className="px-3.5 py-2 bg-surface-island border-t border-border-subtle flex items-center justify-between text-[11px] text-content-subtle">
+        <div className="px-4 py-2.5 bg-surface-island border-t border-border-medium flex items-center justify-between text-xs text-content-muted">
           <div className="flex items-center gap-2">
             <span>
-              <kbd className="bg-white/10 px-1 py-0.5 rounded text-white/80 font-mono text-[10px]">↑</kbd>{' '}
-              <kbd className="bg-white/10 px-1 py-0.5 rounded text-white/80 font-mono text-[10px]">↓</kbd> Navigate
+              <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-white/80 font-mono text-[10px]">↑</kbd>{' '}
+              <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-white/80 font-mono text-[10px]">↓</kbd> Navigate
             </span>
             <span>•</span>
             <span>
@@ -546,7 +895,7 @@ export const CommandPaletteModal = ({
               <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-white/80 font-mono text-[10px]">Esc</kbd> Close
             </span>
           </div>
-          <span className="text-content-subtle hidden sm:inline">Ctrl + K</span>
+          <span className="text-content-subtle">MattLab Quick Switcher</span>
         </div>
       </div>
     </div>

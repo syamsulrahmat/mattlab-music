@@ -31,7 +31,15 @@ export const TopBar = ({
   const [isScanning, setIsScanning] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isFloatingSearchOpen, setIsFloatingSearchOpen] = useState(false);
-  const [searchResults, setSearchResults] = useState({ tracks: [], albums: [], artists: [], correctedQuery: null });
+  const [searchResults, setSearchResults] = useState({
+    tracks: [],
+    albums: [],
+    artists: [],
+    trending_tracks: [],
+    top_result: null,
+    primary_artist: null,
+    correctedQuery: null,
+  });
   const [isSearching, setIsSearching] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const searchInputRef = useRef(null);
@@ -47,7 +55,15 @@ export const TopBar = ({
   useEffect(() => {
     const q = searchQuery?.trim() || '';
     if (!q) {
-      setSearchResults({ tracks: [], albums: [], artists: [], correctedQuery: null });
+      setSearchResults({
+        tracks: [],
+        albums: [],
+        artists: [],
+        trending_tracks: [],
+        top_result: null,
+        primary_artist: null,
+        correctedQuery: null,
+      });
       setIsSearching(false);
       setSelectedIndex(0);
       setIsFloatingSearchOpen(false);
@@ -63,6 +79,8 @@ export const TopBar = ({
         if (res.ok) {
           const data = await res.json();
           setSearchResults({
+            top_result: data.top_result || null,
+            trending_tracks: Array.isArray(data.trending_tracks) ? data.trending_tracks : [],
             tracks: Array.isArray(data.tracks) ? data.tracks.slice(0, 6) : [],
             albums: Array.isArray(data.albums) ? data.albums.slice(0, 4) : [],
             artists: Array.isArray(data.artists) ? data.artists.slice(0, 4) : [],
@@ -87,16 +105,44 @@ export const TopBar = ({
   // Linear list of navigable items for Up/Down arrow selection
   const navigableItems = useMemo(() => {
     const items = [];
-    if (searchResults.primary_artist) {
-      items.push({ type: 'artist', data: searchResults.primary_artist });
+    const topResult =
+      searchResults.top_result ||
+      (searchResults.primary_artist ? { type: 'artist', ...searchResults.primary_artist } : null);
+
+    if (topResult) {
+      if (topResult.type === 'track') {
+        items.push({ type: 'top_track', data: topResult });
+      } else if (topResult.type === 'artist') {
+        items.push({ type: 'artist', data: topResult });
+      }
     }
-    searchResults.tracks?.forEach((t) => items.push({ type: 'track', data: t }));
+
+    const filteredTracks = (searchResults.tracks || []).filter(
+      (t) => !(topResult?.type === 'track' && topResult.id === t.id)
+    );
+    filteredTracks.forEach((t) => items.push({ type: 'track', data: t }));
+
+    const filteredTrending = (searchResults.trending_tracks || [])
+      .slice(0, 4)
+      .filter(
+        (t) =>
+          !(
+            topResult?.type === 'track' &&
+            (topResult.spotify_id === t.spotify_id || (topResult.id && topResult.id === t.id))
+          )
+      );
+    filteredTrending.forEach((t) => items.push({ type: 'trending_track', data: t }));
+
     searchResults.albums?.forEach((a) => items.push({ type: 'album', data: a }));
+
+    const topArtistId =
+      topResult?.type === 'artist' ? topResult.id : searchResults.primary_artist?.id;
     searchResults.artists?.forEach((ar) => {
-      if (!searchResults.primary_artist || ar.id !== searchResults.primary_artist.id) {
+      if (ar.id !== topArtistId) {
         items.push({ type: 'artist', data: ar });
       }
     });
+
     if (searchQuery?.trim()) {
       items.push({
         type: 'request',
@@ -108,13 +154,18 @@ export const TopBar = ({
 
   const executeSelectedItem = (item) => {
     if (!item) return;
-    if (item.type === 'track') {
-      if (currentTrack?.id === item.data.id) {
-        togglePlay();
+    if (item.type === 'top_track' || item.type === 'track' || item.type === 'trending_track') {
+      const track = item.data;
+      if (track.in_library || track.id) {
+        if (currentTrack?.id === track.id) {
+          togglePlay();
+        } else {
+          playTrack(track, searchResults.tracks);
+        }
       } else {
-        playTrack(item.data, searchResults.tracks);
+        onRequestMusic?.(`${track.artist_name} - ${track.title}`);
+        setIsFloatingSearchOpen(false);
       }
-      // Keep search modal open so user can preview/play music until explicitly dismissed
     } else if (item.type === 'album') {
       onSelectAlbum?.(item.data.id);
       setIsFloatingSearchOpen(false);
