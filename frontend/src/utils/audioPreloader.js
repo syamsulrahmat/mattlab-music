@@ -128,6 +128,11 @@ class AudioPreloader {
   /**
    * Update the preload window based on current queue and index.
    * Target tracks: next 1..maxPreloadCount tracks in queue.
+   *
+   * Note: The active/current track is streamed directly by the native <audio>
+   * element. We intentionally avoid fetching a duplicate full-file blob for the
+   * current track to preserve 100% of network bandwidth for immediate playback.
+   * Background preloading targets upcoming tracks sequentially.
    */
   async updateQueue(queue, currentIndex) {
     this.lastQueue = queue;
@@ -137,12 +142,13 @@ class AudioPreloader {
       return;
     }
 
+    const currentTrack = queue[currentIndex];
+
     if (this.maxPreloadCount <= 0) {
       if (this.activeController) {
         this.activeController.abort();
         this.activeController = null;
       }
-      const currentTrack = queue[currentIndex];
       const targetTrackIds = new Set(currentTrack ? [currentTrack.id] : []);
       this.pruneOldTracks(targetTrackIds);
       return;
@@ -152,8 +158,7 @@ class AudioPreloader {
     const upcomingTracks = queue.slice(currentIndex + 1, currentIndex + 1 + this.maxPreloadCount);
     const targetTrackIds = new Set(upcomingTracks.map((t) => t.id));
 
-    // Also keep current track if already cached
-    const currentTrack = queue[currentIndex];
+    // Keep current track if already cached in memory from earlier preloading
     if (currentTrack) {
       targetTrackIds.add(currentTrack.id);
     }
@@ -168,8 +173,9 @@ class AudioPreloader {
     this.activeController = new AbortController();
     const signal = this.activeController.signal;
 
-    // 3. Sequentially preload upcoming tracks that aren't loaded yet
-    this.preloadSequentially(upcomingTracks, signal);
+    // 3. Sequentially preload upcoming tracks (next 1..N songs in queue)
+    const preloadList = upcomingTracks.filter((t) => !this.preloadedMap.has(t.id));
+    this.preloadSequentially(preloadList, signal);
   }
 
   pruneOldTracks(targetTrackIds) {

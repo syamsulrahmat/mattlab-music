@@ -33,6 +33,11 @@ def on_startup():
     start_background_lyrics_fetcher()
     from app.visualizer_crawler import start_background_visualizer_crawler
     start_background_visualizer_crawler()
+    # Pre-wake the music drive on container startup so it's spinning
+    # before any client connects (eliminates HDD cold-start delay)
+    from app.routes.stream import _wake_drive_sync
+    import threading
+    threading.Thread(target=_wake_drive_sync, daemon=True, name="StartupDriveWake").start()
 
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
@@ -52,6 +57,7 @@ async def auth_middleware(request: Request, call_next):
         "/api/auth/login",
         "/api/client-error",
         "/api/covers-sample",
+        "/api/wake",
     }
     if (
         request.url.path in public_paths

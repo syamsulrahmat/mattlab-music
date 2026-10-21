@@ -176,6 +176,8 @@ async def stream_karaoke_stem(track_id: int, stem_type: str, request: Request):
                 "Accept-Ranges": "bytes",
                 "Content-Length": str(file_size),
                 "Content-Disposition": f'inline; filename="{stem_file.name}"',
+                "X-Accel-Buffering": "no",
+                "Cache-Control": "public, max-age=86400, no-transform",
             },
         )
 
@@ -199,6 +201,8 @@ async def stream_karaoke_stem(track_id: int, stem_type: str, request: Request):
         "Accept-Ranges": "bytes",
         "Content-Length": str(content_length),
         "Content-Type": media_type,
+        "X-Accel-Buffering": "no",
+        "Cache-Control": "public, max-age=86400, no-transform",
     }
 
     return StreamingResponse(

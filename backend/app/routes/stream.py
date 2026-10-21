@@ -3,6 +3,7 @@ import re
 import json
 import asyncio
 import logging
+import threading
 from pathlib import Path
 from typing import Generator, Optional
 
@@ -10,11 +11,52 @@ from fastapi import APIRouter, HTTPException, Request, Response, status, Backgro
 from fastapi.responses import StreamingResponse, FileResponse, Response
 
 from app.database import get_db
-from app.config import VISUALIZERS_DIR
+from app.config import MUSIC_DIR, VISUALIZERS_DIR
 
 logger = logging.getLogger("stream_routes")
 
 router = APIRouter(tags=["Streaming & Media"])
+
+# ── Drive Wake-up Mechanism ──────────────────────────────────────────────
+# On Unraid, the music library resides on a mechanical HDD that spins down
+# after idle periods. A cold open() blocks 4-7 seconds while the platters
+# spin up. This lightweight endpoint lets the frontend trigger a non-blocking
+# wake-up the instant the browser tab opens, giving maximum lead time before
+# the user clicks Play.
+_drive_wake_lock = threading.Lock()
+_drive_last_wake_time = 0.0  # epoch seconds
+
+
+def _wake_drive_sync():
+    """Touch the music directory in a background thread to force HDD spin-up.
+    Debounced to at most once every 30 seconds to avoid unnecessary I/O."""
+    import time
+    global _drive_last_wake_time
+    with _drive_wake_lock:
+        now = time.time()
+        if now - _drive_last_wake_time < 30:
+            return  # Already woken recently
+        _drive_last_wake_time = now
+    try:
+        # os.listdir is the lightest syscall that forces the kernel to
+        # spin up the drive — it reads the directory inode from disk.
+        entries = os.listdir(MUSIC_DIR)
+        if entries:
+            # Stat the first file to ensure the drive heads actually seek
+            first = os.path.join(str(MUSIC_DIR), entries[0])
+            os.stat(first)
+        logger.info(f"[DriveWake] Music drive wake-up triggered ({len(entries)} top-level entries).")
+    except Exception as e:
+        logger.warning(f"[DriveWake] Failed to wake music drive: {e}")
+
+
+@router.get("/wake", summary="Wake the music storage drive")
+async def wake_drive():
+    """Lightweight endpoint that triggers an HDD spin-up in a background thread.
+    Returns immediately (< 5ms) so the frontend is never blocked.
+    The actual disk I/O happens asynchronously."""
+    threading.Thread(target=_wake_drive_sync, daemon=True, name="DriveWake").start()
+    return Response(status_code=204)
 
 MIME_TYPES = {
     "mp3": "audio/mpeg",
@@ -105,6 +147,8 @@ async def stream_track(
                 "Accept-Ranges": "bytes",
                 "Content-Length": str(file_size),
                 "Content-Disposition": f'inline; filename="{file_path.name}"',
+                "X-Accel-Buffering": "no",
+                "Cache-Control": "public, max-age=86400, no-transform",
             },
         )
 
@@ -129,6 +173,8 @@ async def stream_track(
         "Accept-Ranges": "bytes",
         "Content-Length": str(content_length),
         "Content-Type": media_type,
+        "X-Accel-Buffering": "no",
+        "Cache-Control": "public, max-age=86400, no-transform",
     }
 
     return StreamingResponse(

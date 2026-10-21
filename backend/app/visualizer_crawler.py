@@ -78,6 +78,9 @@ def download_youtube_clip(track_id: int, youtube_id: str) -> bool:
 class VisualizerBackgroundCrawler:
     """Background service that indexes and caches looping MP4 visualizers for all library tracks."""
 
+    # Maximum number of download failures before marking a track as permanently unavailable
+    MAX_DOWNLOAD_FAILURES = 3
+
     def __init__(self):
         self.is_running = False
         self.is_paused = False
@@ -87,6 +90,8 @@ class VisualizerBackgroundCrawler:
         self.queue_lock = threading.Lock()
         self.current_track_name = ""
         self.telegram_notified = False
+        # Track download failure counts per track_id to implement backoff
+        self.download_failures: Dict[int, int] = {}
 
     def start(self):
         """Start the background crawler worker thread."""
@@ -120,12 +125,22 @@ class VisualizerBackgroundCrawler:
                 self.high_priority_queue.appendleft(track_id)
 
     def _populate_backlog(self):
-        """Find all tracks in database that do not yet have a cached visualizer clip."""
+        """Find all tracks in database that do not yet have a cached visualizer clip.
+        
+        Excludes tracks marked as permanently unavailable (available = 0) or
+        download-failed (available = -1) to prevent endless retry loops that
+        waste CPU/network on age-gated or removed YouTube videos.
+        """
         with get_db() as conn:
             cursor = conn.cursor()
+            # Only queue tracks that either have no track_videos entry yet,
+            # or have one with available=1 (discovered but not yet downloaded)
             cursor.execute("""
                 SELECT t.id
                 FROM tracks t
+                LEFT JOIN track_videos tv ON t.id = tv.track_id
+                WHERE tv.track_id IS NULL
+                   OR (tv.available = 1)
                 ORDER BY t.id ASC
             """)
             rows = cursor.fetchall()
@@ -261,6 +276,30 @@ class VisualizerBackgroundCrawler:
         elif youtube_id:
             success = download_youtube_clip(track_id, youtube_id)
             time.sleep(3.5)  # Safe 3.5s pacing to prevent YouTube rate-limiting
+        else:
+            success = False
+
+        # Track download failures and mark as permanently unavailable after MAX_DOWNLOAD_FAILURES
+        if not success and (youtube_id or canvas_url):
+            self.download_failures[track_id] = self.download_failures.get(track_id, 0) + 1
+            fail_count = self.download_failures[track_id]
+
+            if fail_count >= self.MAX_DOWNLOAD_FAILURES:
+                logger.warning(
+                    f"[VisualizerCrawler] Track {track_id} ({self.current_track_name}) failed "
+                    f"{fail_count} download attempts — marking as download-failed (available=-1)."
+                )
+                with get_db() as conn:
+                    conn.execute("""
+                        UPDATE track_videos SET available = -1
+                        WHERE track_id = ?
+                    """, (track_id,))
+                # Clean up the failure counter
+                self.download_failures.pop(track_id, None)
+            else:
+                logger.info(
+                    f"[VisualizerCrawler] Track {track_id} download attempt {fail_count}/{self.MAX_DOWNLOAD_FAILURES} failed, will retry next cycle."
+                )
 
     def _check_completion_notification(self):
         """Send automated Telegram notification once when library backlog finishes."""
@@ -312,6 +351,9 @@ class VisualizerBackgroundCrawler:
             cursor.execute("SELECT COUNT(*) AS c FROM track_videos WHERE available = 0")
             not_found = cursor.fetchone()["c"]
 
+            cursor.execute("SELECT COUNT(*) AS c FROM track_videos WHERE available = -1")
+            download_failed = cursor.fetchone()["c"]
+
         # Calculate actual files on disk
         clip_files = list(VISUALIZERS_DIR.glob("*.mp4"))
         cached_count = len([f for f in clip_files if not f.name.endswith(".tmp.mp4")])
@@ -333,6 +375,7 @@ class VisualizerBackgroundCrawler:
             "canvas_count": canvas,
             "youtube_count": youtube,
             "not_found_count": not_found,
+            "download_failed_count": download_failed,
             "cached_clips_count": cached_count,
             "storage_mb": storage_mb,
             "progress_percent": progress_pct,

@@ -6,6 +6,18 @@ import { useAuth } from './AuthContext';
 import { LYRICS_CONFIG } from '../config/lyricsConfig';
 import { DESIGN_TOKENS } from '../config/designTokens';
 
+// ── Instant Drive Wake-up ──────────────────────────────────────────────
+// Fire a non-blocking request to /api/wake the moment this module loads.
+// On Unraid, the music library lives on a mechanical HDD that may be spun
+// down. This call triggers the backend to spin up the drive in a background
+// thread while the React tree is still mounting — by the time the user
+// clicks Play (~1-3 seconds later), the drive is already spinning.
+try {
+  fetch('/api/wake', { method: 'GET', priority: 'high' }).catch(() => {});
+} catch (_) {
+  // Silently ignore — non-critical
+}
+
 const PlayerContext = createContext(null);
 
 const LAST_PLAYBACK_STATE_KEY = 'mattlab_playback_state';
@@ -535,7 +547,9 @@ export const PlayerProvider = ({ children }) => {
     }
   }, [currentTrack?.id, currentTrack?.file_format]);
 
-  // On startup: pre-attach stream URL to audio element and prefetch lyrics if restoring saved track
+  // On startup: pre-attach stream URL to audio element and prefetch lyrics if restoring saved track.
+  // Uses preload='auto' to eagerly buffer audio data, waking the Unraid HDD while the user
+  // is looking at the UI so playback starts instantly when they press Play.
   useEffect(() => {
     if (!hasRestoredAudioRef.current && savedState?.track) {
       hasRestoredAudioRef.current = true;
@@ -543,7 +557,7 @@ export const PlayerProvider = ({ children }) => {
       if (audio && (!audio.src || audio.src === '' || audio.src === window.location.href)) {
         const preloadedAudio = audioPreloader.getPreloadedAudio(savedState.track.id);
         const standardUrl = preloadedAudio || getTrackStreamUrl(savedState.track);
-        audio.preload = 'metadata';
+        audio.preload = 'auto';
         audio.src = standardUrl;
       }
       fetchTrackLyrics(savedState.track.id);
@@ -890,6 +904,8 @@ export const PlayerProvider = ({ children }) => {
   }, [currentTrack?.id, fetchKaraokeStatus]);
 
   // Pre-buffer alternate audio stream (instrumental or vocal) on standby element for instant 0ms crossfade
+  // Only eager-preload if Karaoke mode is actually toggled ON; otherwise keep preload='none'
+  // to avoid consuming tunnel bandwidth with duplicate audio streams during regular playback.
   useEffect(() => {
     if (!currentTrack?.id || isCrossfadingRef.current) return;
     const standbyAudio = standbyAudioRef.current;
@@ -904,8 +920,10 @@ export const PlayerProvider = ({ children }) => {
 
       if (!standbyAudio.src || !standbyAudio.src.includes(targetSrc)) {
         standbyAudio.src = targetSrc;
-        standbyAudio.preload = 'auto';
+        standbyAudio.preload = isKaraokeMode ? 'auto' : 'none';
         standbyAudio.volume = 0;
+      } else {
+        standbyAudio.preload = isKaraokeMode ? 'auto' : 'none';
       }
     }
   }, [currentTrack?.id, karaokeStemStatus, isKaraokeMode]);
