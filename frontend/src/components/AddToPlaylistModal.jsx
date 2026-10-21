@@ -15,10 +15,10 @@ export const AddToPlaylistModal = ({ track, isOpen, onClose, onPlaylistUpdated }
       fetch('/api/playlists', { credentials: 'include' })
         .then((res) => res.json())
         .then((data) => {
-          // Only show custom playlists, excluding linked Spotify playlists and the playlist where the song already resides
+          // Only show custom playlists & collections, excluding live single Spotify chart playlists and the playlist where the song already resides
           const currentOriginId = track?.playlist_id;
           const customOnly = (data.items || []).filter(
-            (p) => !p.spotify_id && (!currentOriginId || String(p.id) !== String(currentOriginId))
+            (p) => (!p.spotify_id || p.is_collection) && (!currentOriginId || String(p.id) !== String(currentOriginId))
           );
           setPlaylists(customOnly);
         })
@@ -74,7 +74,7 @@ export const AddToPlaylistModal = ({ track, isOpen, onClose, onPlaylistUpdated }
       const listRes = await fetch('/api/playlists', { credentials: 'include' });
       const listData = await listRes.json();
       setPlaylists((listData.items || []).filter(
-        (p) => !p.spotify_id && (!currentOriginId || String(p.id) !== String(currentOriginId))
+        (p) => (!p.spotify_id || p.is_collection) && (!currentOriginId || String(p.id) !== String(currentOriginId))
       ));
       if (onPlaylistUpdated) onPlaylistUpdated();
     } catch (err) {

@@ -674,12 +674,12 @@ const MainAppContent = () => {
     setIsImportSpotifyOpen(false);
   }, []);
 
-  const handleImportSpotify = async ({ url, auto_download, auto_sync }) => {
+  const handleImportSpotify = async ({ url, urls, custom_name, auto_download, auto_sync, destination, target_playlist_id }) => {
     const res = await fetch('/api/spotify/import', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ url, auto_download, auto_sync }),
+      body: JSON.stringify({ url, urls, custom_name, auto_download, auto_sync, destination, target_playlist_id }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -689,6 +689,15 @@ const MainAppContent = () => {
     await fetchPlaylists();
     if (data.playlist_id) {
       handleSelectPlaylist(data.playlist_id);
+    }
+    if (data.destination === 'library') {
+      showToast(`✨ Queued ${data.new_tracks_queued || data.total_tracks} track(s) for library download!`);
+    } else if (data.target_playlist_id || data.is_merged) {
+      showToast(`✨ Merged into "${data.name}" (${data.new_tracks_added} new tracks added, ${data.duplicates_skipped} duplicates skipped)!`);
+    } else if (data.is_collection) {
+      showToast(`✨ Merged ${data.sources_count} playlists into "${data.name}" (${data.total_tracks} tracks, ${data.duplicates_skipped} duplicates skipped)!`);
+    } else {
+      showToast(`✨ Imported "${data.name}" (${data.total_tracks} tracks)!`);
     }
     return data;
   };
@@ -1121,6 +1130,7 @@ const MainAppContent = () => {
         isOpen={isImportSpotifyOpen}
         onClose={handleCloseImportSpotify}
         onImportSpotify={handleImportSpotify}
+        playlists={playlists}
       />
 
       {/* Request Music Modal (Lidarr + Torrent + Spotify Resolver) */}

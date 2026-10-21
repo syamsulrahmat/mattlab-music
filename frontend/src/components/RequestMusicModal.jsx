@@ -702,6 +702,40 @@ export const RequestMusicModal = ({
                                   <Check size={12} />
                                   <span>Queued</span>
                                 </span>
+                              ) : album.source_track ? (
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDownload({ ...album, force_direct: true })}
+                                    disabled={isDownloading}
+                                    className="bg-brand-500 hover:bg-brand-400 disabled:opacity-50 text-black font-bold text-xs px-3 py-1.5 rounded-full transition active:scale-95 flex items-center gap-1.5 shadow"
+                                    title={`Download single track: ${album.source_track}`}
+                                  >
+                                    {isDownloading ? (
+                                      <>
+                                        <Loader2 size={12} className="animate-spin" />
+                                        <span>Dispatching...</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <DownloadCloud size={13} />
+                                        <span>Download Track</span>
+                                      </>
+                                    )}
+                                  </button>
+                                  {album.lidarr_album_id && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDownload({ ...album, force_direct: false })}
+                                      disabled={isDownloading}
+                                      className="bg-white/5 hover:bg-white/10 disabled:opacity-50 text-white font-medium text-xs px-2.5 py-1.5 rounded-full transition border border-white/10 hidden sm:flex items-center gap-1"
+                                      title={`Request full album: ${album.title}`}
+                                    >
+                                      <Disc size={12} />
+                                      <span>Full Album</span>
+                                    </button>
+                                  )}
+                                </div>
                               ) : (
                                 <button
                                   type="button"

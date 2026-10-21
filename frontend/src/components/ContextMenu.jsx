@@ -543,8 +543,8 @@ export const ContextMenu = ({
             <span>Rename</span>
           </button>
 
-          {/* Spotify Synced Actions (if still synced with Spotify) */}
-          {data.spotify_id && (
+          {/* Spotify Synced Actions (if still synced with single Spotify playlist) */}
+          {data.spotify_id && !data.is_collection && (
             <>
               <div className="h-[1px] bg-white/10 my-1 mx-2" />
               <button

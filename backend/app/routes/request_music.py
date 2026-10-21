@@ -251,24 +251,53 @@ def resolve_spotify_url(url: str) -> Dict[str, Any]:
 
     # 3. Spotify Track Link
     elif "/track/" in url:
-        req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req, timeout=10) as res:
-            html = res.read().decode("utf-8", errors="ignore")
-            
-        title_match = re.search(r'<meta property="og:title" content="(.*?)"', html)
-        desc_match = re.search(r'<meta property="og:description" content="(.*?)"', html)
+        track_id_match = re.search(r"/track/([a-zA-Z0-9]+)", url)
+        track_id = track_id_match.group(1) if track_id_match else None
         
-        track_name = title_match.group(1).replace("&amp;", "&") if title_match else ""
+        track_name = ""
         artist_name = ""
         album_name = ""
-        if desc_match:
-            parts = [p.strip() for p in desc_match.group(1).replace("&amp;", "&").split("·")]
-            if len(parts) >= 2:
-                artist_name = parts[0]
-                album_name = parts[1]
+        cover_url = None
+        year = None
+
+        if track_id:
+            try:
+                from spotify_scraper import SpotifyClient
+                client = SpotifyClient()
+                tr = client.get_track(track_id)
+                if tr:
+                    track_name = getattr(tr, "name", "") or ""
+                    artists_list = getattr(tr, "artists", []) or []
+                    artist_name = ", ".join([a.name for a in artists_list if getattr(a, "name", None)]).strip()
+                    album_obj = getattr(tr, "album", None)
+                    album_name = getattr(album_obj, "name", "") if album_obj else ""
+                    if getattr(tr, "images", None) and len(tr.images) > 0:
+                        cover_url = tr.images[0].url
+                    elif album_obj and getattr(album_obj, "images", None) and len(album_obj.images) > 0:
+                        cover_url = album_obj.images[0].url
+                    rel_date = getattr(tr, "release_date", None)
+                    if rel_date:
+                        year = str(rel_date.year) if hasattr(rel_date, "year") else str(rel_date)[:4]
+            except Exception as e:
+                print(f"[Resolve] SpotifyClient track lookup failed for {track_id}: {e}", flush=True)
+
+        if not track_name:
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=10) as res:
+                html = res.read().decode("utf-8", errors="ignore")
+                
+            title_match = re.search(r'<meta property="og:title" content="(.*?)"', html)
+            desc_match = re.search(r'<meta property="og:description" content="(.*?)"', html)
+            
+            track_name = title_match.group(1).replace("&amp;", "&") if title_match else ""
+            if desc_match:
+                parts = [p.strip() for p in desc_match.group(1).replace("&amp;", "&").split("·")]
+                if len(parts) >= 2:
+                    artist_name = parts[0]
+                    album_name = parts[1]
                 
         search_query = f"{artist_name} {album_name or track_name}".strip()
-        lookup_results = lidarr_get("album/lookup", {"term": search_query})
+        lookup_results = lidarr_get("album/lookup", {"term": search_query}) or []
         if artist_name and lookup_results:
             lookup_results.sort(key=lambda a: (0 if a.get("artist", {}).get("artistName", "").lower() == artist_name.lower() else 1))
         
@@ -276,11 +305,43 @@ def resolve_spotify_url(url: str) -> Dict[str, Any]:
         for item in formatted_items:
             item["source_track"] = track_name
 
+        if not cover_url and formatted_items:
+            cover_url = formatted_items[0].get("cover_url")
+
+        # Fallback album card if Lidarr returned 0 matching albums so user can still download single track
+        if not formatted_items and (track_name or artist_name):
+            formatted_items.append({
+                "title": album_name or track_name,
+                "artist_name": artist_name,
+                "year": year or "",
+                "cover_url": cover_url,
+                "foreign_album_id": f"track_{track_id or abs(hash(track_name))}",
+                "foreign_artist_id": None,
+                "artist_id": 0,
+                "lidarr_album_id": None,
+                "monitored": False,
+                "in_library": False,
+                "genres": [],
+                "source_track": track_name,
+                "raw": {},
+            })
+
+        song_result = {
+            "title": track_name,
+            "artist_name": artist_name,
+            "album_title": album_name or track_name,
+            "cover_url": cover_url,
+            "source_track": track_name,
+            "year": year,
+            "force_direct": True,
+        }
+
         return {
             "type": "spotify_track",
             "detected_track": track_name,
             "detected_artist": artist_name,
             "detected_album": album_name,
+            "song_result": song_result,
             "items": formatted_items,
         }
     

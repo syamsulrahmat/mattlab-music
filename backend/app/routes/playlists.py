@@ -93,11 +93,11 @@ async def list_playlists(current_user: Dict[str, Any] = Depends(get_current_user
                 p.spotify_id, p.spotify_url, p.auto_sync, p.last_synced_at, p.sync_status,
                 CASE 
                     WHEN p.spotify_id IS NOT NULL THEN (SELECT COUNT(*) FROM spotify_sync_tracks WHERE playlist_id = p.id)
-                    ELSE COUNT(pt.id)
+                    ELSE (COUNT(DISTINCT pt.id) + (SELECT COUNT(*) FROM spotify_sync_tracks WHERE playlist_id = p.id AND status != 'matched'))
                 END AS track_count,
                 CASE
                     WHEN p.spotify_id IS NOT NULL THEN (SELECT ROUND(COALESCE(SUM(duration_ms), 0) / 1000.0) FROM spotify_sync_tracks WHERE playlist_id = p.id)
-                    ELSE COALESCE(SUM(t.duration_seconds), 0)
+                    ELSE (COALESCE(SUM(t.duration_seconds), 0) + COALESCE((SELECT ROUND(SUM(duration_ms) / 1000.0) FROM spotify_sync_tracks WHERE playlist_id = p.id AND status != 'matched'), 0))
                 END AS total_duration
             FROM playlists p
             LEFT JOIN playlist_tracks pt ON pt.playlist_id = p.id
@@ -122,6 +122,12 @@ async def list_playlists(current_user: Dict[str, Any] = Depends(get_current_user
             """, (pl["id"],))
             rows = cursor.fetchall()
             pl["covers"] = [f"/api/covers/{r['album_id']}" for r in rows]
+
+            # Check sources count and collection status
+            cursor.execute("SELECT COUNT(*) FROM playlist_spotify_sources WHERE playlist_id = ?", (pl["id"],))
+            s_count = cursor.fetchone()[0]
+            pl["sources_count"] = s_count
+            pl["is_collection"] = s_count > 1 or (s_count >= 1 and not pl["spotify_id"])
 
     return {"items": playlists}
 
@@ -191,6 +197,18 @@ async def get_playlist_detail(playlist_id: int, current_user: Dict[str, Any] = D
         playlist_dict = dict(playlist)
         playlist_dict["covers"] = [f"/api/covers/{r['album_id']}" for r in rows]
 
+        # Attach any linked Spotify sources (e.g. multi-playlist collections)
+        cursor.execute("""
+            SELECT id, spotify_id, spotify_url, name, track_count, added_at
+            FROM playlist_spotify_sources
+            WHERE playlist_id = ?
+            ORDER BY id ASC
+        """, (playlist_id,))
+        sources = [dict(r) for r in cursor.fetchall()]
+        playlist_dict["sources"] = sources
+        playlist_dict["sources_count"] = len(sources)
+        playlist_dict["is_collection"] = len(sources) > 1
+
     return {
         **playlist_dict,
         "tracks": tracks,
@@ -243,6 +261,10 @@ async def bulk_remove_tracks(playlist_id: int, payload: BulkRemoveRequest, curre
         placeholders = ",".join("?" for _ in payload.track_ids)
         cursor.execute(
             f"DELETE FROM playlist_tracks WHERE playlist_id = ? AND track_id IN ({placeholders})",
+            (playlist_id, *payload.track_ids),
+        )
+        cursor.execute(
+            f"DELETE FROM spotify_sync_tracks WHERE playlist_id = ? AND track_id IN ({placeholders})",
             (playlist_id, *payload.track_ids),
         )
         removed = cursor.rowcount
@@ -336,6 +358,7 @@ async def remove_track_from_playlist(playlist_id: int, track_id: int, current_us
             raise HTTPException(status_code=404, detail="Playlist not found")
 
         cursor.execute("DELETE FROM playlist_tracks WHERE playlist_id = ? AND track_id = ?", (playlist_id, track_id))
+        cursor.execute("DELETE FROM spotify_sync_tracks WHERE playlist_id = ? AND track_id = ?", (playlist_id, track_id))
         cursor.execute("UPDATE playlists SET updated_at = CURRENT_TIMESTAMP WHERE id = ?", (playlist_id,))
 
     return {"status": "removed", "playlist_id": playlist_id, "track_id": track_id}

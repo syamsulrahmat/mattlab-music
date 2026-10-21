@@ -7,7 +7,7 @@ import urllib.request
 import urllib.parse
 import threading
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from fastapi import APIRouter, HTTPException, Depends, Request, Response, BackgroundTasks, status
 from pydantic import BaseModel, Field
 
@@ -30,9 +30,31 @@ active_playlist_workers: set = set()
 worker_lock = threading.Lock()
 
 class SpotifyImportRequest(BaseModel):
-    url: str
+    url: Optional[str] = None
+    urls: Optional[List[str]] = None
+    custom_name: Optional[str] = None
     auto_sync: Optional[bool] = True
     auto_download: Optional[bool] = True
+    destination: Optional[str] = "new"  # "new", "library", or "playlist"
+    target_playlist_id: Optional[int] = None
+
+class SpotifyMergeRequest(BaseModel):
+    urls: List[str]
+
+def normalize_track_key(title: str, artist: str) -> str:
+    """Normalize title and artist into a canonical deduplication key.
+    Handles remasters, radio edits, featured artists, soundtracks, and punctuation."""
+    t = re.sub(r'[\(\[].*?(remaster|live|edit|version|deluxe|bonus|anniversary|explicit|clean|feat|ft|soundtrack).*?[\)\]]', '', title, flags=re.I)
+    t = re.sub(r'\s*-\s*(remaster(ed)?(\s*\d+)?|radio edit|single version|album version|explicit|clean|deluxe( edition)?|from.*?soundtrack).*$', '', t, flags=re.I)
+    t = re.sub(r'[\(\[].*?[\)\]]', '', t)
+    t = re.sub(r'[^\w\s]', '', t).strip().lower()
+    t = re.sub(r'\s+', ' ', t)
+
+    a = re.sub(r'[\(\[].*?[\)\]]', '', artist)
+    a = a.split(',')[0].split('&')[0].split(' feat.')[0].split(' ft.')[0].split(' featuring ')[0]
+    a = re.sub(r'[^\w\s]', '', a).strip().lower()
+    a = re.sub(r'\s+', ' ', a)
+    return f'{a}:::{t}'
 
 def sanitize_name(name: str) -> str:
     """Sanitize directory and file names for filesystem storage."""
@@ -160,18 +182,113 @@ def ensure_playlist_cover(dest_dir: Path, playlist_name: str, cover_url: Optiona
     return folder_cover if folder_cover.exists() else None
 
 
-def extract_spotify_playlist_id(url_or_id: str) -> str:
-    """Extract clean 22-character Spotify playlist ID from URL or URI."""
+def extract_spotify_entity_id(url_or_id: str) -> Tuple[str, str]:
+    """Extract (entity_type, id) from Spotify URL or URI. Type is 'track' or 'playlist'."""
     raw = url_or_id.strip()
+    match = re.search(r"track/([a-zA-Z0-9]+)", raw)
+    if match:
+        return ("track", match.group(1))
+    match = re.search(r"spotify:track:([a-zA-Z0-9]+)", raw)
+    if match:
+        return ("track", match.group(1))
+
     match = re.search(r"playlist/([a-zA-Z0-9]+)", raw)
     if match:
-        return match.group(1)
+        return ("playlist", match.group(1))
     match = re.search(r"spotify:playlist:([a-zA-Z0-9]+)", raw)
     if match:
-        return match.group(1)
+        return ("playlist", match.group(1))
+
     if re.match(r"^[a-zA-Z0-9]{22}$", raw):
-        return raw
-    raise ValueError("Invalid Spotify playlist URL. Please provide an open.spotify.com/playlist/... link.")
+        return ("playlist", raw)
+    raise ValueError("Invalid Spotify URL. Please provide a Spotify playlist or track link.")
+
+def extract_spotify_playlist_id(url_or_id: str) -> str:
+    """Extract clean 22-character Spotify playlist or track ID from URL or URI."""
+    etype, eid = extract_spotify_entity_id(url_or_id)
+    return eid
+
+def fetch_spotify_track_data(track_id: str) -> Dict[str, Any]:
+    """Fetch complete metadata for a single Spotify track."""
+    # 1. Tier 1: spotifyscraper get_track
+    try:
+        from spotify_scraper import SpotifyClient
+        client = SpotifyClient()
+        tr = client.get_track(track_id)
+        if tr:
+            t_title = (getattr(tr, "name", "") or "").strip()
+            artists_list = getattr(tr, "artists", []) or []
+            t_artist = ", ".join([a.name for a in artists_list if getattr(a, "name", None)]).strip()
+            album_obj = getattr(tr, "album", None)
+            album_name = getattr(album_obj, "name", "Spotify Single") if album_obj else "Spotify Single"
+            cover_url = None
+            if getattr(tr, "images", None) and len(tr.images) > 0:
+                cover_url = tr.images[0].url
+            elif album_obj and getattr(album_obj, "images", None) and len(album_obj.images) > 0:
+                cover_url = album_obj.images[0].url
+
+            return {
+                "spotify_id": track_id,
+                "title": f"{t_artist} - {t_title}" if t_artist else t_title,
+                "description": f"Spotify track: {t_title} by {t_artist}",
+                "cover_url": cover_url,
+                "is_single_track": True,
+                "tracks": [{
+                    "spotify_track_id": track_id,
+                    "title": t_title,
+                    "artist": t_artist or "Unknown Artist",
+                    "album": album_name,
+                    "duration_ms": getattr(tr, "duration_ms", 0) or 0,
+                    "position": 0,
+                    "cover_url": cover_url,
+                }]
+            }
+    except Exception as e:
+        print(f"[SPOTIFY TRACK] Scraper failed for {track_id} ({e}), falling back to embed...", flush=True)
+
+    # 2. Tier 2: Public embed page
+    try:
+        embed_url = f"https://open.spotify.com/embed/track/{track_id}"
+        req = urllib.request.Request(embed_url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})
+        with urllib.request.urlopen(req, timeout=10) as res:
+            html = res.read().decode("utf-8", errors="ignore")
+        match = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', html)
+        if match:
+            data = json.loads(match.group(1))
+            entity = data.get("props", {}).get("pageProps", {}).get("state", {}).get("data", {}).get("entity", {})
+            t_title = entity.get("name", "")
+            t_artist = entity.get("subtitle", "")
+            cover_url = None
+            if entity.get("visualIdentity", {}).get("image"):
+                cover_url = entity["visualIdentity"]["image"][0].get("url")
+            return {
+                "spotify_id": track_id,
+                "title": f"{t_artist} - {t_title}" if t_artist else t_title,
+                "description": f"Spotify track: {t_title} by {t_artist}",
+                "cover_url": cover_url,
+                "is_single_track": True,
+                "tracks": [{
+                    "spotify_track_id": track_id,
+                    "title": t_title,
+                    "artist": t_artist or "Unknown Artist",
+                    "album": "Spotify Single",
+                    "duration_ms": entity.get("duration", 0) or 0,
+                    "position": 0,
+                    "cover_url": cover_url,
+                }]
+            }
+    except Exception as e:
+        print(f"[SPOTIFY TRACK] Embed fallback failed for {track_id}: {e}", flush=True)
+
+    raise ValueError(f"Could not load Spotify track details for track {track_id}")
+
+def fetch_spotify_entity_data(url_or_id: str) -> Tuple[str, str, Dict[str, Any]]:
+    """Resolve either playlist or track from a URL/ID and return (type, id, data)."""
+    etype, eid = extract_spotify_entity_id(url_or_id)
+    if etype == "track":
+        return (etype, eid, fetch_spotify_track_data(eid))
+    else:
+        return (etype, eid, fetch_spotify_playlist_data(eid))
 
 def fetch_spotify_playlist_data(playlist_id: str) -> Dict[str, Any]:
     """Fetch complete Spotify playlist metadata and track list.
@@ -754,51 +871,456 @@ def import_spotify_playlist(
     data: SpotifyImportRequest,
     current_user: Dict[str, Any] = Depends(get_current_user),
 ):
-    """Import a Spotify playlist by URL, match local tracks, and queue missing tracks for download."""
-    spotify_id = extract_spotify_playlist_id(data.url)
-    playlist_data = fetch_spotify_playlist_data(spotify_id)
+    """Import one or multiple Spotify playlists into a unified playlist, match local tracks, and queue missing tracks for download."""
+    raw_urls = []
+    if data.urls:
+        raw_urls.extend(data.urls)
+    if data.url:
+        parts = [u.strip() for u in re.split(r'[\r\n,]+', data.url) if u.strip()]
+        raw_urls.extend(parts)
 
-    name = playlist_data["title"]
-    description = playlist_data.get("description", "")
-    spotify_url = f"https://open.spotify.com/playlist/{spotify_id}"
-    tracks = playlist_data.get("tracks", [])
+    unique_urls = []
+    for u in raw_urls:
+        if u and u not in unique_urls:
+            unique_urls.append(u)
 
-    if not tracks:
-        raise HTTPException(status_code=400, detail="No tracks found in the Spotify playlist.")
+    if not unique_urls:
+        raise HTTPException(status_code=400, detail="Please provide at least one valid Spotify playlist link.")
+
+    # 1. Merge directly into an existing playlist if target_playlist_id was supplied
+    if data.target_playlist_id:
+        return merge_spotify_sources(data.target_playlist_id, SpotifyMergeRequest(urls=unique_urls), current_user)
+
+    # 2. Import tracks directly to Library without creating a playlist
+    if data.destination == "library":
+        playlist_datas = []
+        for u in unique_urls:
+            try:
+                etype, eid, pdata = fetch_spotify_entity_data(u)
+                if pdata and pdata.get("tracks"):
+                    playlist_datas.append((eid, u, pdata))
+            except Exception as e:
+                print(f"[SPOTIFY LIBRARY IMPORT] Warning: could not extract {u}: {e}", flush=True)
+
+        if not playlist_datas:
+            raise HTTPException(status_code=400, detail="Could not extract any tracks from the provided link(s).")
+
+        from app.routes.request_music import run_direct_download_worker, record_app_request
+
+        new_tracks_queued = 0
+        already_in_library = 0
+        duplicates_skipped = 0
+        seen_keys = set()
+        seen_spotify_ids = set()
+
+        with get_db() as conn:
+            cursor = conn.cursor()
+            for sid, surl, pdata in playlist_datas:
+                for t in pdata.get("tracks", []):
+                    s_track_id = t.get("spotify_track_id")
+                    t_title = t.get("title", "")
+                    t_artist = t.get("artist", "")
+                    norm_key = normalize_track_key(t_title, t_artist)
+
+                    if s_track_id and s_track_id in seen_spotify_ids:
+                        duplicates_skipped += 1
+                        continue
+                    if norm_key in seen_keys:
+                        duplicates_skipped += 1
+                        continue
+
+                    if s_track_id:
+                        seen_spotify_ids.add(s_track_id)
+                    seen_keys.add(norm_key)
+
+                    matched_id = find_track_in_local_db(cursor, t_title, t_artist)
+                    if matched_id:
+                        already_in_library += 1
+                        continue
+
+                    # Queue direct download into /music
+                    dl_id = f"spotify_lib_{int(time.time())}_{new_tracks_queued}"
+                    album_title = t.get("album") or t_title
+                    record_app_request(t_artist, album_title, t_title)
+                    threading.Thread(
+                        target=run_direct_download_worker,
+                        args=(dl_id, t_artist, album_title, t_title, None, t.get("cover_url"), None),
+                        daemon=True
+                    ).start()
+                    new_tracks_queued += 1
+
+        return {
+            "status": "ok",
+            "destination": "library",
+            "total_tracks": sum(len(pd[2].get("tracks", [])) for pd in playlist_datas),
+            "new_tracks_queued": new_tracks_queued,
+            "already_in_library": already_in_library,
+            "duplicates_skipped": duplicates_skipped,
+        }
+
+    is_single_playlist = False
+    if len(unique_urls) == 1:
+        try:
+            etype, _ = extract_spotify_entity_id(unique_urls[0])
+            is_single_playlist = (etype == "playlist")
+        except Exception:
+            is_single_playlist = False
+
+    # Single Playlist Import (Standard 1:1 chart clone or custom named)
+    if is_single_playlist:
+        spotify_id = extract_spotify_playlist_id(unique_urls[0])
+        playlist_data = fetch_spotify_playlist_data(spotify_id)
+
+        name = (data.custom_name.strip() if data.custom_name and data.custom_name.strip() else playlist_data["title"])
+        description = playlist_data.get("description", "")
+        spotify_url = f"https://open.spotify.com/playlist/{spotify_id}"
+        tracks = playlist_data.get("tracks", [])
+
+        if not tracks:
+            raise HTTPException(status_code=400, detail="No tracks found in the Spotify playlist.")
+
+        with get_db() as conn:
+            cursor = conn.cursor()
+
+            # Check if playlist already exists with this spotify_id for the current user
+            cursor.execute("SELECT id FROM playlists WHERE spotify_id = ? AND user_id = ?", (spotify_id, current_user["id"]))
+            existing_pl = cursor.fetchone()
+
+            if existing_pl:
+                playlist_id = existing_pl["id"]
+                cursor.execute("""
+                    UPDATE playlists
+                    SET name = ?, description = ?, auto_sync = ?, last_synced_at = CURRENT_TIMESTAMP
+                    WHERE id = ? AND user_id = ?
+                """, (name, description, 1 if data.auto_sync else 0, playlist_id, current_user["id"]))
+            else:
+                # Shift existing playlists down so the newly imported playlist is placed at the top (position 0)
+                cursor.execute("UPDATE playlists SET position = position + 1 WHERE user_id = ?", (current_user["id"],))
+                cursor.execute("""
+                    INSERT INTO playlists (name, description, spotify_id, spotify_url, auto_sync, last_synced_at, user_id, position)
+                    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, 0)
+                """, (name, description, spotify_id, spotify_url, 1 if data.auto_sync else 0, current_user["id"]))
+                playlist_id = cursor.lastrowid
+
+            # Record source in playlist_spotify_sources
+            cursor.execute("""
+                INSERT OR REPLACE INTO playlist_spotify_sources (playlist_id, spotify_id, spotify_url, name, track_count)
+                VALUES (?, ?, ?, ?, ?)
+            """, (playlist_id, spotify_id, spotify_url, playlist_data["title"], len(tracks)))
+
+        sync_result = sync_single_spotify_playlist(playlist_id, playlist_data=playlist_data)
+
+        return {
+            "status": "ok",
+            "playlist_id": playlist_id,
+            "name": name,
+            "total_tracks": sync_result["synced_tracks_total"],
+            "new_tracks_added": sync_result["new_tracks_added"],
+            "duplicates_skipped": 0,
+            "sources_count": 1,
+            "pending": sync_result["pending_downloads"],
+            "is_collection": False,
+        }
+
+    # Unified Collection / Single Track Import with Deduplication
+    playlist_datas = []
+    for u in unique_urls:
+        try:
+            etype, eid, pdata = fetch_spotify_entity_data(u)
+            if pdata and pdata.get("tracks"):
+                playlist_datas.append((eid, u, pdata))
+        except Exception as e:
+            print(f"[SPOTIFY IMPORT] Warning: could not extract {u}: {e}", flush=True)
+
+    if not playlist_datas:
+        raise HTTPException(status_code=400, detail="Could not extract tracks from any of the provided Spotify links.")
+
+    # Determine collection name
+    if data.custom_name and data.custom_name.strip():
+        name = data.custom_name.strip()
+    else:
+        name = playlist_datas[0][2].get("title") or "Spotify Collection"
+
+    if len(playlist_datas) == 1 and playlist_datas[0][2].get("is_single_track"):
+        description = f"Spotify track import: {playlist_datas[0][2].get('title')}"
+    else:
+        description = f"Curated collection merged from {len(playlist_datas)} Spotify source(s)."
+    first_sid = playlist_datas[0][0]
+    first_url = playlist_datas[0][1]
 
     with get_db() as conn:
         cursor = conn.cursor()
+        cursor.execute("UPDATE playlists SET position = position + 1 WHERE user_id = ?", (current_user["id"],))
+        # Note: Collections are custom playlists, so spotify_id and spotify_url are NULL, auto_sync = 0
+        cursor.execute("""
+            INSERT INTO playlists (name, description, spotify_id, spotify_url, auto_sync, last_synced_at, user_id, position)
+            VALUES (?, ?, NULL, NULL, 0, CURRENT_TIMESTAMP, ?, 0)
+        """, (name, description, current_user["id"]))
+        playlist_id = cursor.lastrowid
 
-        # Check if playlist already exists with this spotify_id for the current user
-        cursor.execute("SELECT id FROM playlists WHERE spotify_id = ? AND user_id = ?", (spotify_id, current_user["id"]))
-        existing_pl = cursor.fetchone()
-
-        if existing_pl:
-            playlist_id = existing_pl["id"]
+        # Insert each source
+        for sid, surl, pdata in playlist_datas:
             cursor.execute("""
-                UPDATE playlists
-                SET name = ?, description = ?, auto_sync = ?, last_synced_at = CURRENT_TIMESTAMP
-                WHERE id = ? AND user_id = ?
-            """, (name, description, 1 if data.auto_sync else 0, playlist_id, current_user["id"]))
-        else:
-            # Shift existing playlists down so the newly imported playlist is placed at the top (position 0)
-            cursor.execute("UPDATE playlists SET position = position + 1 WHERE user_id = ?", (current_user["id"],))
-            cursor.execute("""
-                INSERT INTO playlists (name, description, spotify_id, spotify_url, auto_sync, last_synced_at, user_id, position)
-                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, 0)
-            """, (name, description, spotify_id, spotify_url, 1 if data.auto_sync else 0, current_user["id"]))
-            playlist_id = cursor.lastrowid
+                INSERT OR REPLACE INTO playlist_spotify_sources (playlist_id, spotify_id, spotify_url, name, track_count)
+                VALUES (?, ?, ?, ?, ?)
+            """, (playlist_id, sid, surl, pdata.get("title", "Spotify Playlist"), len(pdata.get("tracks", []))))
 
-    sync_result = sync_single_spotify_playlist(playlist_id, playlist_data=playlist_data)
+        # Deduplicate tracks across all playlists
+        seen_spotify_ids = set()
+        seen_keys = set()
+        seen_local_ids = set()
+        deduped_tracks = []
+        duplicates_count = 0
+
+        for sid, surl, pdata in playlist_datas:
+            for t in pdata.get("tracks", []):
+                s_track_id = t.get("spotify_track_id")
+                t_title = t.get("title", "")
+                t_artist = t.get("artist", "")
+                norm_key = normalize_track_key(t_title, t_artist)
+
+                if s_track_id and s_track_id in seen_spotify_ids:
+                    duplicates_count += 1
+                    continue
+                if norm_key in seen_keys:
+                    duplicates_count += 1
+                    continue
+
+                matched_id = find_track_in_local_db(cursor, t_title, t_artist)
+                if matched_id and matched_id in seen_local_ids:
+                    duplicates_count += 1
+                    continue
+
+                if s_track_id:
+                    seen_spotify_ids.add(s_track_id)
+                seen_keys.add(norm_key)
+                if matched_id:
+                    seen_local_ids.add(matched_id)
+
+                deduped_tracks.append({
+                    "spotify_track_id": s_track_id,
+                    "title": t_title,
+                    "artist": t_artist,
+                    "duration_ms": t.get("duration_ms", 0),
+                    "cover_url": t.get("cover_url"),
+                    "matched_id": matched_id,
+                })
+
+        # Insert deduplicated tracks into spotify_sync_tracks and playlist_tracks
+        for idx, t in enumerate(deduped_tracks):
+            status_val = "matched" if t["matched_id"] else "pending"
+            cursor.execute("""
+                INSERT OR REPLACE INTO spotify_sync_tracks (
+                    playlist_id, spotify_track_id, title, artist, duration_ms,
+                    cover_url, position, track_id, status, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            """, (playlist_id, t["spotify_track_id"], t["title"], t["artist"], t["duration_ms"],
+                  t["cover_url"], idx, t["matched_id"], status_val))
+
+            if t["matched_id"]:
+                cursor.execute("""
+                    INSERT INTO playlist_tracks (playlist_id, track_id, position)
+                    VALUES (?, ?, ?)
+                    ON CONFLICT(playlist_id, track_id) DO UPDATE SET position = excluded.position
+                """, (playlist_id, t["matched_id"], idx))
+
+        cursor.execute("SELECT COUNT(*) FROM spotify_sync_tracks WHERE playlist_id = ? AND status = 'pending'", (playlist_id,))
+        pending_count = cursor.fetchone()[0]
+
+    # Cache cover art
+    safe_playlist = sanitize_name(name)
+    dest_dir = MUSIC_DIR / "Spotify Downloads" / safe_playlist
+    ensure_playlist_cover(dest_dir, name, playlist_datas[0][2].get("cover_url"))
+
+    if pending_count > 0 and data.auto_download:
+        process_playlist_download_queue(playlist_id)
 
     return {
         "status": "ok",
         "playlist_id": playlist_id,
         "name": name,
-        "total_tracks": sync_result["synced_tracks_total"],
-        "new_tracks_added": sync_result["new_tracks_added"],
-        "pending": sync_result["pending_downloads"],
+        "total_tracks": len(deduped_tracks),
+        "new_tracks_added": len(deduped_tracks),
+        "duplicates_skipped": duplicates_count,
+        "sources_count": len(playlist_datas),
+        "pending": pending_count,
+        "is_collection": True,
     }
+
+
+@router.post("/merge-sources/{playlist_id}")
+def merge_spotify_sources(
+    playlist_id: int,
+    data: SpotifyMergeRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """Merge tracks from one or more new Spotify playlists into an existing playlist with deduplication."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name, spotify_id, spotify_url, auto_sync FROM playlists WHERE id = ? AND user_id = ?", (playlist_id, current_user["id"]))
+        pl = cursor.fetchone()
+        if not pl:
+            raise HTTPException(status_code=404, detail="Playlist not found")
+
+    raw_urls = []
+    for u in data.urls:
+        parts = [p.strip() for p in re.split(r'[\r\n,]+', u) if p.strip()]
+        raw_urls.extend(parts)
+
+    unique_urls = []
+    for u in raw_urls:
+        if u and u not in unique_urls:
+            unique_urls.append(u)
+
+    if not unique_urls:
+        raise HTTPException(status_code=400, detail="Please provide at least one valid Spotify playlist link.")
+
+    playlist_datas = []
+    for u in unique_urls:
+        try:
+            etype, eid, pdata = fetch_spotify_entity_data(u)
+            if pdata and pdata.get("tracks"):
+                playlist_datas.append((eid, u, pdata))
+        except Exception as e:
+            print(f"[SPOTIFY MERGE] Warning: could not extract {u}: {e}", flush=True)
+
+    if not playlist_datas:
+        raise HTTPException(status_code=400, detail="Could not extract tracks from any of the provided Spotify links.")
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+
+        # If this was previously a single Spotify playlist, preserve its original source in playlist_spotify_sources
+        if pl["spotify_id"]:
+            cursor.execute("""
+                INSERT OR IGNORE INTO playlist_spotify_sources (playlist_id, spotify_id, spotify_url, name, track_count)
+                VALUES (?, ?, ?, ?, (SELECT COUNT(*) FROM playlist_tracks WHERE playlist_id = ?))
+            """, (playlist_id, pl["spotify_id"], pl["spotify_url"] or f"https://open.spotify.com/playlist/{pl['spotify_id']}", pl["name"], playlist_id))
+
+        # Convert playlist into a personal custom collection (unlinking from Spotify chart sync)
+        cursor.execute("""
+            UPDATE playlists 
+            SET spotify_id = NULL, spotify_url = NULL, auto_sync = 0, last_synced_at = CURRENT_TIMESTAMP 
+            WHERE id = ?
+        """, (playlist_id,))
+
+        # Existing tracks to deduplicate against
+        cursor.execute("""
+            SELECT spotify_track_id, title, artist, track_id, position
+            FROM spotify_sync_tracks
+            WHERE playlist_id = ?
+        """, (playlist_id,))
+        existing_sync = cursor.fetchall()
+
+        seen_spotify_ids = {r["spotify_track_id"] for r in existing_sync if r["spotify_track_id"]}
+        seen_keys = {normalize_track_key(r["title"], r["artist"]) for r in existing_sync}
+        seen_local_ids = {r["track_id"] for r in existing_sync if r["track_id"]}
+        max_pos = max([r["position"] for r in existing_sync] + [-1])
+
+        # Also populate local tracks in playlist_tracks if manually added
+        cursor.execute("SELECT track_id, position FROM playlist_tracks WHERE playlist_id = ?", (playlist_id,))
+        for r in cursor.fetchall():
+            seen_local_ids.add(r["track_id"])
+            if r["position"] > max_pos:
+                max_pos = r["position"]
+
+        new_tracks_added = 0
+        duplicates_skipped = 0
+        new_pending_count = 0
+
+        for sid, surl, pdata in playlist_datas:
+            # Register in playlist_spotify_sources
+            cursor.execute("""
+                INSERT OR REPLACE INTO playlist_spotify_sources (playlist_id, spotify_id, spotify_url, name, track_count)
+                VALUES (?, ?, ?, ?, ?)
+            """, (playlist_id, sid, surl, pdata.get("title", "Spotify Playlist"), len(pdata.get("tracks", []))))
+
+            for t in pdata.get("tracks", []):
+                s_track_id = t.get("spotify_track_id")
+                t_title = t.get("title", "")
+                t_artist = t.get("artist", "")
+                norm_key = normalize_track_key(t_title, t_artist)
+
+                if s_track_id and s_track_id in seen_spotify_ids:
+                    duplicates_skipped += 1
+                    continue
+                if norm_key in seen_keys:
+                    duplicates_skipped += 1
+                    continue
+
+                matched_id = find_track_in_local_db(cursor, t_title, t_artist)
+                if matched_id and matched_id in seen_local_ids:
+                    duplicates_skipped += 1
+                    continue
+
+                # Unique new track to append
+                max_pos += 1
+                if s_track_id:
+                    seen_spotify_ids.add(s_track_id)
+                seen_keys.add(norm_key)
+                if matched_id:
+                    seen_local_ids.add(matched_id)
+
+                status_val = "matched" if matched_id else "pending"
+                if not matched_id:
+                    new_pending_count += 1
+
+                cursor.execute("""
+                    INSERT OR REPLACE INTO spotify_sync_tracks (
+                        playlist_id, spotify_track_id, title, artist, duration_ms,
+                        cover_url, position, track_id, status, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                """, (playlist_id, s_track_id, t_title, t_artist, t.get("duration_ms", 0),
+                      t.get("cover_url"), max_pos, matched_id, status_val))
+
+                if matched_id:
+                    cursor.execute("""
+                        INSERT INTO playlist_tracks (playlist_id, track_id, position)
+                        VALUES (?, ?, ?)
+                        ON CONFLICT(playlist_id, track_id) DO UPDATE SET position = excluded.position
+                    """, (playlist_id, matched_id, max_pos))
+
+                new_tracks_added += 1
+
+        cursor.execute("SELECT COUNT(*) FROM spotify_sync_tracks WHERE playlist_id = ?", (playlist_id,))
+        total_tracks = cursor.fetchone()[0]
+
+    if new_pending_count > 0:
+        process_playlist_download_queue(playlist_id)
+
+    return {
+        "status": "ok",
+        "playlist_id": playlist_id,
+        "name": pl["name"],
+        "new_tracks_added": new_tracks_added,
+        "duplicates_skipped": duplicates_skipped,
+        "total_tracks": total_tracks,
+        "sources_count": len(playlist_datas),
+        "pending": new_pending_count,
+    }
+
+
+@router.get("/sources/{playlist_id}")
+def get_spotify_sources(
+    playlist_id: int,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """List all Spotify playlist sources merged into this playlist."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM playlists WHERE id = ? AND user_id = ?", (playlist_id, current_user["id"]))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Playlist not found")
+
+        cursor.execute("""
+            SELECT id, spotify_id, spotify_url, name, track_count, added_at
+            FROM playlist_spotify_sources
+            WHERE playlist_id = ?
+            ORDER BY id ASC
+        """, (playlist_id,))
+        rows = [dict(r) for r in cursor.fetchall()]
+
+    return {"playlist_id": playlist_id, "sources": rows}
 
 @router.get("/status/{playlist_id}")
 def get_spotify_playlist_status(

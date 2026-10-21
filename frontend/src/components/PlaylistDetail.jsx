@@ -3,12 +3,13 @@ import {
   Play, Pause, Trash2, Clock, Music, Shuffle, 
   Search, X, Pencil, ArrowUpDown, Calendar, 
   CheckSquare, Square, Check, AlertTriangle, RefreshCw, ExternalLink, UserCheck, Lock,
-  Type, Mic2, Disc3, ChevronDown, ListOrdered
+  Type, Mic2, Disc3, ChevronDown, ChevronUp, ListOrdered, ListPlus, Layers
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { PlaylistCover } from './PlaylistCover';
 import { SpotifyIcon } from './SpotifyIcon';
 import { ConfirmModal } from './ConfirmModal';
+import { MergeSpotifyModal } from './MergeSpotifyModal';
 import { shuffleArray, shuffledQueueStartingWith } from '../utils/shuffle';
 
 const formatDuration = (seconds) => {
@@ -18,10 +19,17 @@ const formatDuration = (seconds) => {
   return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
 };
 
+const parseUtcDate = (dateStr) => {
+  if (!dateStr) return null;
+  const str = String(dateStr);
+  const cleaned = str.includes('Z') || str.includes('+') ? str : str.replace(' ', 'T') + 'Z';
+  const d = new Date(cleaned);
+  return isNaN(d.getTime()) ? null : d;
+};
+
 const formatAddedAt = (dateStr) => {
-  if (!dateStr) return '—';
-  const d = new Date(dateStr.replace(' ', 'T'));
-  if (isNaN(d.getTime())) return '—';
+  const d = parseUtcDate(dateStr);
+  if (!d) return '—';
   const now = new Date();
   const diffSec = Math.floor((now - d) / 1000);
   if (diffSec < 60) return 'Just now';
@@ -77,6 +85,15 @@ export const PlaylistDetail = ({
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const sortMenuRef = useRef(null);
 
+  const handleColumnHeaderSort = (columnKey) => {
+    if (sortBy === columnKey) {
+      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(columnKey);
+      setSortOrder(columnKey === 'added_at' ? 'desc' : 'asc');
+    }
+  };
+
   // Close sort menu on click outside
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -92,6 +109,7 @@ export const PlaylistDetail = ({
 
   // Inline edit modal
   const [isEditingDetails, setIsEditingDetails] = useState(false);
+  const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [isSavingDetails, setIsSavingDetails] = useState(false);
@@ -164,9 +182,9 @@ export const PlaylistDetail = ({
     fetchPlaylist();
   }, [playlistId, refreshTrigger]);
 
-  // Live polling for Spotify playlists
+  // Live polling for Spotify playlists & collections with pending downloads
   useEffect(() => {
-    if (!playlistId || !playlist?.spotify_id) {
+    if (!playlistId || (!playlist?.spotify_id && !playlist?.sources_count && !playlist?.is_collection)) {
       setSpotifyStatus(null);
       return;
     }
@@ -205,7 +223,7 @@ export const PlaylistDetail = ({
       isMounted = false;
       if (timer) clearTimeout(timer);
     };
-  }, [playlistId, playlist?.spotify_id]);
+  }, [playlistId, playlist?.spotify_id, playlist?.sources_count, playlist?.is_collection]);
 
   const handleSyncNow = async () => {
     if (isSyncingNow || !playlistId) return;
@@ -242,42 +260,74 @@ export const PlaylistDetail = ({
 
   const rawTracks = useMemo(() => {
     const localTracks = Array.isArray(playlist?.tracks) ? playlist.tracks : [];
-    if (!playlist?.spotify_id || !spotifyStatus?.tracks?.length) {
+    
+    // For single Spotify chart playlists, mirror spotifyStatus tracks strictly
+    if (playlist?.spotify_id && !playlist?.is_collection && spotifyStatus?.tracks?.length) {
+      const localMap = new Map();
+      localTracks.forEach((t) => localMap.set(t.id, t));
+
+      return spotifyStatus.tracks.map((st, idx) => {
+        if (st.status === 'matched' && st.track_id && localMap.has(st.track_id)) {
+          return {
+            ...localMap.get(st.track_id),
+            spotify_sync_id: st.id,
+          };
+        }
+
+        return {
+          id: `sync-${st.id}`,
+          sync_id: st.id,
+          title: st.title,
+          artist_name: st.artist,
+          album_title: playlist.name || 'Spotify Playlist',
+          duration_seconds: Math.round((st.duration_ms || 0) / 1000),
+          position: st.position !== undefined ? st.position : idx,
+          isSyncPending: true,
+          syncStatus: st.status, // 'pending' | 'downloading' | 'failed'
+          liveProgress: st.live_progress || 0,
+          errorMessage: st.error_message,
+          cover_url: null,
+        };
+      });
+    }
+
+    // For custom collections or playlists with pending downloads:
+    // Start with localTracks (custom order, preserving all manually added tracks)
+    if (!spotifyStatus?.tracks?.length) {
       return localTracks;
     }
 
-    const localMap = new Map();
-    localTracks.forEach((t) => localMap.set(t.id, t));
+    const matchedTrackIds = new Set(localTracks.map((t) => t.id));
+    const pendingTracks = [];
 
-    return spotifyStatus.tracks.map((st, idx) => {
-      if (st.status === 'matched' && st.track_id && localMap.has(st.track_id)) {
-        return {
-          ...localMap.get(st.track_id),
-          spotify_sync_id: st.id,
-        };
+    for (const st of spotifyStatus.tracks) {
+      if (st.status !== 'matched' || !matchedTrackIds.has(st.track_id)) {
+        if (st.status !== 'matched') {
+          pendingTracks.push({
+            id: `sync-${st.id}`,
+            sync_id: st.id,
+            title: st.title,
+            artist_name: st.artist,
+            album_title: playlist?.name || 'Spotify Collection',
+            duration_seconds: Math.round((st.duration_ms || 0) / 1000),
+            position: st.position !== undefined ? st.position : localTracks.length + pendingTracks.length,
+            isSyncPending: true,
+            syncStatus: st.status,
+            liveProgress: st.live_progress || 0,
+            errorMessage: st.error_message,
+            cover_url: null,
+          });
+        }
       }
+    }
 
-      return {
-        id: `sync-${st.id}`,
-        sync_id: st.id,
-        title: st.title,
-        artist_name: st.artist,
-        album_title: playlist.name || 'Spotify Playlist',
-        duration_seconds: Math.round((st.duration_ms || 0) / 1000),
-        position: st.position !== undefined ? st.position : idx,
-        isSyncPending: true,
-        syncStatus: st.status, // 'pending' | 'downloading' | 'failed'
-        liveProgress: st.live_progress || 0,
-        errorMessage: st.error_message,
-        cover_url: null,
-      };
-    });
-  }, [playlist?.tracks, playlist?.spotify_id, playlist?.name, spotifyStatus]);
+    return [...localTracks, ...pendingTracks];
+  }, [playlist?.tracks, playlist?.spotify_id, playlist?.is_collection, playlist?.name, spotifyStatus]);
 
   // Full playlist in current sort order (unaffected by search filtering)
   const allTracks = useMemo(() => {
     if (sortBy === 'custom') {
-      return rawTracks;
+      return sortOrder === 'asc' ? rawTracks : [...rawTracks].reverse();
     }
 
     const sorted = [...rawTracks].sort((a, b) => {
@@ -289,7 +339,7 @@ export const PlaylistDetail = ({
       } else if (sortBy === 'album') {
         cmp = (a.album_title || '').localeCompare(b.album_title || '');
       } else if (sortBy === 'added_at') {
-        cmp = new Date(a.added_at || 0) - new Date(b.added_at || 0);
+        cmp = (parseUtcDate(a.added_at)?.getTime() || 0) - (parseUtcDate(b.added_at)?.getTime() || 0);
       } else if (sortBy === 'duration') {
         cmp = (a.duration_seconds || 0) - (b.duration_seconds || 0);
       }
@@ -312,7 +362,8 @@ export const PlaylistDetail = ({
     );
   }, [allTracks, searchQuery]);
 
-  const isDragEnabled = !playlist?.spotify_id && sortBy === 'custom' && !searchQuery.trim();
+  const isLockedSpotify = !!(playlist?.spotify_id && !playlist?.is_collection);
+  const isDragEnabled = !isLockedSpotify && sortBy === 'custom' && !searchQuery.trim();
   const isCurrentPlayingInPlaylist =
     currentTrack && rawTracks.some((t) => t.id === currentTrack.id);
 
@@ -715,7 +766,7 @@ export const PlaylistDetail = ({
 
   const handleRemoveTrack = async (e, trackId) => {
     if (e?.stopPropagation) e.stopPropagation();
-    if (playlist?.spotify_id) {
+    if (playlist?.spotify_id && !playlist?.is_collection) {
       setIsTakeOwnershipOfferOpen(true);
       return;
     }
@@ -740,7 +791,7 @@ export const PlaylistDetail = ({
   };
 
   const handleBulkRemoveSelected = async () => {
-    if (playlist?.spotify_id) {
+    if (playlist?.spotify_id && !playlist?.is_collection) {
       setIsTakeOwnershipOfferOpen(true);
       return;
     }
@@ -998,6 +1049,19 @@ export const PlaylistDetail = ({
                   </span>
                 </>
               )}
+              {(playlist.sources_count > 1 || playlist.is_collection) && (
+                <>
+                  <span>•</span>
+                  <button
+                    onClick={() => setIsMergeModalOpen(true)}
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-brand-500/10 hover:bg-brand-500/20 text-brand-400 border border-brand-500/20 text-xs font-semibold transition"
+                    title="View merged Spotify sources"
+                  >
+                    <Layers size={12} />
+                    <span>Collection ({playlist.sources_count || playlist.sources?.length || 2} sources)</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -1052,7 +1116,7 @@ export const PlaylistDetail = ({
             <Pencil size={18} />
           </button>
 
-          {playlist?.spotify_id && (
+          {playlist?.spotify_id && !playlist?.is_collection && (
             <button
               onClick={() => onPromptTakeOwnership?.(playlist)}
               className="px-3.5 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-xs font-semibold text-content-secondary hover:text-content-primary transition flex items-center gap-1.5 border border-white/5"
@@ -1098,7 +1162,7 @@ export const PlaylistDetail = ({
               className="flex items-center gap-1.5 text-xs text-content-secondary hover:text-content-primary transition outline-none"
               title={`Sorted by: ${
                 sortBy === 'custom'
-                  ? (playlist?.spotify_id ? 'Spotify Chart Order' : 'Custom Order')
+                  ? (playlist?.spotify_id && !playlist?.is_collection ? 'Spotify Chart Order' : 'Custom Order')
                   : sortBy === 'title'
                   ? 'Title'
                   : sortBy === 'artist'
@@ -1111,7 +1175,7 @@ export const PlaylistDetail = ({
               }`}
             >
               {sortBy === 'custom' ? (
-                playlist?.spotify_id ? <Lock size={14} className="text-brand-500" /> : <ListOrdered size={14} className="text-content-muted" />
+                playlist?.spotify_id && !playlist?.is_collection ? <Lock size={14} className="text-brand-500" /> : <ListOrdered size={14} className="text-content-muted" />
               ) : sortBy === 'title' ? (
                 <Type size={14} className="text-brand-400" />
               ) : sortBy === 'artist' ? (
@@ -1152,8 +1216,8 @@ export const PlaylistDetail = ({
                   }`}
                 >
                   <span className="flex items-center gap-2">
-                    {playlist?.spotify_id ? <Lock size={14} className="text-brand-500" /> : <ListOrdered size={14} />}
-                    <span>{playlist?.spotify_id ? 'Spotify chart order' : 'Custom order'}</span>
+                    {playlist?.spotify_id && !playlist?.is_collection ? <Lock size={14} className="text-brand-500" /> : <ListOrdered size={14} />}
+                    <span>{playlist?.spotify_id && !playlist?.is_collection ? 'Spotify chart order' : 'Custom order'}</span>
                   </span>
                   {sortBy === 'custom' && <Check size={13} />}
                 </button>
@@ -1236,6 +1300,15 @@ export const PlaylistDetail = ({
             )}
           </div>
 
+          {/* Add Spotify Playlists / Merge Links button */}
+          <button
+            onClick={() => setIsMergeModalOpen(true)}
+            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-content-secondary hover:text-brand-500 transition flex items-center justify-center shrink-0"
+            title="Add Spotify Playlists / Merge Links"
+          >
+            <ListPlus size={16} className="text-brand-500" />
+          </button>
+
           {/* Sync Now icon button (if playlist is synced with Spotify) */}
           {playlist?.spotify_id && (
             <button
@@ -1273,7 +1346,7 @@ export const PlaylistDetail = ({
       </div>
 
       {/* Reorder notice if sorted differently */}
-      {!playlist?.spotify_id && !isDragEnabled && rawTracks.length > 1 && (
+      {!isLockedSpotify && !isDragEnabled && rawTracks.length > 1 && (
         <div className="px-6 sm:px-8 pb-3">
           <div className="text-[11px] text-content-muted flex items-center gap-1.5">
             <span>💡 Track reordering is active when sorted by <strong>Custom order</strong> with search cleared.</span>
@@ -1304,7 +1377,7 @@ export const PlaylistDetail = ({
           <div 
             onDragOver={(e) => {
               e.preventDefault();
-              if (playlist?.spotify_id) {
+              if (isLockedSpotify) {
                 e.dataTransfer.dropEffect = 'none';
               } else if (isDragEnabled) {
                 e.dataTransfer.dropEffect = 'move';
@@ -1312,7 +1385,7 @@ export const PlaylistDetail = ({
             }}
             onDragEnter={(e) => {
               e.preventDefault();
-              if (playlist?.spotify_id) {
+              if (isLockedSpotify) {
                 e.dataTransfer.dropEffect = 'none';
               } else if (isDragEnabled) {
                 e.dataTransfer.dropEffect = 'move';
@@ -1321,16 +1394,88 @@ export const PlaylistDetail = ({
             className="sticky top-0 z-30 bg-surface-island/95 backdrop-blur-md mb-2"
           >
             <div className="grid grid-cols-[36px_1fr_50px] md:grid-cols-[40px_3fr_2fr_60px] lg:grid-cols-[40px_4fr_3fr_2fr_60px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-content-secondary border-b border-border-medium items-center">
-              <span className="text-center">#</span>
-              <div className="flex items-center gap-3 truncate pr-3">
-                <span className="w-10 shrink-0" />
-                <span>Title</span>
+              {/* # Column */}
+              <div className="flex items-center justify-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (sortBy === 'custom') {
+                      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+                    } else {
+                      setSortBy('custom');
+                      setSortOrder('asc');
+                    }
+                  }}
+                  className="inline-flex items-center justify-center hover:text-white transition gap-0.5 cursor-pointer py-0.5 px-1 rounded hover:bg-white/5 group"
+                  title="Sort by original order"
+                >
+                  <span className={sortBy === 'custom' ? 'text-brand-500 font-bold' : ''}>#</span>
+                  {sortBy === 'custom' && (
+                    sortOrder === 'asc' ? <ChevronUp size={11} className="text-brand-500" /> : <ChevronDown size={11} className="text-brand-500" />
+                  )}
+                </button>
               </div>
-              <span className="hidden md:block truncate pr-3">Album</span>
-              <span className="hidden lg:block truncate pr-3">Date added</span>
-              <span className="text-right flex items-center justify-end">
-                <Clock size={14} />
-              </span>
+
+              {/* Title Column */}
+              <div className="flex items-center gap-3 truncate pr-3 select-none">
+                <span className="w-10 shrink-0" />
+                <button
+                  type="button"
+                  onClick={() => handleColumnHeaderSort('title')}
+                  className="inline-flex items-center gap-1.5 cursor-pointer hover:text-white transition group py-0.5 px-1 -ml-1 rounded hover:bg-white/5 text-left"
+                  title="Sort by Title (A-Z / Z-A)"
+                >
+                  <span className={sortBy === 'title' ? 'text-brand-500 font-bold' : ''}>Title</span>
+                  {sortBy === 'title' && (
+                    sortOrder === 'asc' ? <ChevronUp size={12} className="text-brand-500 shrink-0" /> : <ChevronDown size={12} className="text-brand-500 shrink-0" />
+                  )}
+                </button>
+              </div>
+
+              {/* Album Column */}
+              <div className="hidden md:flex items-center truncate pr-3 select-none">
+                <button
+                  type="button"
+                  onClick={() => handleColumnHeaderSort('album')}
+                  className="inline-flex items-center gap-1.5 cursor-pointer hover:text-white transition group py-0.5 px-1 -ml-1 rounded hover:bg-white/5 text-left"
+                  title="Sort by Album (A-Z / Z-A)"
+                >
+                  <span className={sortBy === 'album' ? 'text-brand-500 font-bold' : ''}>Album</span>
+                  {sortBy === 'album' && (
+                    sortOrder === 'asc' ? <ChevronUp size={12} className="text-brand-500 shrink-0" /> : <ChevronDown size={12} className="text-brand-500 shrink-0" />
+                  )}
+                </button>
+              </div>
+
+              {/* Date added Column */}
+              <div className="hidden lg:flex items-center truncate pr-3 select-none">
+                <button
+                  type="button"
+                  onClick={() => handleColumnHeaderSort('added_at')}
+                  className="inline-flex items-center gap-1.5 cursor-pointer hover:text-white transition group py-0.5 px-1 -ml-1 rounded hover:bg-white/5 text-left"
+                  title="Sort by Date added"
+                >
+                  <span className={sortBy === 'added_at' ? 'text-brand-500 font-bold' : ''}>Date added</span>
+                  {sortBy === 'added_at' && (
+                    sortOrder === 'asc' ? <ChevronUp size={12} className="text-brand-500 shrink-0" /> : <ChevronDown size={12} className="text-brand-500 shrink-0" />
+                  )}
+                </button>
+              </div>
+
+              {/* Duration Column */}
+              <div className="text-right flex items-center justify-end select-none">
+                <button
+                  type="button"
+                  onClick={() => handleColumnHeaderSort('duration')}
+                  className="inline-flex items-center justify-end gap-1 cursor-pointer hover:text-white transition group py-0.5 px-1 -mr-1 rounded hover:bg-white/5"
+                  title="Sort by Duration"
+                >
+                  <Clock size={14} className={sortBy === 'duration' ? 'text-brand-500' : ''} />
+                  {sortBy === 'duration' && (
+                    sortOrder === 'asc' ? <ChevronUp size={12} className="text-brand-500 shrink-0" /> : <ChevronDown size={12} className="text-brand-500 shrink-0" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1338,7 +1483,7 @@ export const PlaylistDetail = ({
           <div 
             onDragOver={(e) => {
               e.preventDefault();
-              if (playlist?.spotify_id) {
+              if (isLockedSpotify) {
                 e.dataTransfer.dropEffect = 'none';
               } else if (isDragEnabled) {
                 e.dataTransfer.dropEffect = 'move';
@@ -1346,13 +1491,13 @@ export const PlaylistDetail = ({
             }}
             onDragEnter={(e) => {
               e.preventDefault();
-              if (playlist?.spotify_id) {
+              if (isLockedSpotify) {
                 e.dataTransfer.dropEffect = 'none';
               } else if (isDragEnabled) {
                 e.dataTransfer.dropEffect = 'move';
               }
             }}
-            className={`space-y-0.5 ${playlist?.spotify_id && draggedTrackIdx !== null ? 'cursor-not-allowed' : ''}`}
+            className={`space-y-0.5 ${isLockedSpotify && draggedTrackIdx !== null ? 'cursor-not-allowed' : ''}`}
           >
               {tracks.map((track, idx) => {
                 const isThisTrack = currentTrack?.id === track.id;
@@ -1362,7 +1507,7 @@ export const PlaylistDetail = ({
                 const isDragOver = dragOverTrackIdx === idx;
                 const isBeingDragged = draggedTrackIdx === idx;
                 const isFocused = focusedTrackIdx === idx;
-                const isSpotify = !!playlist?.spotify_id;
+                const isSpotify = isLockedSpotify;
                 const isHeld = heldTrackId === track.id;
 
                 return (
@@ -1406,7 +1551,7 @@ export const PlaylistDetail = ({
                         });
                       }
                     }}
-                    draggable={(!playlist?.spotify_id && isDragEnabled && !track.isSyncPending) || (playlist?.spotify_id && !track.isSyncPending) ? "true" : "false"}
+                    draggable={(!isLockedSpotify && isDragEnabled && !track.isSyncPending) || (isLockedSpotify && !track.isSyncPending) ? "true" : "false"}
                     onDragStart={(e) => {
                       if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
                       setHeldTrackId(track.id);
@@ -1435,7 +1580,7 @@ export const PlaylistDetail = ({
                         cover_url: track.cover_url,
                       };
 
-                      if (playlist?.spotify_id) {
+                      if (isLockedSpotify) {
                         e.dataTransfer.effectAllowed = 'copy';
                         e.dataTransfer.setData('text/track-index', String(idx));
                         e.dataTransfer.setData('application/json', JSON.stringify(payload));
@@ -1461,7 +1606,7 @@ export const PlaylistDetail = ({
                       setDragOverTrackIdx(null);
                     }}
                     onDragEnter={(e) => {
-                      if (playlist?.spotify_id) {
+                      if (isLockedSpotify) {
                         e.preventDefault();
                         e.dataTransfer.dropEffect = 'none';
                         return;
@@ -1471,7 +1616,7 @@ export const PlaylistDetail = ({
                       e.dataTransfer.dropEffect = 'move';
                     }}
                     onDragOver={(e) => {
-                      if (playlist?.spotify_id) {
+                      if (isLockedSpotify) {
                         e.preventDefault();
                         e.dataTransfer.dropEffect = 'none';
                         return;
@@ -1486,7 +1631,7 @@ export const PlaylistDetail = ({
                       if (dragOverTrackIdx === idx) setDragOverTrackIdx(null);
                     }}
                     onDrop={(e) => {
-                      if (playlist?.spotify_id) {
+                      if (isLockedSpotify) {
                         e.preventDefault();
                         return;
                       }
@@ -1825,6 +1970,18 @@ export const PlaylistDetail = ({
         isLoading={isTakingOwnership}
         onConfirm={handleExecuteTakeOwnership}
         onClose={() => setIsTakeOwnershipConfirmOpen(false)}
+      />
+
+      {/* Add / Merge Spotify Playlists Modal */}
+      <MergeSpotifyModal
+        isOpen={isMergeModalOpen}
+        playlist={playlist}
+        onClose={() => setIsMergeModalOpen(false)}
+        onMergeSuccess={(result) => {
+          showToast(`✨ Added ${result.new_tracks_added} new tracks (${result.duplicates_skipped} duplicates skipped)!`);
+          fetchPlaylistSilently();
+          if (onPlaylistUpdated) onPlaylistUpdated();
+        }}
       />
     </div>
   );

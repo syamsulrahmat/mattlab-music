@@ -145,6 +145,17 @@ def init_db() -> None:
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS playlist_spotify_sources (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            playlist_id INTEGER NOT NULL REFERENCES playlists(id) ON DELETE CASCADE,
+            spotify_id TEXT NOT NULL,
+            spotify_url TEXT,
+            name TEXT,
+            track_count INTEGER DEFAULT 0,
+            added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(playlist_id, spotify_id)
+        );
+
         CREATE TABLE IF NOT EXISTS track_videos (
             track_id INTEGER PRIMARY KEY REFERENCES tracks(id) ON DELETE CASCADE,
             visual_type TEXT DEFAULT 'youtube',
@@ -165,6 +176,7 @@ def init_db() -> None:
         CREATE INDEX IF NOT EXISTS idx_playlist_tracks ON playlist_tracks(playlist_id, position);
         CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
         CREATE INDEX IF NOT EXISTS idx_spotify_sync_playlist ON spotify_sync_tracks(playlist_id, position);
+        CREATE INDEX IF NOT EXISTS idx_playlist_sources_pl ON playlist_spotify_sources(playlist_id);
         CREATE INDEX IF NOT EXISTS idx_bug_reports_user ON bug_reports(user_id);
         CREATE INDEX IF NOT EXISTS idx_bug_reports_status ON bug_reports(status);
         CREATE INDEX IF NOT EXISTS idx_track_videos_track ON track_videos(track_id);
