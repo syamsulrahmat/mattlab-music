@@ -4,6 +4,7 @@ import { usePlayer, resolveCoverUrl } from '../context/PlayerContext';
 import { NowPlayingVideo } from './NowPlayingVideo';
 
 export const QueueIsland = ({ 
+  width = 320,
   isOpen, 
   onClose, 
   onDiscoverMusic,
@@ -31,7 +32,10 @@ export const QueueIsland = ({
   const isQueueEmpty = !currentTrack && queue.length === 0;
 
   return (
-    <aside className="hidden lg:flex flex-col h-full w-[320px] shrink-0 bg-surface-island rounded-lg overflow-hidden select-none border border-border-subtle shadow-xl">
+    <aside 
+      style={{ width: `${width}px` }}
+      className="hidden lg:flex flex-col h-full shrink-0 bg-surface-island rounded-lg overflow-hidden select-none border border-border-subtle shadow-xl"
+    >
       {isQueueEmpty ? (
         /* Centered Empty State with Green Button */
         <div className="h-full flex flex-col items-center justify-center text-center px-4 py-12">

@@ -5,6 +5,7 @@ import { PlaylistCover } from './PlaylistCover';
 import { SpotifyIcon } from './SpotifyIcon';
 
 export const LibrarySidebar = ({
+  width = 280,
   activeTab,
   setActiveTab,
   playlists = [],
@@ -734,7 +735,10 @@ export const LibrarySidebar = ({
   return (
     <>
       {/* Desktop Island */}
-      <aside className="hidden md:flex flex-col h-full min-h-0 w-[280px] shrink-0 overflow-hidden">
+      <aside 
+        style={{ width: `${width}px` }}
+        className="hidden md:flex flex-col h-full min-h-0 shrink-0 overflow-hidden select-none"
+      >
         {content}
       </aside>
 

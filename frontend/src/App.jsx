@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Check, AlertCircle } from 'lucide-react';
 import { TopBar } from './components/TopBar';
+import { ResizeHandle } from './components/ResizeHandle';
 import { LibrarySidebar } from './components/LibrarySidebar';
 import { QueueIsland } from './components/QueueIsland';
 import { HomeShelves } from './components/HomeShelves';
@@ -55,6 +56,137 @@ const MainAppContent = () => {
   const [isLoadingAlbums, setIsLoadingAlbums] = useState(true);
   const [isQueueOpen, setIsQueueOpen] = useState(true);
   const [isMobileLibraryOpen, setIsMobileLibraryOpen] = useState(false);
+
+  // Expandable Sidebars State (Persistent in localStorage)
+  const [leftSidebarWidth, setLeftSidebarWidth] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mattlab_sidebar_left_width');
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 200 && parsed <= 460) {
+          return parsed;
+        }
+      }
+    } catch {
+      // fallback
+    }
+    return 280;
+  });
+
+  const [rightSidebarWidth, setRightSidebarWidth] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mattlab_sidebar_right_width');
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 260 && parsed <= 480) {
+          return parsed;
+        }
+      }
+    } catch {
+      // fallback
+    }
+    return 320;
+  });
+
+  const [isResizingLeft, setIsResizingLeft] = useState(false);
+  const [isResizingRight, setIsResizingRight] = useState(false);
+  const resizeRef = useRef({ side: null, startX: 0, startWidth: 0 });
+
+  // Persist sidebar widths
+  useEffect(() => {
+    try {
+      localStorage.setItem('mattlab_sidebar_left_width', leftSidebarWidth.toString());
+    } catch {
+      // ignore
+    }
+  }, [leftSidebarWidth]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('mattlab_sidebar_right_width', rightSidebarWidth.toString());
+    } catch {
+      // ignore
+    }
+  }, [rightSidebarWidth]);
+
+  const handleStartResizeLeft = useCallback((e) => {
+    e.preventDefault();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    resizeRef.current = {
+      side: 'left',
+      startX: clientX,
+      startWidth: leftSidebarWidth,
+    };
+    setIsResizingLeft(true);
+  }, [leftSidebarWidth]);
+
+  const handleStartResizeRight = useCallback((e) => {
+    e.preventDefault();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    resizeRef.current = {
+      side: 'right',
+      startX: clientX,
+      startWidth: rightSidebarWidth,
+    };
+    setIsResizingRight(true);
+  }, [rightSidebarWidth]);
+
+  const handleResetLeftWidth = useCallback(() => {
+    setLeftSidebarWidth(280);
+  }, []);
+
+  const handleResetRightWidth = useCallback(() => {
+    setRightSidebarWidth(320);
+  }, []);
+
+  // Global mouse/touch move listener for smooth dragging
+  useEffect(() => {
+    if (!isResizingLeft && !isResizingRight) return;
+
+    const onPointerMove = (e) => {
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const { side, startX, startWidth } = resizeRef.current;
+      if (!side) return;
+
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+
+      const deltaX = clientX - startX;
+      if (side === 'left') {
+        const clamped = Math.min(Math.max(startWidth + deltaX, 200), 460);
+        setLeftSidebarWidth(clamped);
+      } else if (side === 'right') {
+        const clamped = Math.min(Math.max(startWidth - deltaX, 260), 480);
+        setRightSidebarWidth(clamped);
+      }
+    };
+
+    const onPointerUp = () => {
+      setIsResizingLeft(false);
+      setIsResizingRight(false);
+      resizeRef.current = { side: null, startX: 0, startWidth: 0 };
+    };
+
+    const prevUserSelect = document.body.style.userSelect;
+    const prevCursor = document.body.style.cursor;
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'col-resize';
+
+    window.addEventListener('mousemove', onPointerMove);
+    window.addEventListener('mouseup', onPointerUp);
+    window.addEventListener('touchmove', onPointerMove, { passive: false });
+    window.addEventListener('touchend', onPointerUp);
+
+    return () => {
+      document.body.style.userSelect = prevUserSelect;
+      document.body.style.cursor = prevCursor;
+      window.removeEventListener('mousemove', onPointerMove);
+      window.removeEventListener('mouseup', onPointerUp);
+      window.removeEventListener('touchmove', onPointerMove);
+      window.removeEventListener('touchend', onPointerUp);
+    };
+  }, [isResizingLeft, isResizingRight]);
   const [modalTrack, setModalTrack] = useState(null);
   const [lyricsTrackToEdit, setLyricsTrackToEdit] = useState(null);
   const [isCreatePlaylistOpen, setIsCreatePlaylistOpen] = useState(false);
@@ -905,14 +1037,11 @@ const MainAppContent = () => {
         hasNotifications={hasResolvedNotifications}
       />
 
-      {/* 2. Three Floating Islands Body (grid: 280px 1fr 320px, gap: 8px, padding: 8px) */}
-      <div className={`flex-1 min-h-0 grid gap-2 p-2 bg-surface-base overflow-hidden ${
-        isQueueOpen
-          ? 'grid-cols-1 md:grid-cols-[280px_1fr] lg:grid-cols-[280px_1fr_320px]'
-          : 'grid-cols-1 md:grid-cols-[280px_1fr]'
-      }`}>
+      {/* 2. Three Floating Islands Body (Dynamic expandable sidebars, gap: 8px, padding: 8px) */}
+      <div className="flex-1 min-h-0 flex gap-2 p-2 bg-surface-base overflow-hidden relative">
         {/* Island 1: Left Panel ("Your Library") */}
         <LibrarySidebar
+          width={leftSidebarWidth}
           activeTab={activeTab}
           setActiveTab={handleSelectTab}
           playlists={playlists}
@@ -928,8 +1057,17 @@ const MainAppContent = () => {
           onContextMenu={handleOpenContextMenu}
         />
 
+        {/* Left Resize Handle */}
+        <ResizeHandle
+          isDragging={isResizingLeft}
+          onMouseDown={handleStartResizeLeft}
+          onTouchStart={handleStartResizeLeft}
+          onDoubleClick={handleResetLeftWidth}
+          className="hidden md:flex"
+        />
+
         {/* Island 2: Center Panel (Main Stage / Content Area) */}
-        <main className="bg-surface-island rounded-lg overflow-y-auto flex flex-col h-full border border-border-subtle relative">
+        <main className="flex-1 min-w-0 bg-surface-island rounded-lg overflow-y-auto flex flex-col h-full border border-border-subtle relative">
           {/* Synchronized Lyrics Immersion Mode */}
           {isLyricsOpen ? (
             <LyricsView onClose={() => setIsLyricsOpen(false)} />
@@ -1063,8 +1201,20 @@ const MainAppContent = () => {
           )}
         </main>
 
+        {/* Right Resize Handle (only when Queue Island is open) */}
+        {isQueueOpen && (
+          <ResizeHandle
+            isDragging={isResizingRight}
+            onMouseDown={handleStartResizeRight}
+            onTouchStart={handleStartResizeRight}
+            onDoubleClick={handleResetRightWidth}
+            className="hidden lg:flex"
+          />
+        )}
+
         {/* Island 3: Right Panel ("Play Queue" / Context Drawer) */}
         <QueueIsland
+          width={rightSidebarWidth}
           isOpen={isQueueOpen}
           onClose={() => setIsQueueOpen(false)}
           onDiscoverMusic={handleGoHome}
