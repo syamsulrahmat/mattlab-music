@@ -1589,7 +1589,7 @@ export const SettingsModal = ({
                   </div>
 
                   {/* Once-A-Day Auto-Introduction Toggle */}
-                  <div className="pt-3.5 border-t border-border-subtle flex items-center justify-between gap-4">
+                  <div className="pt-3.5 border-t border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                       <h5 className="text-xs font-bold text-white flex items-center gap-2">
                         <span>Auto-introduce MiniPlayer on tab / app switch</span>
@@ -1602,19 +1602,37 @@ export const SettingsModal = ({
                       </p>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => setAutoMiniPlayerIntroEnabled(!autoMiniPlayerIntroEnabled)}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        autoMiniPlayerIntroEnabled ? 'bg-brand-500' : 'bg-surface-elevated'
-                      }`}
-                    >
-                      <span
-                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                          autoMiniPlayerIntroEnabled ? 'translate-x-5' : 'translate-x-0'
+                    <div className="flex items-center gap-2.5 self-end sm:self-auto">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          try {
+                            localStorage.removeItem('mattlab_miniplayer_auto_intro_date');
+                            if (showToast) {
+                              showToast('✅ Daily intro reset! Ready to trigger on next tab/app switch.', 4000);
+                            }
+                          } catch (_) {}
+                        }}
+                        className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-white/5 hover:bg-white/10 text-content-secondary hover:text-white border border-border-subtle transition"
+                        title="Reset daily intro limit to test again immediately"
+                      >
+                        Reset Daily Limit
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setAutoMiniPlayerIntroEnabled(!autoMiniPlayerIntroEnabled)}
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          autoMiniPlayerIntroEnabled ? 'bg-brand-500' : 'bg-surface-elevated'
                         }`}
-                      />
-                    </button>
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                            autoMiniPlayerIntroEnabled ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
