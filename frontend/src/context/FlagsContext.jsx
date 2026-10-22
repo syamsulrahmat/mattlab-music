@@ -8,6 +8,7 @@ export const DEFAULT_FLAGS = {
   theme_accent: 'default', // 'default' | 'emerald' | 'cyan' | 'purple' | 'amber' | 'rose'
   crossfade_curve: 260, // 0 | 150 | 260 | 500
   audio_hud: false, // true | false
+  component_inspector: 'off', // 'off' | 'hover' | 'always'
 };
 
 const THEME_ACCENTS = {
@@ -107,6 +108,19 @@ export const FLAG_SPECS = [
     type: 'boolean',
     default: false,
   },
+  {
+    id: 'component_inspector',
+    title: 'Component Inspector & Visual Architecture Overlay',
+    description: 'Display interactive outlines and labels on all UI components showing their name, file path, and purpose.',
+    category: 'Debug & Performance',
+    type: 'select',
+    default: 'off',
+    options: [
+      { value: 'off', label: 'Disabled' },
+      { value: 'hover', label: 'Hover to Inspect (Highlight active component under mouse)' },
+      { value: 'always', label: 'Show All Badges (Persistent name tags on all components)' },
+    ],
+  },
 ];
 
 const FlagsContext = createContext(null);
@@ -186,6 +200,18 @@ export const FlagsProvider = ({ children }) => {
     });
   }, []);
 
+  const toggleComponentInspector = useCallback(() => {
+    setFlags((prev) => {
+      const current = prev.component_inspector || 'off';
+      const next = current === 'off' ? 'hover' : current === 'hover' ? 'always' : 'off';
+      const updated = { ...prev, component_inspector: next };
+      try {
+        localStorage.setItem(FLAGS_STORAGE_KEY, JSON.stringify(updated));
+      } catch (_) {}
+      return updated;
+    });
+  }, []);
+
   const resetAllFlags = useCallback(() => {
     setFlags(DEFAULT_FLAGS);
     try {
@@ -201,6 +227,7 @@ export const FlagsProvider = ({ children }) => {
         lockDevMode,
         flags,
         setFlag,
+        toggleComponentInspector,
         resetAllFlags,
         isFlagsModalOpen,
         setIsFlagsModalOpen,

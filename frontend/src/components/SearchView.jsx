@@ -169,7 +169,12 @@ export const SearchView = ({
   );
 
   return (
-    <div className="pb-12 max-w-6xl">
+    <div 
+      data-dev-component="SearchView"
+      data-dev-file="src/components/SearchView.jsx"
+      data-dev-desc="Comprehensive search results stage displaying top result, matching songs, albums, and artists"
+      className="pb-12 max-w-6xl"
+    >
       {/* Search Input Box (fallback if not using TopBar) */}
       {propQuery === undefined && (
         <div className="relative max-w-md mb-8">

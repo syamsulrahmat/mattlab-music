@@ -209,7 +209,12 @@ export const TopBar = ({
   };
 
   return (
-    <header className="h-16 bg-surface-base px-4 md:px-5 flex items-center justify-between gap-4 z-40 select-none shrink-0 border-b border-border-subtle">
+    <header 
+      data-dev-component="TopBar"
+      data-dev-file="src/components/TopBar.jsx"
+      data-dev-desc="Header bar with branding, search input, library statistics, and profile menu"
+      className="h-16 bg-surface-base px-4 md:px-5 flex items-center justify-between gap-4 z-40 select-none shrink-0 border-b border-border-subtle"
+    >
       {/* Left: MattLab Brand */}
       <div className="flex items-center gap-3 shrink-0">
         <div 

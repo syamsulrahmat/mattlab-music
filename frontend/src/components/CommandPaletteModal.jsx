@@ -32,7 +32,7 @@ export const CommandPaletteModal = ({
   onRequestMusic,
   onOpenFlags,
 }) => {
-  const { isDevUnlocked } = useDevFlags();
+  const { isDevUnlocked, flags, toggleComponentInspector } = useDevFlags();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState({
     tracks: [],
@@ -208,6 +208,9 @@ export const CommandPaletteModal = ({
     if (isDevUnlocked && (query.toLowerCase().includes('flag') || query.toLowerCase().includes('dev'))) {
       items.push({ type: 'flags' });
     }
+    if (isDevUnlocked && (query.toLowerCase().includes('inspect') || query.toLowerCase().includes('component') || query.toLowerCase().includes('dev'))) {
+      items.push({ type: 'inspector' });
+    }
     if (topResult) {
       if (topResult.type === 'track') {
         items.push({ type: 'top_track', data: topResult });
@@ -243,6 +246,11 @@ export const CommandPaletteModal = ({
     if (item.type === 'flags') {
       onClose();
       if (onOpenFlags) onOpenFlags();
+      return;
+    }
+    if (item.type === 'inspector') {
+      if (toggleComponentInspector) toggleComponentInspector();
+      onClose();
       return;
     }
     if (item.type === 'top_track' || item.type === 'track' || item.type === 'trending_track') {
@@ -302,6 +310,9 @@ export const CommandPaletteModal = ({
       onClick={onClose}
     >
       <div
+        data-dev-component="CommandPaletteModal"
+        data-dev-file="src/components/CommandPaletteModal.jsx"
+        data-dev-desc="Global Ctrl+K spotlight modal for instant track searching and quick system commands"
         className="w-full max-w-2xl bg-surface-panel border border-border-medium rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[75vh]"
         onClick={(e) => e.stopPropagation()}
       >
@@ -336,35 +347,78 @@ export const CommandPaletteModal = ({
         {/* Search Results Body */}
         <div className="flex-1 overflow-y-auto p-3 space-y-4">
           {/* Developer Flags Quick Action */}
-          {isDevUnlocked && (query.toLowerCase().includes('flag') || query.toLowerCase().includes('dev')) && (
-            <div
-              id="cp-item-0"
-              onClick={() => {
-                onClose();
-                if (onOpenFlags) onOpenFlags();
-              }}
-              onMouseEnter={() => setSelectedIndex(0)}
-              className={`p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition shadow-md group ${
-                selectedIndex === 0
-                  ? 'bg-amber-500/25 border-amber-500/50 scale-[1.01]'
-                  : 'bg-amber-500/15 border-amber-500/30'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400">
-                  <FlaskConical size={18} />
-                </div>
-                <div>
-                  <div className="font-bold text-xs flex items-center gap-2 text-white">
-                    <span>Experimental Flags Dashboard</span>
-                    <span className="text-[9px] bg-amber-500/30 text-amber-300 px-1.5 py-0.2 rounded font-mono">mattlab://flags</span>
+          {(() => {
+            const flagsIndex = navigableItems.findIndex((i) => i.type === 'flags');
+            if (flagsIndex === -1) return null;
+            return (
+              <div
+                id={`cp-item-${flagsIndex}`}
+                onClick={() => {
+                  onClose();
+                  if (onOpenFlags) onOpenFlags();
+                }}
+                onMouseEnter={() => setSelectedIndex(flagsIndex)}
+                className={`p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition shadow-md group ${
+                  selectedIndex === flagsIndex
+                    ? 'bg-amber-500/25 border-amber-500/50 scale-[1.01]'
+                    : 'bg-amber-500/15 border-amber-500/30'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400">
+                    <FlaskConical size={18} />
                   </div>
-                  <div className="text-[11px] text-content-secondary mt-0.5">Configure developer switches, Circular Std font, and theme overrides</div>
+                  <div>
+                    <div className="font-bold text-xs flex items-center gap-2 text-white">
+                      <span>Experimental Flags Dashboard</span>
+                      <span className="text-[9px] bg-amber-500/30 text-amber-300 px-1.5 py-0.2 rounded font-mono">mattlab://flags</span>
+                    </div>
+                    <div className="text-[11px] text-content-secondary mt-0.5">Configure developer switches, Circular Std font, and theme overrides</div>
+                  </div>
                 </div>
+                <ChevronRight size={16} className="text-amber-400 group-hover:translate-x-0.5 transition" />
               </div>
-              <ChevronRight size={16} className="text-amber-400 group-hover:translate-x-0.5 transition" />
-            </div>
-          )}
+            );
+          })()}
+
+          {/* Component Inspector Quick Action */}
+          {(() => {
+            const inspectorIndex = navigableItems.findIndex((i) => i.type === 'inspector');
+            if (inspectorIndex === -1) return null;
+            return (
+              <div
+                id={`cp-item-${inspectorIndex}`}
+                onClick={() => {
+                  if (toggleComponentInspector) toggleComponentInspector();
+                  onClose();
+                }}
+                onMouseEnter={() => setSelectedIndex(inspectorIndex)}
+                className={`p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition shadow-md group ${
+                  selectedIndex === inspectorIndex
+                    ? 'bg-cyan-500/25 border-cyan-500/50 scale-[1.01]'
+                    : 'bg-cyan-500/15 border-cyan-500/30'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-cyan-500/20 text-cyan-400">
+                    <Sparkles size={18} />
+                  </div>
+                  <div>
+                    <div className="font-bold text-xs flex items-center gap-2 text-white">
+                      <span>Toggle Component Inspector</span>
+                      <span className="text-[9px] bg-cyan-500/30 text-cyan-300 px-1.5 py-0.2 rounded font-mono">
+                        {(flags.component_inspector || 'off').toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-content-secondary mt-0.5">
+                      Highlight visual component architecture, file paths, and names (Alt+C)
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight size={16} className="text-cyan-400 group-hover:translate-x-0.5 transition" />
+              </div>
+            );
+          })()}
           {isLoading && (
             <div className="flex items-center justify-center py-8 text-content-muted gap-2">
               <div className="animate-spin rounded-full h-4 w-4 border-2 border-brand-500 border-t-transparent" />

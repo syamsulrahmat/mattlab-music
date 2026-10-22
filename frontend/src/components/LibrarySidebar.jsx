@@ -793,6 +793,9 @@ export const LibrarySidebar = ({
     <>
       {/* Desktop Island */}
       <aside 
+        data-dev-component="LibrarySidebar"
+        data-dev-file="src/components/LibrarySidebar.jsx"
+        data-dev-desc="Left expandable island containing playlist library, filters, and collections"
         style={{ width: `${width}px` }}
         className="hidden md:flex flex-col h-full min-h-0 shrink-0 overflow-hidden select-none"
       >

@@ -103,7 +103,12 @@ export const NowPlayingVideo = React.memo(({ track, onSelectAlbum }) => {
   };
 
   return (
-    <div className="flex flex-col space-y-3">
+    <div 
+      data-dev-component="NowPlayingVideo"
+      data-dev-file="src/components/NowPlayingVideo.jsx"
+      data-dev-desc="Right panel 1:1 canvas toggling between album artwork and synchronized YouTube music video"
+      className="flex flex-col space-y-3"
+    >
       {/* 1:1 Square Media Display Card - Click to toggle between Video and Cover */}
       <div 
         onClick={handleCardClick}

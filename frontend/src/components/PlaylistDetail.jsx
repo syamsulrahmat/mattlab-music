@@ -965,6 +965,9 @@ export const PlaylistDetail = ({
 
   return (
     <div 
+      data-dev-component="PlaylistDetail"
+      data-dev-file="src/components/PlaylistDetail.jsx"
+      data-dev-desc="Custom & Spotify playlist detail view with track ordering, in-view filtering, and column sorting"
       onDragOver={(e) => {
         e.preventDefault();
         if (playlist?.spotify_id) {

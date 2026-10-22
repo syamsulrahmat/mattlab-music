@@ -34,6 +34,7 @@ import { BugReportModal } from './components/BugReportModal';
 import { MattLabLogo } from './components/MattLabLogo';
 import { GlobalTooltip } from './components/GlobalTooltip';
 import { AudioMetricsHUD } from './components/AudioMetricsHUD';
+import { ComponentInspectorOverlay } from './components/ComponentInspectorOverlay';
 import { ExperimentalFlagsModal } from './components/ExperimentalFlagsModal';
 import { PlayerProvider, usePlayer } from './context/PlayerContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -257,7 +258,7 @@ const MainAppContent = () => {
     toastMessage,
     showToast,
   } = usePlayer();
-  const { isDevUnlocked, isFlagsModalOpen, setIsFlagsModalOpen } = useDevFlags();
+  const { isDevUnlocked, isFlagsModalOpen, setIsFlagsModalOpen, toggleComponentInspector } = useDevFlags();
 
   const fetchStats = async () => {
     try {
@@ -472,6 +473,13 @@ const MainAppContent = () => {
         // Toggle Experimental Flags: Ctrl + Shift + D / Cmd + Shift + D
         e.preventDefault();
         setIsFlagsModalOpen((prev) => !prev);
+        return;
+      }
+
+      if (isDevUnlocked && e.altKey && keyLower === 'c') {
+        // Toggle Component Inspector: Alt + C
+        e.preventDefault();
+        if (toggleComponentInspector) toggleComponentInspector();
         return;
       }
 
@@ -1425,6 +1433,9 @@ const MainAppContent = () => {
 
       {/* Floating Audio Telemetry Diagnostics HUD */}
       <AudioMetricsHUD />
+
+      {/* Developer Component Inspector & Visual Architecture Overlay */}
+      <ComponentInspectorOverlay />
 
       {/* Standalone Experimental Flags Modal (mattlab://flags) */}
       <ExperimentalFlagsModal

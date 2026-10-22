@@ -80,7 +80,12 @@ export const HomeShelves = ({
   } = homeData;
 
   return (
-    <div className="space-y-8 p-4 sm:p-6 select-none">
+    <div 
+      data-dev-component="HomeShelves"
+      data-dev-file="src/components/HomeShelves.jsx"
+      data-dev-desc="Home page container displaying dynamic greeting, top tracks table, and album shelves"
+      className="space-y-8 p-4 sm:p-6 select-none"
+    >
       {/* Dynamic Greeting & Live Clock Banner */}
       <HomeGreeting />
 

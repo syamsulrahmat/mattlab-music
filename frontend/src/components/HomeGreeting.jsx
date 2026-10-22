@@ -58,7 +58,12 @@ export const HomeGreeting = () => {
   });
 
   return (
-    <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-r ${ambientGradient} bg-surface-elevated/60 border border-border-subtle p-5 sm:p-6 shadow-sm backdrop-blur-md`}>
+    <div 
+      data-dev-component="HomeGreeting"
+      data-dev-file="src/components/HomeGreeting.jsx"
+      data-dev-desc="Personalized ambient greeting banner with live clock and localized date"
+      className={`relative overflow-hidden rounded-2xl bg-gradient-to-r ${ambientGradient} bg-surface-elevated/60 border border-border-subtle p-5 sm:p-6 shadow-sm backdrop-blur-md`}
+    >
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         {/* Left: Dynamic Greeting */}
         <div className="flex items-center gap-3.5">

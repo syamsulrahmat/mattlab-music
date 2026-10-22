@@ -702,6 +702,9 @@ export const SettingsModal = ({
       onClick={onClose}
     >
       <div
+        data-dev-component="SettingsModal"
+        data-dev-file="src/components/SettingsModal.jsx"
+        data-dev-desc="System settings, audio pipeline configuration, keyboard shortcuts table, and experimental flags dashboard"
         className="w-full max-w-4xl bg-surface-island border border-border-medium rounded-2xl shadow-2xl flex flex-col h-[85vh] max-h-[760px] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >

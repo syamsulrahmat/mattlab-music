@@ -29,7 +29,12 @@ export const Footer = ({
   const { isAdmin } = useAuth();
 
   return (
-    <footer className="mt-16 pt-12 pb-0 px-4 sm:px-8 border-t border-border-subtle bg-surface-island/40 text-xs text-content-secondary select-none">
+    <footer 
+      data-dev-component="Footer"
+      data-dev-file="src/components/Footer.jsx"
+      data-dev-desc="Universal page footer with system telemetry, music request modal triggers, and shortcuts guide"
+      className="mt-16 pt-12 pb-0 px-4 sm:px-8 border-t border-border-subtle bg-surface-island/40 text-xs text-content-secondary select-none"
+    >
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 mb-10">
           {/* Column 1: Brand & Status */}

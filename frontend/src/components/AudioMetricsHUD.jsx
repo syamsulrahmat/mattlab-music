@@ -54,6 +54,9 @@ export const AudioMetricsHUD = () => {
 
   return (
     <div
+      data-dev-component="AudioMetricsHUD"
+      data-dev-file="src/components/AudioMetricsHUD.jsx"
+      data-dev-desc="Floating audio diagnostic HUD with live buffer telemetry and decoder stats"
       style={{ top: `${position.y}px`, left: `${position.x}px` }}
       className="fixed z-50 w-64 bg-black/90 backdrop-blur-md border border-white/20 text-white rounded-xl shadow-2xl p-3 text-xs font-mono select-none"
     >

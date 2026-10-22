@@ -273,7 +273,12 @@ export const LyricsView = ({ onClose }) => {
   }
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-b from-surface-elevated to-surface-island overflow-hidden select-none relative">
+    <div 
+      data-dev-component="LyricsView"
+      data-dev-file="src/components/LyricsView.jsx"
+      data-dev-desc="Full-screen synchronized lyrics immersion canvas with auto-scrolling and karaoke vocal removal"
+      className="h-full flex flex-col bg-gradient-to-b from-surface-elevated to-surface-island overflow-hidden select-none relative"
+    >
       {/* Top Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle bg-surface-island/50 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-3.5 truncate">

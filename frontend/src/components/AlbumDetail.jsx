@@ -268,7 +268,12 @@ export const AlbumDetail = ({
   const totalMins = Math.floor(totalSeconds / 60);
 
   return (
-    <div className="pb-16 select-none relative w-full">
+    <div 
+      data-dev-component="AlbumDetail"
+      data-dev-file="src/components/AlbumDetail.jsx"
+      data-dev-desc="Album showcase with full-bleed cover banner, release metadata, and tracklist table"
+      className="pb-16 select-none relative w-full"
+    >
       {/* Full-bleed Header Banner taking all the area without back button */}
       <div className="bg-gradient-to-b from-purple-950/45 via-surface-panel/75 to-surface-island px-6 sm:px-8 pt-8 sm:pt-10 pb-8 sm:pb-10 w-full border-b border-border-subtle">
         <div className="flex flex-col md:flex-row gap-6 md:gap-7 items-start md:items-end">

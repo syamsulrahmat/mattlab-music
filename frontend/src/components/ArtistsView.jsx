@@ -32,7 +32,12 @@ export const ArtistsView = ({ onSelectArtist, onContextMenu }) => {
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 pb-12 select-none">
+    <div 
+      data-dev-component="ArtistsView"
+      data-dev-file="src/components/ArtistsView.jsx"
+      data-dev-desc="Grid of all library artists with circular profile photography and track counts"
+      className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 pb-12 select-none"
+    >
       {artists.map((artist) => (
         <div
           key={artist.id}

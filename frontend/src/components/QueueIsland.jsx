@@ -33,6 +33,9 @@ export const QueueIsland = ({
 
   return (
     <aside 
+      data-dev-component="QueueIsland"
+      data-dev-file="src/components/QueueIsland.jsx"
+      data-dev-desc="Right expandable island displaying currently playing track, active queue, and upcoming tracks"
       style={{ width: `${width}px` }}
       className="hidden lg:flex flex-col h-full shrink-0 bg-surface-island rounded-lg overflow-hidden select-none border border-border-subtle shadow-xl"
     >

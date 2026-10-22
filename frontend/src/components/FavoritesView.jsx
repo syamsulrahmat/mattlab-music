@@ -482,7 +482,12 @@ export const FavoritesView = ({
   const remainingMins = Math.floor((totalSeconds % 3600) / 60);
 
   return (
-    <div className="pb-12 select-none">
+    <div 
+      data-dev-component="FavoritesView"
+      data-dev-file="src/components/FavoritesView.jsx"
+      data-dev-desc="Liked Songs playlist view with in-view search filter, column sorting, shuffle, and bulk unlike"
+      className="pb-12 select-none"
+    >
       {/* Hero Header */}
       <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-start md:items-end mb-6 -mx-4 sm:-mx-6 -mt-4 sm:-mt-6 p-6 sm:p-8 bg-gradient-to-b from-indigo-900/80 via-indigo-950/40 to-surface-island rounded-t-lg">
         <div className="w-44 h-44 sm:w-52 sm:h-52 rounded-lg shadow-2xl bg-gradient-to-br from-indigo-600 via-indigo-800 to-purple-900 flex items-center justify-center shrink-0">

@@ -160,7 +160,13 @@ export const HomeTopTables = ({
   const isWholeListPlaying = top10.some((t) => t.id === currentTrack?.id) && isPlaying;
 
   return (
-    <section ref={containerRef} className="space-y-4">
+    <section 
+      ref={containerRef} 
+      data-dev-component="HomeTopTables"
+      data-dev-file="src/components/HomeTopTables.jsx"
+      data-dev-desc="Your Top 10 Tracks table with prioritized multi-select playback and continuous library streaming"
+      className="space-y-4"
+    >
       <div className="bg-surface-island rounded-2xl p-5 sm:p-6 border border-border-subtle shadow-xl">
         {/* Header & Quick Play Action */}
         <div className="flex items-center justify-between pb-5 border-b border-border-subtle">

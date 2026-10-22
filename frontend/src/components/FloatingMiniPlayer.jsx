@@ -952,6 +952,9 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
       {/* 2. In-App Draggable & Resizable Mini Player Fallback */}
       {isOpen && !pipWindow && (
         <div
+          data-dev-component="FloatingMiniPlayer"
+          data-dev-file="src/components/FloatingMiniPlayer.jsx"
+          data-dev-desc="Draggable floating picture-in-picture player with interactive controls and background visualizer"
           ref={containerRef}
           onPointerDown={handlePointerDown}
           style={{

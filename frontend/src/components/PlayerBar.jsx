@@ -109,7 +109,12 @@ export const PlayerBar = ({
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <footer className="relative bg-surface-base border-t border-border-subtle z-40 select-none shrink-0">
+    <footer 
+      data-dev-component="PlayerBar"
+      data-dev-file="src/components/PlayerBar.jsx"
+      data-dev-desc="Bottom persistent playback bar with track information, transport controls, and volume"
+      className="relative bg-surface-base border-t border-border-subtle z-40 select-none shrink-0"
+    >
       {/* Mobile Thin Progress Line */}
       <div className="md:hidden absolute top-0 left-0 right-0 h-1 bg-surface-elevated overflow-hidden">
         <div 

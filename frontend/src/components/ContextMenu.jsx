@@ -150,6 +150,9 @@ export const ContextMenu = ({
   return (
     <div
       ref={menuRef}
+      data-dev-component="ContextMenu"
+      data-dev-file="src/components/ContextMenu.jsx"
+      data-dev-desc="Right-click action menu for tracks, albums, artists, and playlists"
       style={{
         top: `${coords.top}px`,
         left: `${coords.left}px`,
