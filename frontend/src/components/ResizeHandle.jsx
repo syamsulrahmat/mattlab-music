@@ -6,13 +6,13 @@ export const ResizeHandle = ({
   onDoubleClick, 
   isDragging = false,
   className = 'hidden md:flex',
-  title = "Drag to resize sidebar (double-click to reset)"
+  title = ''
 }) => {
   return (
     <div
       role="separator"
       tabIndex={0}
-      title={title}
+      {...(title ? { title } : {})}
       onMouseDown={onMouseDown}
       onTouchStart={onTouchStart}
       onDoubleClick={onDoubleClick}

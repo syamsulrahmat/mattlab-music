@@ -63,7 +63,7 @@ const MainAppContent = () => {
       const saved = localStorage.getItem('mattlab_sidebar_left_width');
       if (saved) {
         const parsed = parseInt(saved, 10);
-        if (!isNaN(parsed) && parsed >= 200 && parsed <= 460) {
+        if (!isNaN(parsed) && parsed >= 72 && parsed <= 460) {
           return parsed;
         }
       }
@@ -154,7 +154,7 @@ const MainAppContent = () => {
 
       const deltaX = clientX - startX;
       if (side === 'left') {
-        const clamped = Math.min(Math.max(startWidth + deltaX, 200), 460);
+        const clamped = Math.min(Math.max(startWidth + deltaX, 72), 460);
         setLeftSidebarWidth(clamped);
       } else if (side === 'right') {
         const clamped = Math.min(Math.max(startWidth - deltaX, 260), 480);

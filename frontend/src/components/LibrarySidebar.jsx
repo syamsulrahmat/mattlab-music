@@ -155,99 +155,126 @@ export const LibrarySidebar = ({
   };
 
   const canReorder = !librarySearchQuery.trim();
+  const isCollapsed = !isMobileOpen && width < 180;
 
   const content = (
     <div className="flex flex-col h-full min-h-0 bg-surface-island rounded-lg overflow-hidden select-none">
       {/* Island Header */}
-      <div className="px-4 py-3.5 flex items-center justify-between border-b border-border-subtle shrink-0">
-        <div className="flex items-center gap-2.5 text-content-secondary">
-          <Library size={22} className="stroke-[2.2]" />
-          <span className="font-bold text-sm text-content-secondary tracking-tight">Your Library</span>
-        </div>
-
-        <div className="flex items-center gap-1">
-          {onImportSpotifyPrompt && (
-            <button
-              onClick={onImportSpotifyPrompt}
-              className="w-8 h-8 rounded-full hover:bg-surface-elevated text-content-secondary hover:text-brand-500 flex items-center justify-center transition"
-              title="Import Spotify playlist"
-            >
-              <SpotifyIcon size={16} />
-            </button>
-          )}
+      {isCollapsed ? (
+        <div className="py-3 flex flex-col items-center justify-center gap-2 border-b border-border-subtle shrink-0">
           <button
-            onClick={onCreatePlaylistPrompt}
-            className="w-8 h-8 rounded-full hover:bg-surface-elevated text-content-secondary hover:text-content-primary flex items-center justify-center transition"
-            title="Create playlist"
+            onClick={() => {
+              setActiveTab('home');
+              if (onCloseMobile) onCloseMobile();
+            }}
+            className="w-10 h-10 rounded-full hover:bg-surface-elevated text-content-secondary hover:text-content-primary flex items-center justify-center transition"
+            aria-label="Your Library"
           >
-            <Plus size={18} />
+            <Library size={22} className="stroke-[2.2]" />
           </button>
-          {onCloseMobile && (
+          {onCreatePlaylistPrompt && (
             <button
-              onClick={onCloseMobile}
-              className="md:hidden w-8 h-8 rounded-full hover:bg-surface-elevated text-content-secondary hover:text-content-primary flex items-center justify-center"
+              onClick={onCreatePlaylistPrompt}
+              className="w-8 h-8 rounded-full hover:bg-surface-elevated text-content-secondary hover:text-content-primary flex items-center justify-center transition"
+              aria-label="Create playlist"
             >
-              <X size={18} />
+              <Plus size={18} />
             </button>
           )}
         </div>
-      </div>
+      ) : (
+        <div className="px-4 py-3.5 flex items-center justify-between border-b border-border-subtle shrink-0">
+          <div className="flex items-center gap-2.5 text-content-secondary">
+            <Library size={22} className="stroke-[2.2]" />
+            <span className="font-bold text-sm text-content-secondary tracking-tight">Your Library</span>
+          </div>
 
-      {/* Filter / Category Pills */}
-      <div className="px-4 py-2 flex items-center gap-2 border-b border-border-subtle shrink-0">
-        <button
-          onClick={() => {
-            setActiveTab('albums');
-            if (onCloseMobile) onCloseMobile();
-          }}
-          className={`px-3 py-1 rounded-full text-xs font-semibold transition ${
-            activeTab === 'albums'
-              ? 'bg-white text-black'
-              : 'bg-surface-elevated text-content-primary hover:bg-surface-hover'
-          }`}
-        >
-          Albums
-        </button>
-        <button
-          onClick={() => {
-            setActiveTab('artists');
-            if (onCloseMobile) onCloseMobile();
-          }}
-          className={`px-3 py-1 rounded-full text-xs font-semibold transition ${
-            activeTab === 'artists'
-              ? 'bg-white text-black'
-              : 'bg-surface-elevated text-content-primary hover:bg-surface-hover'
-          }`}
-        >
-          Artists
-        </button>
-      </div>
-
-      {/* Sub-bar: Search in library (left) & Playlist reordering (right) */}
-      <div className="px-3 py-2 flex items-center justify-between gap-2 border-b border-border-subtle shrink-0">
-        {/* Left: Search input to filter playlists */}
-        <div className="relative flex-1">
-          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-content-muted" />
-          <input
-            type="text"
-            placeholder="Search in library..."
-            value={librarySearchQuery}
-            onChange={(e) => setLibrarySearchQuery(e.target.value)}
-            onKeyDown={handleSearchKeyDown}
-            className="w-full bg-surface-panel hover:bg-surface-elevated focus:bg-surface-elevated text-xs text-content-primary pl-7 pr-6 py-1.5 rounded-full border border-border-subtle focus:border-border-strong outline-none transition placeholder:text-content-subtle"
-          />
-          {librarySearchQuery && (
+          <div className="flex items-center gap-1">
+            {onImportSpotifyPrompt && (
+              <button
+                onClick={onImportSpotifyPrompt}
+                className="w-8 h-8 rounded-full hover:bg-surface-elevated text-content-secondary hover:text-brand-500 flex items-center justify-center transition"
+                aria-label="Import Spotify playlist"
+              >
+                <SpotifyIcon size={16} />
+              </button>
+            )}
             <button
-              onClick={() => setLibrarySearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-content-muted hover:text-content-primary"
+              onClick={onCreatePlaylistPrompt}
+              className="w-8 h-8 rounded-full hover:bg-surface-elevated text-content-secondary hover:text-content-primary flex items-center justify-center transition"
+              aria-label="Create playlist"
             >
-              <X size={12} />
+              <Plus size={18} />
             </button>
-          )}
+            {onCloseMobile && (
+              <button
+                onClick={onCloseMobile}
+                className="md:hidden w-8 h-8 rounded-full hover:bg-surface-elevated text-content-secondary hover:text-content-primary flex items-center justify-center"
+              >
+                <X size={18} />
+              </button>
+            )}
+          </div>
         </div>
+      )}
 
-        {/* Right: Reordering / Sorting dropdown */}
-        <div className="relative shrink-0" ref={sortMenuRef}>
+      {!isCollapsed && (
+        <>
+          {/* Filter / Category Pills */}
+          <div className="px-4 py-2 flex items-center gap-2 border-b border-border-subtle shrink-0">
+            <button
+              onClick={() => {
+                setActiveTab('albums');
+                if (onCloseMobile) onCloseMobile();
+              }}
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition ${
+                activeTab === 'albums'
+                  ? 'bg-white text-black'
+                  : 'bg-surface-elevated text-content-primary hover:bg-surface-hover'
+              }`}
+            >
+              Albums
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('artists');
+                if (onCloseMobile) onCloseMobile();
+              }}
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition ${
+                activeTab === 'artists'
+                  ? 'bg-white text-black'
+                  : 'bg-surface-elevated text-content-primary hover:bg-surface-hover'
+              }`}
+            >
+              Artists
+            </button>
+          </div>
+
+          {/* Sub-bar: Search in library (left) & Playlist reordering (right) */}
+          <div className="px-3 py-2 flex items-center justify-between gap-2 border-b border-border-subtle shrink-0">
+            {/* Left: Search input to filter playlists */}
+            <div className="relative flex-1">
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-content-muted" />
+              <input
+                type="text"
+                placeholder="Search in library..."
+                value={librarySearchQuery}
+                onChange={(e) => setLibrarySearchQuery(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
+                className="w-full bg-surface-panel hover:bg-surface-elevated focus:bg-surface-elevated text-xs text-content-primary pl-7 pr-6 py-1.5 rounded-full border border-border-subtle focus:border-border-strong outline-none transition placeholder:text-content-subtle"
+              />
+              {librarySearchQuery && (
+                <button
+                  onClick={() => setLibrarySearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-content-muted hover:text-content-primary"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+
+            {/* Right: Reordering / Sorting dropdown */}
+            <div className="relative shrink-0" ref={sortMenuRef}>
           <button
             onClick={() => setIsSortMenuOpen((prev) => !prev)}
             className={`p-1.5 rounded-md hover:bg-surface-hover text-xs flex items-center gap-1 transition ${
@@ -338,6 +365,8 @@ export const LibrarySidebar = ({
           )}
         </div>
       </div>
+        </>
+      )}
 
       {/* Playlists & Liked Songs Section */}
       <div 
@@ -358,7 +387,7 @@ export const LibrarySidebar = ({
             e.dataTransfer.dropEffect = 'move';
           }
         }}
-        className="flex-1 min-h-0 overflow-y-auto px-2 py-2 space-y-1"
+        className={`flex-1 min-h-0 overflow-y-auto ${isCollapsed ? 'px-1 py-2 space-y-1' : 'px-2 py-2 space-y-1'}`}
       >
         {/* Liked Songs Special Item */}
         {showLikedSongs && (() => {
@@ -423,7 +452,7 @@ export const LibrarySidebar = ({
                   }
                 }
               }}
-              className={`flex items-center gap-3 p-2 rounded-md cursor-pointer transition border relative ${
+              className={`flex items-center ${isCollapsed ? 'justify-center p-1.5' : 'gap-3 p-2'} rounded-md cursor-pointer transition border relative ${
                 dragOverId === 'favorites'
                   ? 'bg-brand-500/20 border-brand-500 scale-[1.02] shadow-lg'
                   : isFavoritesFocused
@@ -438,42 +467,54 @@ export const LibrarySidebar = ({
                   isFavoritesFocused ? 'bg-brand-400 shadow-brand-400/50' : 'bg-brand-500 shadow-brand-500/50'
                 }`} />
               )}
-              <div className="w-12 h-12 rounded-md bg-gradient-to-br from-indigo-700 via-purple-700 to-indigo-900 flex items-center justify-center shrink-0 shadow">
+              <div className="w-12 h-12 rounded-md bg-gradient-to-br from-indigo-700 via-purple-700 to-indigo-900 flex items-center justify-center shrink-0 shadow relative">
                 <Heart size={20} className="fill-white text-white" />
+                {isPlayingFavorites && isCollapsed && (
+                  <div className="absolute inset-0 bg-black/50 rounded-md flex items-center justify-center">
+                    <div className="flex items-end justify-center gap-[2px] w-4 h-4 pb-0.5">
+                      <span className="w-[2px] bg-brand-400 rounded-full animate-eq-1" />
+                      <span className="w-[2px] bg-brand-400 rounded-full animate-eq-2" />
+                      <span className="w-[2px] bg-brand-400 rounded-full animate-eq-3" />
+                      <span className="w-[2px] bg-brand-400 rounded-full animate-eq-4" />
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="truncate flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 truncate">
-                    <p className={`text-sm font-semibold truncate ${
-                      isFavoritesFocused
-                        ? 'text-brand-300 font-bold'
-                        : isFavoritesSelected
-                        ? 'text-brand-400 font-bold'
-                        : isPlayingFavorites
-                        ? 'text-brand-500 font-bold'
-                        : 'text-content-primary'
-                    }`}>
-                      Liked Songs
-                    </p>
-                    {isPlayingFavorites && (
-                      <div className="flex items-end justify-center gap-[2px] w-3 h-3 pb-0.5 shrink-0" title="Playing">
-                        <span className="w-[2px] bg-brand-500 rounded-full animate-eq-1" />
-                        <span className="w-[2px] bg-brand-500 rounded-full animate-eq-2" />
-                        <span className="w-[2px] bg-brand-500 rounded-full animate-eq-3" />
-                        <span className="w-[2px] bg-brand-500 rounded-full animate-eq-4" />
-                      </div>
+              {!isCollapsed && (
+                <div className="truncate flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <p className={`text-sm font-semibold truncate ${
+                        isFavoritesFocused
+                          ? 'text-brand-300 font-bold'
+                          : isFavoritesSelected
+                          ? 'text-brand-400 font-bold'
+                          : isPlayingFavorites
+                          ? 'text-brand-500 font-bold'
+                          : 'text-content-primary'
+                      }`}>
+                        Liked Songs
+                      </p>
+                      {isPlayingFavorites && (
+                        <div className="flex items-end justify-center gap-[2px] w-3 h-3 pb-0.5 shrink-0" title="Playing">
+                          <span className="w-[2px] bg-brand-500 rounded-full animate-eq-1" />
+                          <span className="w-[2px] bg-brand-500 rounded-full animate-eq-2" />
+                          <span className="w-[2px] bg-brand-500 rounded-full animate-eq-3" />
+                          <span className="w-[2px] bg-brand-500 rounded-full animate-eq-4" />
+                        </div>
+                      )}
+                    </div>
+                    {dragOverId === 'favorites' && (
+                      <span className="text-[10px] text-brand-500 font-bold">
+                        + Drop to save
+                      </span>
                     )}
                   </div>
-                  {dragOverId === 'favorites' && (
-                    <span className="text-[10px] text-brand-500 font-bold">
-                      + Drop to save
-                    </span>
-                  )}
+                  <p className="text-xs text-content-secondary truncate mt-0.5">
+                    Playlist • Auto-collected
+                  </p>
                 </div>
-                <p className="text-xs text-content-secondary truncate mt-0.5">
-                  Playlist • Auto-collected
-                </p>
-              </div>
+              )}
             </div>
           );
         })()}
@@ -635,7 +676,7 @@ export const LibrarySidebar = ({
                     }
                   }
                 }}
-                className={`flex items-center gap-2.5 p-2 rounded-md select-none group transition border relative ${
+                className={`flex items-center ${isCollapsed ? 'justify-center p-1.5' : 'gap-2.5 p-2'} rounded-md select-none group transition border relative ${
                   draggedPlaylistIdx !== null ? '[&_*]:pointer-events-none' : ''
                 } ${
                   canReorder ? (isBeingDragged ? 'cursor-grabbing' : 'cursor-pointer') : 'cursor-pointer'
@@ -661,47 +702,59 @@ export const LibrarySidebar = ({
                   {isDragOverTrack && (
                     <div className="absolute inset-0 bg-brand-500/30 border-2 border-brand-500 rounded-md pointer-events-none" />
                   )}
+                  {isPlayingThis && isCollapsed && (
+                    <div className="absolute inset-0 bg-black/50 rounded-md flex items-center justify-center">
+                      <div className="flex items-end justify-center gap-[2px] w-4 h-4 pb-0.5">
+                        <span className="w-[2px] bg-brand-400 rounded-full animate-eq-1" />
+                        <span className="w-[2px] bg-brand-400 rounded-full animate-eq-2" />
+                        <span className="w-[2px] bg-brand-400 rounded-full animate-eq-3" />
+                        <span className="w-[2px] bg-brand-400 rounded-full animate-eq-4" />
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="truncate flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 truncate">
-                      <p className={`text-sm font-semibold truncate ${
-                        isItemFocused
-                          ? 'text-brand-300 font-bold'
-                          : isSelected
-                          ? 'text-brand-400 font-bold'
-                          : isPlayingThis
-                          ? 'text-brand-500 font-bold'
-                          : isDragOverTrack
-                          ? 'text-brand-400'
-                          : 'text-content-primary'
-                      }`}>
-                        {pl.name}
-                      </p>
-                      {isPlayingThis && (
-                        <div className="flex items-end justify-center gap-[2px] w-3 h-3 pb-0.5 shrink-0" title="Playing">
-                          <span className="w-[2px] bg-brand-500 rounded-full animate-eq-1" />
-                          <span className="w-[2px] bg-brand-500 rounded-full animate-eq-2" />
-                          <span className="w-[2px] bg-brand-500 rounded-full animate-eq-3" />
-                          <span className="w-[2px] bg-brand-500 rounded-full animate-eq-4" />
-                        </div>
+                {!isCollapsed && (
+                  <div className="truncate flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <p className={`text-sm font-semibold truncate ${
+                          isItemFocused
+                            ? 'text-brand-300 font-bold'
+                            : isSelected
+                            ? 'text-brand-400 font-bold'
+                            : isPlayingThis
+                            ? 'text-brand-500 font-bold'
+                            : isDragOverTrack
+                            ? 'text-brand-400'
+                            : 'text-content-primary'
+                        }`}>
+                          {pl.name}
+                        </p>
+                        {isPlayingThis && (
+                          <div className="flex items-end justify-center gap-[2px] w-3 h-3 pb-0.5 shrink-0" title="Playing">
+                            <span className="w-[2px] bg-brand-500 rounded-full animate-eq-1" />
+                            <span className="w-[2px] bg-brand-500 rounded-full animate-eq-2" />
+                            <span className="w-[2px] bg-brand-500 rounded-full animate-eq-3" />
+                            <span className="w-[2px] bg-brand-500 rounded-full animate-eq-4" />
+                          </div>
+                        )}
+                      </div>
+                      {isDragOverTrack && (
+                        <span className="text-[10px] text-brand-500 font-bold animate-pulse">
+                          + Drop here
+                        </span>
                       )}
                     </div>
-                    {isDragOverTrack && (
-                      <span className="text-[10px] text-brand-500 font-bold animate-pulse">
-                        + Drop here
-                      </span>
-                    )}
+                    <p className="text-xs text-content-secondary truncate mt-0.5 flex items-center gap-1.5">
+                      {pl.spotify_id && (
+                        <span className="text-brand-500 shrink-0" title="Synced with Spotify">
+                          <SpotifyIcon size={12} />
+                        </span>
+                      )}
+                      <span>Playlist • {pl.track_count} {pl.track_count === 1 ? 'song' : 'songs'}</span>
+                    </p>
                   </div>
-                  <p className="text-xs text-content-secondary truncate mt-0.5 flex items-center gap-1.5">
-                    {pl.spotify_id && (
-                      <span className="text-brand-500 shrink-0" title="Synced with Spotify">
-                        <SpotifyIcon size={12} />
-                      </span>
-                    )}
-                    <span>Playlist • {pl.track_count} {pl.track_count === 1 ? 'song' : 'songs'}</span>
-                  </p>
-                </div>
+                )}
               </div>
               {canReorder && isTargetBelow && (
                 <div className="h-0.5 w-full bg-brand-500 rounded-full my-1 shadow-sm shadow-brand-500/50 pointer-events-none" />
@@ -712,15 +765,19 @@ export const LibrarySidebar = ({
 
         {displayPlaylists.length === 0 && (
           <div className="px-3 py-6 text-center text-xs text-content-subtle">
-            {librarySearchQuery.trim()
-              ? 'No matching playlists found.'
-              : 'No custom playlists yet. Tap + to create one!'}
+            {isCollapsed ? (
+              <Plus size={16} className="mx-auto text-content-muted" />
+            ) : librarySearchQuery.trim() ? (
+              'No matching playlists found.'
+            ) : (
+              'No custom playlists yet. Tap + to create one!'
+            )}
           </div>
         )}
       </div>
 
       {/* Subtle Library Counter Widget at the Bottom */}
-      {stats && (
+      {!isCollapsed && stats && (
         <div className="px-4 py-3 bg-surface-island border-t border-border-subtle text-[11px] text-content-secondary flex items-center justify-between shrink-0">
           <span>{stats.tracks.toLocaleString()} songs</span>
           <span className="text-content-subtle">•</span>
