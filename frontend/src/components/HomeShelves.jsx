@@ -84,10 +84,9 @@ export const HomeShelves = ({
       {/* Dynamic Greeting & Live Clock Banner */}
       <HomeGreeting />
 
-      {/* Dual Top 10 Tables: User Top 10 & 10 Current Popular Songs */}
+      {/* Top 10 Tracks Table */}
       <HomeTopTables
         userTopTracks={user_top_tracks}
-        popularTracks={popular_tracks}
         onSelectAlbum={onSelectAlbum}
         onSelectArtist={onSelectArtist}
         onContextMenu={onContextMenu}
