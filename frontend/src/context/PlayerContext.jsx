@@ -1409,6 +1409,26 @@ export const PlayerProvider = ({ children }) => {
     }
   };
 
+  const removeFavoritesBulk = async (trackIds) => {
+    if (!Array.isArray(trackIds) || trackIds.length === 0) return;
+    const toRemove = new Set(trackIds);
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
+      toRemove.forEach((id) => next.delete(id));
+      return next;
+    });
+    try {
+      await fetch('/api/favorites/remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ track_ids: trackIds }),
+      });
+    } catch (err) {
+      console.error('Failed to remove favorites bulk:', err);
+    }
+  };
+
   const addToQueue = (trackOrTracks) => {
     const tracksToAdd = Array.isArray(trackOrTracks) ? trackOrTracks : [trackOrTracks];
     if (tracksToAdd.length === 0) return;
@@ -2009,6 +2029,7 @@ export const PlayerProvider = ({ children }) => {
         favoriteIds,
         isFavorite: (id) => Boolean(favoriteIds?.has?.(id)),
         toggleFavorite,
+        removeFavoritesBulk,
         playTrack,
         playTrackWithKaraoke,
         togglePlay,

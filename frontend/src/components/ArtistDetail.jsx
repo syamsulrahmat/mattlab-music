@@ -310,18 +310,20 @@ export const ArtistDetail = ({
       {/* Popular Tracks Section */}
       <div className="px-6 sm:px-8 mt-6 mb-12">
         <h2 className="text-xl font-bold text-content-primary mb-4 tracking-tight">Popular Songs</h2>
-        <div>
-          <div className="sticky top-0 z-20 bg-surface-island/95 backdrop-blur-md rounded-lg grid grid-cols-[36px_1fr_36px_50px] md:grid-cols-[40px_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-content-secondary border-b border-border-medium items-center tracking-wider shadow-md">
-            <span className="text-center">#</span>
-            <span>Title</span>
-            <span className="hidden md:block">Album</span>
-            <span />
-            <span className="text-right flex items-center justify-end">
-              <Clock size={14} />
-            </span>
+        <div className="bg-surface-panel/70 rounded-lg p-2 border border-border-subtle">
+          <div className="sticky top-0 z-20 bg-surface-island/95 backdrop-blur-md rounded-lg mb-1 border-b border-border-medium shadow-md">
+            <div className="grid grid-cols-[36px_1fr_36px_50px] md:grid-cols-[40px_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-content-secondary items-center tracking-wider select-none">
+              <span className="text-center">#</span>
+              <span>Title</span>
+              <span className="hidden md:block">Album</span>
+              <span />
+              <span className="text-right flex items-center justify-end">
+                <Clock size={14} />
+              </span>
+            </div>
           </div>
 
-          <div className="divide-y divide-transparent mt-1">
+          <div className="divide-y divide-transparent">
             {tracks.slice(0, 30).map((track, idx) => {
               const isThisTrack = currentTrack?.id === track.id;
               const isThisPlaying = isThisTrack && isPlaying;

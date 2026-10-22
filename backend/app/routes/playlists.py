@@ -22,6 +22,9 @@ class ReorderPlaylistsRequest(BaseModel):
 class ReorderTracksRequest(BaseModel):
     track_ids: List[int]
 
+class BulkRemoveRequest(BaseModel):
+    track_ids: List[int]
+
 # ==================== FAVORITES ====================
 
 @router.get("/favorites/ids")
@@ -54,12 +57,27 @@ async def get_favorites(current_user: Dict[str, Any] = Depends(get_current_user)
         tracks = [
             {
                 **dict(row),
+                "added_at": row["favorited_at"],
                 "cover_url": make_cover_url(row["album_id"], row["cover_path"]),
                 "stream_url": f"/api/stream/{row['id']}?v={int(row['mtime']) if row['mtime'] else 1}",
             }
             for row in cursor.fetchall()
         ]
     return {"items": tracks, "count": len(tracks)}
+
+@router.post("/favorites/remove")
+async def bulk_remove_favorites(payload: BulkRemoveRequest, current_user: Dict[str, Any] = Depends(get_current_user)):
+    """Remove multiple tracks from favorites in one call (multi-select delete)."""
+    if not payload.track_ids:
+        return {"status": "removed", "count": 0}
+    placeholders = ",".join("?" for _ in payload.track_ids)
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            f"DELETE FROM favorites WHERE user_id = ? AND track_id IN ({placeholders})",
+            [current_user["id"], *payload.track_ids]
+        )
+    return {"status": "removed", "count": len(payload.track_ids)}
 
 @router.post("/favorites/{track_id}")
 async def add_favorite(track_id: int, current_user: Dict[str, Any] = Depends(get_current_user)):
@@ -219,9 +237,6 @@ async def get_playlist_detail(playlist_id: int, current_user: Dict[str, Any] = D
 class PlaylistUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-
-class BulkRemoveRequest(BaseModel):
-    track_ids: List[int]
 
 @router.patch("/playlists/{playlist_id}")
 async def update_playlist(playlist_id: int, payload: PlaylistUpdate, current_user: Dict[str, Any] = Depends(get_current_user)):

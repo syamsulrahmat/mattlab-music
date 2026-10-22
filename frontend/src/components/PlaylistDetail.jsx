@@ -1377,27 +1377,28 @@ export const PlaylistDetail = ({
         </div>
       ) : (
         <div className="px-6 sm:px-8">
-          {/* Sticky Tracklist Column Header Row */}
-          <div 
-            onDragOver={(e) => {
-              e.preventDefault();
-              if (isLockedSpotify) {
-                e.dataTransfer.dropEffect = 'none';
-              } else if (isDragEnabled) {
-                e.dataTransfer.dropEffect = 'move';
-              }
-            }}
-            onDragEnter={(e) => {
-              e.preventDefault();
-              if (isLockedSpotify) {
-                e.dataTransfer.dropEffect = 'none';
-              } else if (isDragEnabled) {
-                e.dataTransfer.dropEffect = 'move';
-              }
-            }}
-            className="sticky top-0 z-30 bg-surface-island/95 backdrop-blur-md mb-2"
-          >
-            <div className="grid grid-cols-[36px_1fr_50px] md:grid-cols-[40px_3fr_2fr_60px] lg:grid-cols-[40px_4fr_3fr_2fr_60px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-content-secondary border-b border-border-medium items-center">
+          <div className="bg-surface-panel/70 rounded-lg p-2 border border-border-subtle">
+            {/* Sticky Tracklist Column Header Row */}
+            <div 
+              onDragOver={(e) => {
+                e.preventDefault();
+                if (isLockedSpotify) {
+                  e.dataTransfer.dropEffect = 'none';
+                } else if (isDragEnabled) {
+                  e.dataTransfer.dropEffect = 'move';
+                }
+              }}
+              onDragEnter={(e) => {
+                e.preventDefault();
+                if (isLockedSpotify) {
+                  e.dataTransfer.dropEffect = 'none';
+                } else if (isDragEnabled) {
+                  e.dataTransfer.dropEffect = 'move';
+                }
+              }}
+              className="sticky top-0 z-30 bg-surface-island/95 backdrop-blur-md rounded-lg mb-1 border-b border-border-medium shadow-md"
+            >
+            <div className="grid grid-cols-[36px_1fr_50px] md:grid-cols-[40px_3fr_2fr_60px] lg:grid-cols-[40px_4fr_3fr_2fr_60px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-content-secondary items-center select-none">
               {/* # Column */}
               <div className="flex items-center justify-center">
                 <button
@@ -1838,7 +1839,8 @@ export const PlaylistDetail = ({
               })}
             </div>
           </div>
-        )}
+        </div>
+      )}
 
 
 

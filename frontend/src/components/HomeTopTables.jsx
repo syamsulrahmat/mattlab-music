@@ -195,19 +195,23 @@ export const HomeTopTables = ({
           </button>
         </div>
 
-        {/* Playlist-style Table Column Header */}
-        <div className="grid grid-cols-[36px_1fr_40px] md:grid-cols-[40px_4fr_3fr_1fr_100px] px-3.5 py-3 text-xs font-semibold text-content-muted uppercase tracking-wider border-b border-white/5 select-none mt-2">
-          <div className="text-center">#</div>
-          <div>Title</div>
-          <div className="hidden md:block">Album</div>
-          <div className="hidden md:block text-right">Plays</div>
-          <div className="flex items-center justify-end pr-2">
-            <Clock3 size={14} />
+        {/* Playlist-style Table Card */}
+        <div className="bg-surface-panel/70 rounded-lg p-2 border border-border-subtle mt-4">
+          {/* Column Header */}
+          <div className="bg-surface-island/95 backdrop-blur-md rounded-lg mb-1 border-b border-border-medium shadow-md">
+            <div className="grid grid-cols-[36px_1fr_40px] md:grid-cols-[40px_4fr_3fr_1fr_100px] px-3.5 py-2.5 text-xs font-semibold uppercase text-content-secondary items-center select-none">
+              <div className="text-center">#</div>
+              <div>Title</div>
+              <div className="hidden md:block">Album</div>
+              <div className="hidden md:block text-right">Plays</div>
+              <div className="flex items-center justify-end pr-2">
+                <Clock3 size={14} />
+              </div>
+            </div>
           </div>
-        </div>
 
-        {/* Table Rows (Exact Playlist View Behavior) */}
-        <div className="space-y-1 mt-2">
+          {/* Table Rows (Exact Playlist View Behavior) */}
+          <div className="space-y-0.5">
           {top10.map((track, idx) => {
             const isThisTrack = currentTrack?.id === track.id;
             const isThisPlaying = isThisTrack && isPlaying;
@@ -378,6 +382,7 @@ export const HomeTopTables = ({
           })}
         </div>
       </div>
-    </section>
-  );
+    </div>
+  </section>
+);
 };

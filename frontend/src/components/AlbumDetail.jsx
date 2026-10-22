@@ -348,20 +348,20 @@ export const AlbumDetail = ({
       {/* Tracklist Table */}
       <div className="px-6 sm:px-8 pb-12">
         {tracks.length > 0 && (
-          <div className="sticky top-0 z-30 bg-surface-island/95 backdrop-blur-md mb-2">
-            <div className="grid grid-cols-[36px_1fr_36px_36px_60px] md:grid-cols-[40px_1fr_40px_40px_70px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-content-secondary border-b border-border-medium items-center tracking-wider">
-              <span className="text-center">#</span>
-              <span className="truncate pr-4">Title</span>
-              <span />
-              <span />
-              <span className="text-right flex items-center justify-end">
-                <Clock size={14} />
-              </span>
+          <div className="bg-surface-panel/70 rounded-lg p-2 border border-border-subtle">
+            <div className="sticky top-0 z-30 bg-surface-island/95 backdrop-blur-md rounded-lg mb-1 border-b border-border-medium shadow-md">
+              <div className="grid grid-cols-[36px_1fr_36px_36px_60px] md:grid-cols-[40px_1fr_40px_40px_70px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-content-secondary items-center tracking-wider select-none">
+                <span className="text-center">#</span>
+                <span className="truncate pr-4">Title</span>
+                <span />
+                <span />
+                <span className="text-right flex items-center justify-end">
+                  <Clock size={14} />
+                </span>
+              </div>
             </div>
-          </div>
-        )}
 
-        <div className="space-y-0.5">
+            <div className="space-y-0.5">
           {tracks.map((track, idx) => {
             const isThisTrack = currentTrack?.id === track.id;
             const isThisPlaying = isThisTrack && isPlaying;
@@ -537,6 +537,8 @@ export const AlbumDetail = ({
           })}
         </div>
       </div>
-    </div>
-  );
+    )}
+  </div>
+</div>
+);
 };
