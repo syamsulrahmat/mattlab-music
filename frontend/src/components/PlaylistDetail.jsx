@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { 
   Play, Pause, Trash2, Clock, Music, Shuffle, 
   Search, X, Pencil, ArrowUpDown, Calendar, 
-  CheckSquare, Square, Check, AlertTriangle, RefreshCw, ExternalLink, UserCheck, Lock,
+  Square, Check, AlertTriangle, RefreshCw, ExternalLink, UserCheck, Lock,
   Type, Mic2, Disc3, ChevronDown, ChevronUp, ListOrdered, ListPlus, Layers
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
@@ -569,13 +569,17 @@ export const PlaylistDetail = ({
       const currentRawTracks = rawTracksRef.current;
       const currentLastIdx = lastSelectedTrackIdxRef.current;
 
-      // 1. Enter to play selected track
-      if (e.key === 'Enter' && currentSelectedIds.size === 1 && currentTracks.length > 0) {
-        const [singleId] = Array.from(currentSelectedIds);
-        const found = currentTracks.find((t) => t.id === singleId);
-        if (found) {
-          e.preventDefault();
-          handleTrackPlay(found);
+      // 1. Enter to play selected track(s)
+      if (e.key === 'Enter' && currentSelectedIds.size >= 1 && currentTracks.length > 0) {
+        e.preventDefault();
+        if (currentSelectedIds.size === 1) {
+          const [singleId] = Array.from(currentSelectedIds);
+          const found = currentTracks.find((t) => t.id === singleId);
+          if (found) {
+            handleTrackPlay(found);
+          }
+        } else {
+          handlePlaySelected();
         }
         return;
       }
@@ -1536,18 +1540,27 @@ export const PlaylistDetail = ({
                     onContextMenu={(e) => {
                       if (onContextMenu && !track.isSyncPending) {
                         e.preventDefault();
-                        const isMulti = selectedTrackIds.has(track.id) && selectedTrackIds.size > 1;
+                        const isAlreadySelected = selectedTrackIds.has(track.id);
+                        if (!isAlreadySelected) {
+                          const singleSet = new Set([track.id]);
+                          setSelectedTrackIds(singleSet);
+                          selectedTrackIdsRef.current = singleSet;
+                          setLastSelectedTrackIdx(idx);
+                          lastSelectedTrackIdxRef.current = idx;
+                        }
+                        const effectiveSelectedIds = isAlreadySelected ? selectedTrackIds : new Set([track.id]);
+                        const isMulti = effectiveSelectedIds.size > 1;
                         const orderedTracks = isMulti
-                          ? tracks.filter((t) => selectedTrackIds.has(t.id) && !t.isSyncPending)
+                          ? tracks.filter((t) => effectiveSelectedIds.has(t.id) && !t.isSyncPending)
                           : [track];
                         onContextMenu(e, 'track', {
                           ...track,
                           selectedTracks: orderedTracks,
                           track_ids: orderedTracks.map((t) => t.id),
                           playlist_id: playlistId,
-                          deleteLabel: 'Remove from this playlist',
-                          onDelete: () => handleRemoveTrack(e, track.id),
-                          onRemoveFromPlaylist: () => handleRemoveTrack(e, track.id),
+                          deleteLabel: isMulti ? `Remove ${orderedTracks.length} tracks from this playlist` : 'Remove from this playlist',
+                          onDelete: () => (isMulti ? handleBulkRemoveSelected() : handleRemoveTrack(e, track.id)),
+                          onRemoveFromPlaylist: () => (isMulti ? handleBulkRemoveSelected() : handleRemoveTrack(e, track.id)),
                         });
                       }
                     }}
@@ -1827,41 +1840,7 @@ export const PlaylistDetail = ({
           </div>
         )}
 
-        {/* Floating Multi-Select Action Banner */}
-      {selectedTrackIds.size > 1 && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 bg-surface-elevated2 border border-border-strong shadow-2xl rounded-2xl px-5 py-3 flex items-center gap-4 text-xs font-medium text-content-primary backdrop-blur-md animate-in fade-in slide-in-from-bottom-3 duration-200">
-          <div className="flex items-center gap-2 text-brand-500 font-bold">
-            <CheckSquare size={16} />
-            <span>{selectedTrackIds.size} songs selected</span>
-          </div>
 
-          <div className="h-4 w-px bg-white/20" />
-
-          <button
-            onClick={handlePlaySelected}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-content-primary font-semibold transition"
-          >
-            <Play size={13} className="fill-current" />
-            <span>Play Selection</span>
-          </button>
-
-          <button
-            onClick={handleBulkRemoveSelected}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-400 font-semibold transition"
-          >
-            <Trash2 size={13} />
-            <span>Remove from Playlist</span>
-          </button>
-
-          <button
-            onClick={() => setSelectedTrackIds(new Set())}
-            className="p-1 text-content-muted hover:text-content-primary transition"
-            title="Deselect all (Esc)"
-          >
-            <X size={15} />
-          </button>
-        </div>
-      )}
 
       {/* Edit Playlist Details Modal */}
       {isEditingDetails && (

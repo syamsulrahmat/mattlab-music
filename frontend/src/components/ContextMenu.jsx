@@ -144,6 +144,8 @@ export const ContextMenu = ({
 
   const isCurrentPlayingThis = data && currentTrack && currentTrack.id === data.id;
   const isFav = data && data.id ? isFavorite(data.id) : false;
+  const isMulti = type === 'track' && Array.isArray(data?.selectedTracks) && data.selectedTracks.length > 1;
+  const trackCount = isMulti ? data.selectedTracks.length : 1;
 
   return (
     <div
@@ -162,7 +164,9 @@ export const ContextMenu = ({
         <>
           <button
             onClick={() => {
-              if (isCurrentPlayingThis) {
+              if (isMulti) {
+                playTrack(data.selectedTracks[0], data.selectedTracks);
+              } else if (isCurrentPlayingThis) {
                 togglePlay();
               } else {
                 playTrack(data);
@@ -179,60 +183,62 @@ export const ContextMenu = ({
             ) : (
               <>
                 <Play size={15} className="text-brand-500" />
-                <span>Play</span>
+                <span>{isMulti ? `Play ${trackCount} tracks` : 'Play'}</span>
               </>
             )}
           </button>
 
           <button
             onClick={() => {
-              addToQueue(data);
+              addToQueue(isMulti ? data.selectedTracks : data);
               onClose();
             }}
             className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
           >
             <ListPlus size={15} className="text-content-secondary" />
-            <span>Add to queue</span>
+            <span>{isMulti ? `Add ${trackCount} tracks to queue` : 'Add to queue'}</span>
           </button>
 
           <button
             onClick={() => {
-              playNextInQueue(data);
+              playNextInQueue(isMulti ? data.selectedTracks : data);
               onClose();
             }}
             className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
           >
             <CornerDownRight size={15} className="text-content-secondary" />
-            <span>Play next</span>
+            <span>{isMulti ? `Play ${trackCount} tracks next` : 'Play next'}</span>
           </button>
 
           <div className="h-[1px] bg-white/10 my-1 mx-2" />
 
-          <button
-            onClick={() => {
-              toggleFavorite(data.id);
-              onClose();
-            }}
-            className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
-          >
-            <Heart size={15} className={isFav ? 'fill-brand-500 text-brand-500' : 'text-content-secondary'} />
-            <span>{isFav ? 'Remove from Liked Songs' : 'Save to your Liked Songs'}</span>
-          </button>
+          {!isMulti && (
+            <button
+              onClick={() => {
+                toggleFavorite(data.id);
+                onClose();
+              }}
+              className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
+            >
+              <Heart size={15} className={isFav ? 'fill-brand-500 text-brand-500' : 'text-content-secondary'} />
+              <span>{isFav ? 'Remove from Liked Songs' : 'Save to your Liked Songs'}</span>
+            </button>
+          )}
 
           {onAddToPlaylist && (
             <button
               onClick={() => {
-                onAddToPlaylist(data);
+                onAddToPlaylist(isMulti ? { ...data, track_ids: data.selectedTracks.map((t) => t.id) } : data);
                 onClose();
               }}
               className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
             >
               <Plus size={15} className="text-content-secondary" />
-              <span>Add to playlist</span>
+              <span>{isMulti ? `Add ${trackCount} tracks to playlist` : 'Add to playlist'}</span>
             </button>
           )}
 
-          {onEditLyrics && (
+          {!isMulti && onEditLyrics && (
             <button
               onClick={() => {
                 onEditLyrics(data);

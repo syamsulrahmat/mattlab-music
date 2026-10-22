@@ -1409,31 +1409,35 @@ export const PlayerProvider = ({ children }) => {
     }
   };
 
-  const addToQueue = (track) => {
+  const addToQueue = (trackOrTracks) => {
+    const tracksToAdd = Array.isArray(trackOrTracks) ? trackOrTracks : [trackOrTracks];
+    if (tracksToAdd.length === 0) return;
     setQueue((prev) => {
-      const nextQueue = [...prev, track];
+      const nextQueue = [...prev, ...tracksToAdd];
       if (currentTrack) {
         persistState(currentTrack, currentTime, duration, nextQueue, queueIndex);
       }
       return nextQueue;
     });
     if (!currentTrack) {
-      playTrack(track);
+      playTrack(tracksToAdd[0]);
     }
   };
 
-  const playNextInQueue = (track) => {
+  const playNextInQueue = (trackOrTracks) => {
+    const tracksToAdd = Array.isArray(trackOrTracks) ? trackOrTracks : [trackOrTracks];
+    if (tracksToAdd.length === 0) return;
     setQueue((prev) => {
       const nextQueue = [...prev];
       const insertIdx = queueIndex >= 0 ? queueIndex + 1 : 0;
-      nextQueue.splice(insertIdx, 0, track);
+      nextQueue.splice(insertIdx, 0, ...tracksToAdd);
       if (currentTrack) {
         persistState(currentTrack, currentTime, duration, nextQueue, queueIndex);
       }
       return nextQueue;
     });
     if (!currentTrack) {
-      playTrack(track);
+      playTrack(tracksToAdd[0]);
     }
   };
 
