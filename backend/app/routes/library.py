@@ -1,10 +1,12 @@
 import re
 import logging
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from pathlib import Path
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request, Depends
 from pydantic import BaseModel
 from app.database import get_db
+from app.auth import get_current_user_optional
+from app.popularity import backfill_library_popularity_background
 
 logger = logging.getLogger("library_routes")
 
@@ -201,11 +203,120 @@ async def get_artist_detail(artist_id: int):
         "tracks": tracks,
     }
 
-@router.get("/home")
-async def get_home_shelves():
-    """Retrieve structured data for the Spotify Island home page."""
+@router.post("/tracks/{track_id}/play")
+async def record_track_play(track_id: int, current_user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)):
+    """Record playback event for user top tracks and increment library play count."""
+    user_id = current_user["id"] if current_user else 1
     with get_db() as conn:
         cursor = conn.cursor()
+        cursor.execute("SELECT id FROM tracks WHERE id = ?", (track_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Track not found")
+
+        cursor.execute(
+            "INSERT INTO track_plays (user_id, track_id) VALUES (?, ?)",
+            (user_id, track_id)
+        )
+        cursor.execute(
+            "UPDATE tracks SET play_count = COALESCE(play_count, 0) + 1, last_played_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (track_id,)
+        )
+        conn.commit()
+
+    return {"status": "success", "track_id": track_id}
+
+@router.get("/home")
+async def get_home_shelves(current_user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)):
+    """Retrieve structured data for the Spotify Island home page."""
+    # Trigger non-blocking background popularity backfill if needed
+    try:
+        backfill_library_popularity_background()
+    except Exception:
+        pass
+
+    user_id = current_user["id"] if current_user else 1
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+
+        # 0A. User Top 10 Tracks (scored by user's personal plays)
+        cursor.execute("""
+            SELECT 
+                t.id, t.title, t.duration_seconds, t.file_path, t.file_format,
+                ar.id AS artist_id, ar.name AS artist_name,
+                al.id AS album_id, al.title AS album_title, al.cover_path,
+                COUNT(tp.id) AS user_play_count,
+                COALESCE(t.play_count, 0) AS play_count,
+                COALESCE(t.popularity, 0) AS popularity
+            FROM tracks t
+            JOIN artists ar ON t.artist_id = ar.id
+            JOIN albums al ON t.album_id = al.id
+            JOIN track_plays tp ON tp.track_id = t.id AND tp.user_id = ?
+            GROUP BY t.id
+            ORDER BY user_play_count DESC, t.last_played_at DESC
+            LIMIT 10
+        """, (user_id,))
+        user_top_tracks = [
+            {
+                **dict(row),
+                "cover_url": make_cover_url(row["album_id"], row["cover_path"]),
+            }
+            for row in cursor.fetchall()
+        ]
+
+        # Cold-start fallback if user has fewer than 10 plays:
+        if len(user_top_tracks) < 10:
+            existing_ids = {t["id"] for t in user_top_tracks}
+            placeholders = ",".join(["?"] * len(existing_ids)) if existing_ids else "0"
+            params = [user_id] + list(existing_ids) + [10 - len(user_top_tracks)]
+            cursor.execute(f"""
+                SELECT 
+                    t.id, t.title, t.duration_seconds, t.file_path, t.file_format,
+                    ar.id AS artist_id, ar.name AS artist_name,
+                    al.id AS album_id, al.title AS album_title, al.cover_path,
+                    0 AS user_play_count,
+                    COALESCE(t.play_count, 0) AS play_count,
+                    COALESCE(t.popularity, 0) AS popularity
+                FROM tracks t
+                JOIN artists ar ON t.artist_id = ar.id
+                JOIN albums al ON t.album_id = al.id
+                LEFT JOIN favorites f ON f.track_id = t.id AND f.user_id = ?
+                WHERE t.id NOT IN ({placeholders})
+                ORDER BY (CASE WHEN f.track_id IS NOT NULL THEN 1 ELSE 0 END) DESC,
+                         COALESCE(t.play_count, 0) DESC,
+                         t.id DESC
+                LIMIT ?
+            """, params)
+            fallback_tracks = [
+                {
+                    **dict(row),
+                    "cover_url": make_cover_url(row["album_id"], row["cover_path"]),
+                }
+                for row in cursor.fetchall()
+            ]
+            user_top_tracks.extend(fallback_tracks)
+
+        # 0B. 10 Current Popular Songs (ranked by popularity metric & global stream rank)
+        cursor.execute("""
+            SELECT 
+                t.id, t.title, t.duration_seconds, t.file_path, t.file_format,
+                ar.id AS artist_id, ar.name AS artist_name,
+                al.id AS album_id, al.title AS album_title, al.cover_path,
+                COALESCE(t.play_count, 0) AS play_count,
+                COALESCE(t.popularity, 0) AS popularity
+            FROM tracks t
+            JOIN artists ar ON t.artist_id = ar.id
+            JOIN albums al ON t.album_id = al.id
+            ORDER BY COALESCE(t.popularity, 0) DESC, COALESCE(t.play_count, 0) DESC, t.id DESC
+            LIMIT 10
+        """)
+        popular_tracks = [
+            {
+                **dict(row),
+                "cover_url": make_cover_url(row["album_id"], row["cover_path"]),
+            }
+            for row in cursor.fetchall()
+        ]
 
         # 1. Recently Added Albums (deduplicated by title)
         cursor.execute("""
@@ -271,6 +382,8 @@ async def get_home_shelves():
         ]
 
     return {
+        "user_top_tracks": user_top_tracks,
+        "popular_tracks": popular_tracks,
         "recently_added": recently_added,
         "popular_artists": popular_artists,
         "featured_albums": featured_albums,

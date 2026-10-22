@@ -146,6 +146,12 @@ def get_current_user(request: Request) -> Dict[str, Any]:
         )
     return user
 
+def get_current_user_optional(request: Request) -> Optional[Dict[str, Any]]:
+    """Optional dependency that returns current user or None if unauthenticated."""
+    if hasattr(request.state, "user") and request.state.user:
+        return request.state.user
+    return get_user_from_request(request)
+
 def get_current_admin(current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
     """Dependency for routes requiring admin privileges."""
     if current_user.get("role") != "admin":

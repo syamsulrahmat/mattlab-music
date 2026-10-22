@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Play, Pause, Disc3, Mic2 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { HomeGreeting } from './HomeGreeting';
+import { HomeTopTables } from './HomeTopTables';
 
 export const HomeShelves = ({
   onSelectAlbum,
@@ -16,7 +17,7 @@ export const HomeShelves = ({
 
   useEffect(() => {
     let isMounted = true;
-    fetch('/api/home')
+    fetch('/api/home', { credentials: 'include' })
       .then((res) => res.json())
       .then((data) => {
         if (isMounted) {
@@ -70,12 +71,27 @@ export const HomeShelves = ({
     );
   }
 
-  const { recently_added = [], popular_artists = [], featured_albums = [] } = homeData;
+  const { 
+    recently_added = [], 
+    popular_artists = [], 
+    featured_albums = [],
+    user_top_tracks = [],
+    popular_tracks = []
+  } = homeData;
 
   return (
     <div className="space-y-8 p-4 sm:p-6 select-none">
       {/* Dynamic Greeting & Live Clock Banner */}
       <HomeGreeting />
+
+      {/* Dual Top 10 Tables: User Top 10 & 10 Current Popular Songs */}
+      <HomeTopTables
+        userTopTracks={user_top_tracks}
+        popularTracks={popular_tracks}
+        onSelectAlbum={onSelectAlbum}
+        onSelectArtist={onSelectArtist}
+        onContextMenu={onContextMenu}
+      />
 
       {/* 1. Trending / Recently Added Shelf */}
       <section>

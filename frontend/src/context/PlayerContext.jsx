@@ -81,6 +81,7 @@ export const PlayerProvider = ({ children }) => {
   const hasRestoredAudioRef = useRef(false);
   const lastSavedTimeRef = useRef(0);
   const debouncePrefSaveRef = useRef(null);
+  const scrobbledTrackIdRef = useRef(null);
 
   const audioRef = useRef(null);
   const standbyAudioRef = useRef(null);
@@ -865,6 +866,15 @@ export const PlayerProvider = ({ children }) => {
       if (Math.abs(t - lastSavedTimeRef.current) >= 2.5 && !e.target.paused) {
         lastSavedTimeRef.current = t;
         persistState(currentTrack, t, e.target.duration || duration, queue, queueIndex);
+      }
+
+      // Standard 15-second streaming telemetry: record play event once per track session
+      if (currentTrack?.id && scrobbledTrackIdRef.current !== currentTrack.id && t >= 15 && !e.target.paused) {
+        scrobbledTrackIdRef.current = currentTrack.id;
+        fetch(`/api/tracks/${currentTrack.id}/play`, {
+          method: 'POST',
+          credentials: 'include',
+        }).catch(() => {});
       }
     };
 

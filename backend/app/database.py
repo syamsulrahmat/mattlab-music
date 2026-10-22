@@ -169,6 +169,13 @@ def init_db() -> None:
             fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS track_plays (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            track_id INTEGER NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
+            played_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE INDEX IF NOT EXISTS idx_tracks_album ON tracks(album_id);
         CREATE INDEX IF NOT EXISTS idx_tracks_artist ON tracks(artist_id);
         CREATE INDEX IF NOT EXISTS idx_albums_artist ON albums(artist_id);
@@ -180,6 +187,8 @@ def init_db() -> None:
         CREATE INDEX IF NOT EXISTS idx_bug_reports_user ON bug_reports(user_id);
         CREATE INDEX IF NOT EXISTS idx_bug_reports_status ON bug_reports(status);
         CREATE INDEX IF NOT EXISTS idx_track_videos_track ON track_videos(track_id);
+        CREATE INDEX IF NOT EXISTS idx_track_plays_user ON track_plays(user_id, track_id);
+        CREATE INDEX IF NOT EXISTS idx_track_plays_track ON track_plays(track_id);
         """)
 
         cursor = conn.cursor()
@@ -334,6 +343,27 @@ def init_db() -> None:
             conn.execute("CREATE INDEX IF NOT EXISTS idx_tracks_lyrics_status ON tracks(lyrics_status)")
         except Exception:
             pass
+
+        # Migrations for tracks (popularity, play_count, last_played_at)
+        if "popularity" not in track_cols:
+            try:
+                conn.execute("ALTER TABLE tracks ADD COLUMN popularity INTEGER DEFAULT 0")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_tracks_popularity ON tracks(popularity)")
+            except Exception as e:
+                print(f"[DB MIGRATION] Error adding popularity to tracks: {e}")
+
+        if "play_count" not in track_cols:
+            try:
+                conn.execute("ALTER TABLE tracks ADD COLUMN play_count INTEGER DEFAULT 0")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_tracks_play_count ON tracks(play_count)")
+            except Exception as e:
+                print(f"[DB MIGRATION] Error adding play_count to tracks: {e}")
+
+        if "last_played_at" not in track_cols:
+            try:
+                conn.execute("ALTER TABLE tracks ADD COLUMN last_played_at TIMESTAMP")
+            except Exception as e:
+                print(f"[DB MIGRATION] Error adding last_played_at to tracks: {e}")
 
         _init_lyrics_fts(conn)
 
