@@ -16,7 +16,8 @@ export const HomeTopTables = ({
   onContextMenu,
 }) => {
   const { playTrack, currentTrack, isPlaying, togglePlay, isFavorite, toggleFavorite } = usePlayer();
-  const [selectedTrackId, setSelectedTrackId] = useState(null);
+  const [selectedTrackIds, setSelectedTrackIds] = useState(new Set());
+  const [lastSelectedTrackIdx, setLastSelectedTrackIdx] = useState(null);
   const containerRef = useRef(null);
 
   const top10 = userTopTracks.slice(0, 10);
@@ -27,11 +28,31 @@ export const HomeTopTables = ({
     playTrack(track, queueSlice);
   }, [top10, playTrack]);
 
-  // Single-click: select the row (like in playlist view)
-  const handleRowClick = (e, track) => {
+  // Single-click selection matching PlaylistDetail behavior (supports Shift & Ctrl/Cmd)
+  const handleRowClick = (e, track, idx) => {
     // If clicked directly on interactive child buttons or links, ignore row selection
     if (e.target.closest('button, a')) return;
-    setSelectedTrackId(track.id);
+
+    if (e.shiftKey && lastSelectedTrackIdx !== null) {
+      const start = Math.min(lastSelectedTrackIdx, idx);
+      const end = Math.max(lastSelectedTrackIdx, idx);
+      const nextSet = new Set(selectedTrackIds);
+      for (let i = start; i <= end; i++) {
+        if (top10[i]) nextSet.add(top10[i].id);
+      }
+      setSelectedTrackIds(nextSet);
+    } else if (e.ctrlKey || e.metaKey) {
+      setSelectedTrackIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(track.id)) next.delete(track.id);
+        else next.add(track.id);
+        return next;
+      });
+      setLastSelectedTrackIdx(idx);
+    } else {
+      setSelectedTrackIds(new Set([track.id]));
+      setLastSelectedTrackIdx(idx);
+    }
   };
 
   // Double-click: play the selected track (like in playlist view)
@@ -39,51 +60,55 @@ export const HomeTopTables = ({
     handlePlayFromList(track, idx);
   };
 
-  // Keyboard navigation: Enter to play selected, ArrowUp / ArrowDown to move selection, Escape to clear
+  // Keyboard navigation matching PlaylistDetail
   useEffect(() => {
     const handleKeyDown = (e) => {
       // Don't intercept if user is typing in an input, textarea, or search field
       if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
 
-      if (!selectedTrackId) return;
-
-      const currentIdx = top10.findIndex((t) => t.id === selectedTrackId);
-      if (currentIdx === -1) return;
+      if (selectedTrackIds.size === 0) return;
 
       if (e.key === 'Enter') {
         e.preventDefault();
-        const track = top10[currentIdx];
-        if (track) {
-          handlePlayFromList(track, currentIdx);
+        const firstSelectedId = Array.from(selectedTrackIds)[0];
+        const currentIdx = top10.findIndex((t) => t.id === firstSelectedId);
+        if (currentIdx !== -1) {
+          handlePlayFromList(top10[currentIdx], currentIdx);
         }
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
-        const nextIdx = Math.min(top10.length - 1, currentIdx + 1);
+        const currentIdx = lastSelectedTrackIdx ?? top10.findIndex((t) => selectedTrackIds.has(t.id));
+        const nextIdx = Math.min(top10.length - 1, currentIdx >= 0 ? currentIdx + 1 : 0);
         const nextTrack = top10[nextIdx];
         if (nextTrack) {
-          setSelectedTrackId(nextTrack.id);
+          setSelectedTrackIds(new Set([nextTrack.id]));
+          setLastSelectedTrackIdx(nextIdx);
         }
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        const prevIdx = Math.max(0, currentIdx - 1);
+        const currentIdx = lastSelectedTrackIdx ?? top10.findIndex((t) => selectedTrackIds.has(t.id));
+        const prevIdx = Math.max(0, currentIdx >= 0 ? currentIdx - 1 : 0);
         const prevTrack = top10[prevIdx];
         if (prevTrack) {
-          setSelectedTrackId(prevTrack.id);
+          setSelectedTrackIds(new Set([prevTrack.id]));
+          setLastSelectedTrackIdx(prevIdx);
         }
       } else if (e.key === 'Escape') {
-        setSelectedTrackId(null);
+        setSelectedTrackIds(new Set());
+        setLastSelectedTrackIdx(null);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedTrackId, top10, handlePlayFromList]);
+  }, [selectedTrackIds, lastSelectedTrackIdx, top10, handlePlayFromList]);
 
   // Clear selection on clicking outside container
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
-        setSelectedTrackId(null);
+        setSelectedTrackIds(new Set());
+        setLastSelectedTrackIdx(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -109,9 +134,6 @@ export const HomeTopTables = ({
               <h3 className="text-xl sm:text-2xl font-bold text-content-primary tracking-tight">
                 Your Top 10 Tracks
               </h3>
-              <p className="text-xs sm:text-sm text-content-secondary mt-0.5">
-                Your most played tracks based on continuous playback telemetry
-              </p>
             </div>
           </div>
 
@@ -146,79 +168,87 @@ export const HomeTopTables = ({
           </div>
         </div>
 
-        {/* Table Rows (Playlist View Behavior) */}
+        {/* Table Rows (Exact Playlist View Behavior) */}
         <div className="space-y-1 mt-2">
           {top10.map((track, idx) => {
             const isThisTrack = currentTrack?.id === track.id;
             const isThisPlaying = isThisTrack && isPlaying;
-            const isSelected = selectedTrackId === track.id;
+            const isSelected = selectedTrackIds.has(track.id);
             const isFav = isFavorite(track.id);
 
             return (
               <div
                 key={`top-track-${track.id}`}
-                onClick={(e) => handleRowClick(e, track)}
+                onClick={(e) => handleRowClick(e, track, idx)}
                 onDoubleClick={() => handleRowDoubleClick(track, idx)}
                 onContextMenu={(e) => {
                   if (onContextMenu) {
                     e.preventDefault();
                     e.stopPropagation();
-                    setSelectedTrackId(track.id);
-                    onContextMenu(e, 'track', track);
+                    if (!selectedTrackIds.has(track.id)) {
+                      setSelectedTrackIds(new Set([track.id]));
+                      setLastSelectedTrackIdx(idx);
+                    }
+                    const isMulti = selectedTrackIds.has(track.id) && selectedTrackIds.size > 1;
+                    const orderedTracks = isMulti
+                      ? top10.filter((t) => selectedTrackIds.has(t.id))
+                      : [track];
+                    onContextMenu(e, 'track', {
+                      ...track,
+                      selectedTracks: orderedTracks,
+                      track_ids: orderedTracks.map((t) => t.id),
+                    });
                   }
                 }}
                 className={`group grid grid-cols-[36px_1fr_40px] md:grid-cols-[40px_4fr_3fr_1fr_100px] items-center px-3.5 py-2.5 rounded-xl transition cursor-pointer select-none border ${
                   isSelected
-                    ? 'bg-surface-elevated2 border-brand-500/50 shadow-md ring-1 ring-brand-500/30'
+                    ? 'border-transparent bg-surface-hover ring-1 ring-white/20 text-content-primary shadow-sm'
                     : isThisTrack
-                    ? 'bg-surface-elevated/70 border-brand-500/20'
-                    : 'hover:bg-surface-elevated border-transparent'
+                    ? 'border-transparent bg-surface-elevated/70 text-content-primary'
+                    : 'border-transparent hover:bg-surface-elevated text-content-primary'
                 }`}
               >
-                {/* 1. Rank Number / Play/Pause Indicator */}
-                <div className="flex items-center justify-center shrink-0">
-                  {isThisPlaying ? (
-                    <div className="flex items-end justify-center gap-[2px] w-3.5 h-3.5 pb-0.5" title="Playing">
-                      <span className="w-[2px] bg-brand-500 rounded-full animate-eq-1" />
-                      <span className="w-[2px] bg-brand-500 rounded-full animate-eq-2" />
-                      <span className="w-[2px] bg-brand-500 rounded-full animate-eq-3" />
-                      <span className="w-[2px] bg-brand-500 rounded-full animate-eq-4" />
-                    </div>
-                  ) : (
-                    <>
-                      <span className={`text-sm font-semibold transition ${
-                        isThisTrack ? 'text-brand-400 font-bold' : 'text-content-muted group-hover:hidden'
-                      }`}>
+                {/* 1. Rank Number / Play-Pause Indicator (Playlist View Hover & Selection Behavior) */}
+                <div className="flex items-center justify-center w-8 h-8 shrink-0">
+                  <div className="flex items-center justify-center group-hover:hidden">
+                    {isThisPlaying ? (
+                      <div className="flex items-end justify-center gap-[2.5px] w-3.5 h-3.5 pb-0.5" title="Playing">
+                        <span className="w-[3px] bg-brand-500 rounded-full animate-eq-1" />
+                        <span className="w-[3px] bg-brand-500 rounded-full animate-eq-2" />
+                        <span className="w-[3px] bg-brand-500 rounded-full animate-eq-3" />
+                        <span className="w-[3px] bg-brand-500 rounded-full animate-eq-4" />
+                      </div>
+                    ) : (
+                      <span className={`text-sm font-medium ${isThisTrack ? 'text-brand-500 font-bold' : 'text-content-secondary'}`}>
                         {idx + 1}
                       </span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (isThisTrack) {
-                            togglePlay();
-                          } else {
-                            handlePlayFromList(track, idx);
-                          }
-                        }}
-                        className={`hidden ${
-                          isThisTrack ? 'text-brand-400' : 'text-content-primary hover:text-brand-400'
-                        } group-hover:flex items-center justify-center`}
-                        title={isThisPlaying ? 'Pause' : 'Play'}
-                      >
-                        {isThisPlaying ? (
-                          <Pause size={15} className="fill-current" />
-                        ) : (
-                          <Play size={15} className="fill-current ml-0.5" />
-                        )}
-                      </button>
-                    </>
-                  )}
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (isThisTrack) {
+                        togglePlay();
+                      } else {
+                        handlePlayFromList(track, idx);
+                      }
+                    }}
+                    className="hidden group-hover:flex items-center justify-center w-7 h-7 text-content-primary hover:text-brand-400 transition"
+                    title={isThisPlaying ? "Pause" : "Play"}
+                  >
+                    {isThisPlaying ? (
+                      <Pause size={15} className="fill-current" />
+                    ) : (
+                      <Play size={15} className="fill-current ml-0.5" />
+                    )}
+                  </button>
                 </div>
 
-                {/* 2. Title & Artist (with Album Cover) */}
-                <div className="flex items-center gap-3.5 min-w-0 pr-3">
-                  <div className="relative w-11 h-11 rounded-lg overflow-hidden bg-surface-elevated shrink-0 shadow-md">
+                {/* 2. Cover Art, Title & Artist (No accidental link clicking on row hover) */}
+                <div className="flex items-center gap-3 truncate pr-3 min-w-0">
+                  <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-surface-elevated shrink-0 shadow-md">
                     <img
                       src={track.cover_url}
                       alt={track.title}
@@ -226,27 +256,35 @@ export const HomeTopTables = ({
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <div className="truncate flex-1 min-w-0">
-                    <p className={`text-sm font-semibold truncate ${
-                      isThisTrack ? 'text-brand-400 font-bold' : isSelected ? 'text-white' : 'text-content-primary'
-                    }`}>
-                      {track.title}
-                    </p>
-                    <p 
-                      onClick={(e) => {
-                        if (onSelectArtist && track.artist_id) {
-                          e.stopPropagation();
-                          onSelectArtist(track.artist_id);
-                        }
-                      }}
-                      className="text-xs text-content-secondary truncate hover:text-content-primary hover:underline mt-0.5"
-                    >
-                      {track.artist_name}
+                  <div className="truncate min-w-0 flex-1">
+                    <div className="flex items-center gap-2 truncate">
+                      <p className={`text-sm font-medium truncate ${
+                        isThisTrack 
+                          ? 'text-brand-500 font-bold' 
+                          : isSelected 
+                          ? 'text-white font-medium' 
+                          : 'text-content-primary'
+                      }`}>
+                        {track.title}
+                      </p>
+                    </div>
+                    <p className="text-xs text-content-secondary truncate mt-0.5">
+                      <span
+                        onClick={(e) => {
+                          if (onSelectArtist && track.artist_id) {
+                            e.stopPropagation();
+                            onSelectArtist(track.artist_id);
+                          }
+                        }}
+                        className="hover:underline hover:text-content-primary cursor-pointer inline"
+                      >
+                        {track.artist_name}
+                      </span>
                     </p>
                   </div>
                 </div>
 
-                {/* 3. Album Column */}
+                {/* 3. Album Column (Only text link is interactive) */}
                 <div className="hidden md:block truncate pr-3 text-xs text-content-secondary">
                   <span
                     onClick={(e) => {
@@ -255,7 +293,7 @@ export const HomeTopTables = ({
                         onSelectAlbum(track.album_id);
                       }
                     }}
-                    className="truncate hover:text-content-primary hover:underline"
+                    className="truncate hover:text-content-primary hover:underline cursor-pointer inline"
                     title={track.album_title}
                   >
                     {track.album_title || '—'}
@@ -287,7 +325,7 @@ export const HomeTopTables = ({
                     <Heart size={15} className={isFav ? 'fill-brand-500 text-brand-500' : ''} />
                   </button>
 
-                  <span className="font-mono text-xs w-10 text-right text-content-muted">
+                  <span className="font-mono text-xs w-10 text-right text-content-secondary">
                     {formatDuration(track.duration_seconds)}
                   </span>
                 </div>
