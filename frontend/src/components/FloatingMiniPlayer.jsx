@@ -315,31 +315,47 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
         ref={smallLyricsRef}
         className={`relative w-full h-full flex flex-col justify-between bg-surface-island text-content-primary font-sans select-none box-border overflow-hidden ${containerPadding}`}
       >
-        {/* Absolute Back to tab button in minimal layout to avoid wasting vertical space */}
+        {/* Absolute buttons in minimal layout to avoid wasting vertical space */}
         {isMinimalLayout && (
-          <div className="absolute top-1 right-1.5 z-20 flex items-center gap-0.5">
-            {isPiP ? (
-              <button
-                type="button"
-                onClick={handleOpenWebApp}
-                className="p-1 text-content-muted hover:text-brand-400 rounded transition hover:bg-white/10 shrink-0"
-                title="Back to tab"
-              >
-                <ExternalLink size={headerIconSize} />
-              </button>
-            ) : (
-              onClose && (
+          <>
+            {currentTrack && (
+              <div className="absolute top-1 left-1.5 z-20 flex items-center">
                 <button
                   type="button"
-                  onClick={onClose}
-                  className="p-1 text-content-muted hover:text-content-primary rounded transition hover:bg-white/10"
-                  title="Close"
+                  onClick={handleToggleFavorite}
+                  className={`p-1 rounded transition hover:bg-white/10 shrink-0 ${
+                    isFav ? 'text-brand-500' : 'text-content-muted hover:text-content-primary'
+                  }`}
+                  title={isFav ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
                 >
-                  <X size={headerIconSize} />
+                  <Heart size={headerIconSize} className={isFav ? 'fill-brand-500 text-brand-500' : ''} />
                 </button>
-              )
+              </div>
             )}
-          </div>
+            <div className="absolute top-1 right-1.5 z-20 flex items-center gap-0.5">
+              {isPiP ? (
+                <button
+                  type="button"
+                  onClick={handleOpenWebApp}
+                  className="p-1 text-content-muted hover:text-brand-400 rounded transition hover:bg-white/10 shrink-0"
+                  title="Back to tab"
+                >
+                  <ExternalLink size={headerIconSize} />
+                </button>
+              ) : (
+                onClose && (
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="p-1 text-content-muted hover:text-content-primary rounded transition hover:bg-white/10"
+                    title="Close"
+                  >
+                    <X size={headerIconSize} />
+                  </button>
+                )
+              )}
+            </div>
+          </>
         )}
 
         {/* Standard top row: Track Info & action buttons (only when NOT minimal) */}
@@ -473,18 +489,6 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
 
           {/* Transport buttons - centered in minimal mode, right-aligned in standard */}
           <div className={`flex items-center ${isMinimalLayout ? 'gap-3.5' : 'gap-1'} shrink-0`}>
-            {isMinimalLayout && currentTrack && (
-              <button
-                type="button"
-                onClick={handleToggleFavorite}
-                className={`p-1 rounded-full hover:bg-white/10 active:scale-95 transition shrink-0 ${
-                  isFav ? 'text-brand-500' : 'text-content-secondary hover:text-white'
-                }`}
-                title={isFav ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
-              >
-                <Heart size={transportIconSize} className={isFav ? 'fill-brand-500 text-brand-500' : ''} />
-              </button>
-            )}
             <button
               type="button"
               onClick={prevTrack}
@@ -740,6 +744,18 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
     if (sizeMode === 'micro') {
       return (
         <div className="relative w-full h-full flex items-center justify-center px-2 py-1 bg-surface-island text-content-primary font-sans select-none box-border overflow-hidden">
+          {currentTrack && (
+            <button
+              type="button"
+              onClick={handleToggleFavorite}
+              className={`absolute left-1.5 top-1/2 -translate-y-1/2 p-1 rounded transition hover:bg-white/10 active:scale-95 shrink-0 z-10 ${
+                isFav ? 'text-brand-500' : 'text-content-muted hover:text-content-primary'
+              }`}
+              title={isFav ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
+            >
+              <Heart size={12} className={isFav ? 'fill-brand-500 text-brand-500' : ''} />
+            </button>
+          )}
           <div className="flex items-center gap-1.5 mx-auto">
             <button
               onClick={prevTrack}
