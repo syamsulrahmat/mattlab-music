@@ -4,6 +4,7 @@ import {
   ListMusic, RefreshCw, ExternalLink, Edit2, Copy, Loader2, Mic, MicOff, UserCheck
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
+import { useDevFlags } from '../context/FlagsContext';
 import { SpotifyIcon } from './SpotifyIcon';
 
 export const ContextMenu = ({
@@ -45,7 +46,9 @@ export const ContextMenu = ({
     fetchKaraokeStatus,
     generateKaraokeStems,
     batchGenerateKaraoke,
+    showToast,
   } = usePlayer();
+  const { isDevUnlocked } = useDevFlags();
 
   useEffect(() => {
     if (isOpen && type === 'track' && data?.id) {
@@ -325,6 +328,61 @@ export const ContextMenu = ({
               </button>
             </>
           )}
+
+          {isDevUnlocked && (
+            <>
+              <div className="h-[1px] bg-white/10 my-1 mx-2" />
+              <button
+                onClick={async () => {
+                  onClose();
+                  showToast?.(`⚡ Redownloading audio for "${data.title}"...`, 3000);
+                  try {
+                    const res = await fetch(`/api/dev/repair/track/${data.id}/audio`, {
+                      method: 'POST',
+                      credentials: 'include',
+                    });
+                    const resData = await res.json();
+                    if (res.ok && resData.success) {
+                      showToast?.(`✅ Audio repaired: "${data.title}" (${resData.new_duration}s)`, 4500);
+                    } else {
+                      showToast?.(`⚠️ Redownload failed: ${resData.detail || resData.error || 'Failed'}`);
+                    }
+                  } catch (e) {
+                    showToast?.('⚠️ Network error during redownload');
+                  }
+                }}
+                className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition text-content-secondary hover:text-white"
+              >
+                <RefreshCw size={14} className="text-brand-400" />
+                <span>Redownload Audio</span>
+              </button>
+
+              <button
+                onClick={async () => {
+                  onClose();
+                  showToast?.(`🖼️ Fetching 1400px cover art for "${data.title}"...`, 3000);
+                  try {
+                    const res = await fetch(`/api/dev/repair/track/${data.id}/cover`, {
+                      method: 'POST',
+                      credentials: 'include',
+                    });
+                    const resData = await res.json();
+                    if (res.ok && resData.success) {
+                      showToast?.(`✅ Cover art applied: "${data.title}"`, 4500);
+                    } else {
+                      showToast?.(`⚠️ Cover fetch failed: ${resData.detail || 'Not found'}`);
+                    }
+                  } catch (e) {
+                    showToast?.('⚠️ Network error during cover fetch');
+                  }
+                }}
+                className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition text-content-secondary hover:text-white"
+              >
+                <Disc3 size={14} className="text-amber-400" />
+                <span>Redownload Cover Art</span>
+              </button>
+            </>
+          )}
         </>
       )}
 
@@ -396,6 +454,36 @@ export const ContextMenu = ({
             <Mic size={15} className="text-brand-500" />
             <span>Pre-cache Karaoke</span>
           </button>
+
+          {isDevUnlocked && (
+            <>
+              <div className="h-[1px] bg-white/10 my-1 mx-2" />
+              <button
+                onClick={async () => {
+                  onClose();
+                  showToast?.(`🖼️ Fetching 1400px cover art for "${data.title}"...`, 3000);
+                  try {
+                    const res = await fetch(`/api/dev/repair/album/${data.id}/cover`, {
+                      method: 'POST',
+                      credentials: 'include',
+                    });
+                    const resData = await res.json();
+                    if (res.ok && resData.success) {
+                      showToast?.(`✅ 1400px Cover art applied to "${data.title}"`, 4500);
+                    } else {
+                      showToast?.(`⚠️ Cover fetch failed: ${resData.detail || 'Not found'}`);
+                    }
+                  } catch (e) {
+                    showToast?.('⚠️ Network error during cover fetch');
+                  }
+                }}
+                className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition text-content-secondary hover:text-white"
+              >
+                <Disc3 size={14} className="text-amber-400" />
+                <span>Redownload Cover Art</span>
+              </button>
+            </>
+          )}
         </>
       )}
 

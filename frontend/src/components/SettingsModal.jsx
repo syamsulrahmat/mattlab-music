@@ -47,6 +47,7 @@ import { UserAvatar } from './UserAvatar';
 import { useAuth } from '../context/AuthContext';
 import { usePlayer } from '../context/PlayerContext';
 import { useDevFlags } from '../context/FlagsContext';
+import { DevRepairStudio } from './DevRepairStudio';
 
 const SHORTCUT_CATEGORIES = [
   { id: 'all', label: 'All Shortcuts' },
@@ -2475,6 +2476,11 @@ export const SettingsModal = ({
                         </div>
                       );
                     })}
+                </div>
+
+                {/* Track & Artwork Repair Studio */}
+                <div className="pt-6 border-t border-border-medium">
+                  <DevRepairStudio showToast={showToast} />
                 </div>
               </div>
             )}
