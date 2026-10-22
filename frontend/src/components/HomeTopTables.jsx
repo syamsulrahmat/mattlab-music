@@ -11,6 +11,7 @@ const formatDuration = (seconds) => {
 
 export const HomeTopTables = ({
   userTopTracks = [],
+  popularTracks = [],
   onSelectAlbum,
   onSelectArtist,
   onContextMenu,
@@ -22,11 +23,26 @@ export const HomeTopTables = ({
 
   const top10 = userTopTracks.slice(0, 10);
 
-  // Play track and queue the rest of the list
-  const handlePlayFromList = useCallback((track, idx) => {
-    const queueSlice = [...top10.slice(idx), ...top10.slice(0, idx)];
-    playTrack(track, queueSlice);
-  }, [top10, playTrack]);
+  // Build continuous queue with deduplicated popular tracks appended for endless playback continuity
+  const getContinuityQueue = useCallback((baseTracks) => {
+    const baseIds = new Set(baseTracks.map((t) => t.id));
+    const continuityList = popularTracks.filter((t) => !baseIds.has(t.id));
+    return [...baseTracks, ...continuityList];
+  }, [popularTracks]);
+
+  // Play track from list with full queue continuity and multi-selection support
+  const handlePlayFromList = useCallback((track) => {
+    // If multiple tracks are selected and the track is one of them, queue all selected tracks
+    if (selectedTrackIds.size > 1 && selectedTrackIds.has(track.id)) {
+      const selectedTracks = top10.filter((t) => selectedTrackIds.has(t.id));
+      const fullQueue = getContinuityQueue(selectedTracks);
+      playTrack(track, fullQueue);
+    } else {
+      // Standard playback: queue the Top 10 tracks seamlessly followed by continuous popular tracks
+      const fullQueue = getContinuityQueue(top10);
+      playTrack(track, fullQueue);
+    }
+  }, [selectedTrackIds, top10, getContinuityQueue, playTrack]);
 
   // Single-click selection matching PlaylistDetail behavior (supports Shift & Ctrl/Cmd)
   const handleRowClick = (e, track, idx) => {
@@ -56,8 +72,8 @@ export const HomeTopTables = ({
   };
 
   // Double-click: play the selected track (like in playlist view)
-  const handleRowDoubleClick = (track, idx) => {
-    handlePlayFromList(track, idx);
+  const handleRowDoubleClick = (track) => {
+    handlePlayFromList(track);
   };
 
   // Keyboard navigation matching PlaylistDetail
@@ -70,10 +86,20 @@ export const HomeTopTables = ({
 
       if (e.key === 'Enter') {
         e.preventDefault();
-        const firstSelectedId = Array.from(selectedTrackIds)[0];
-        const currentIdx = top10.findIndex((t) => t.id === firstSelectedId);
-        if (currentIdx !== -1) {
-          handlePlayFromList(top10[currentIdx], currentIdx);
+        if (selectedTrackIds.size > 1) {
+          // Play all selected tracks starting with the first selected track in the list
+          const selectedTracks = top10.filter((t) => selectedTrackIds.has(t.id));
+          if (selectedTracks.length > 0) {
+            const firstTrack = selectedTracks[0];
+            const fullQueue = getContinuityQueue(selectedTracks);
+            playTrack(firstTrack, fullQueue);
+          }
+        } else if (selectedTrackIds.size === 1) {
+          const [singleId] = Array.from(selectedTrackIds);
+          const found = top10.find((t) => t.id === singleId);
+          if (found) {
+            handlePlayFromList(found);
+          }
         }
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -101,7 +127,7 @@ export const HomeTopTables = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedTrackIds, lastSelectedTrackIdx, top10, handlePlayFromList]);
+  }, [selectedTrackIds, lastSelectedTrackIdx, top10, getContinuityQueue, handlePlayFromList, playTrack]);
 
   // Clear selection on clicking outside container
   useEffect(() => {
@@ -143,7 +169,7 @@ export const HomeTopTables = ({
               if (isWholeListPlaying) {
                 togglePlay();
               } else {
-                handlePlayFromList(top10[0], 0);
+                handlePlayFromList(top10[0]);
               }
             }}
             className="w-10 h-10 rounded-full bg-brand-500 hover:scale-105 active:scale-95 transition flex items-center justify-center text-black shadow-lg shrink-0"
@@ -180,7 +206,7 @@ export const HomeTopTables = ({
               <div
                 key={`top-track-${track.id}`}
                 onClick={(e) => handleRowClick(e, track, idx)}
-                onDoubleClick={() => handleRowDoubleClick(track, idx)}
+                onDoubleClick={() => handleRowDoubleClick(track)}
                 onContextMenu={(e) => {
                   if (onContextMenu) {
                     e.preventDefault();
@@ -232,7 +258,7 @@ export const HomeTopTables = ({
                       if (isThisTrack) {
                         togglePlay();
                       } else {
-                        handlePlayFromList(track, idx);
+                        handlePlayFromList(track);
                       }
                     }}
                     className="hidden group-hover:flex items-center justify-center w-7 h-7 text-content-primary hover:text-brand-400 transition"

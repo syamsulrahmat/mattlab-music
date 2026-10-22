@@ -296,7 +296,7 @@ async def get_home_shelves(current_user: Optional[Dict[str, Any]] = Depends(get_
             ]
             user_top_tracks.extend(fallback_tracks)
 
-        # 0B. 10 Current Popular Songs (ranked by popularity metric & global stream rank)
+        # 0B. Current Popular Songs (ranked by popularity metric & global stream rank for playback continuity)
         cursor.execute("""
             SELECT 
                 t.id, t.title, t.duration_seconds, t.file_path, t.file_format,
@@ -308,7 +308,7 @@ async def get_home_shelves(current_user: Optional[Dict[str, Any]] = Depends(get_
             JOIN artists ar ON t.artist_id = ar.id
             JOIN albums al ON t.album_id = al.id
             ORDER BY COALESCE(t.popularity, 0) DESC, COALESCE(t.play_count, 0) DESC, t.id DESC
-            LIMIT 10
+            LIMIT 50
         """)
         popular_tracks = [
             {
