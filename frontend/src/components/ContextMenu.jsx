@@ -165,11 +165,11 @@ export const ContextMenu = ({
           <button
             onClick={() => {
               if (isMulti) {
-                playTrack(data.selectedTracks[0], data.selectedTracks);
+                playTrack(data.selectedTracks[0], data.fullQueue || data.selectedTracks);
               } else if (isCurrentPlayingThis) {
                 togglePlay();
               } else {
-                playTrack(data);
+                playTrack(data, data.fullQueue || null);
               }
               onClose();
             }}

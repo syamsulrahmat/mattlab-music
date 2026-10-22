@@ -32,10 +32,16 @@ export const HomeTopTables = ({
 
   // Play track from list with full queue continuity and multi-selection support
   const handlePlayFromList = useCallback((track) => {
-    // If multiple tracks are selected and the track is one of them, queue all selected tracks
+    // If multiple tracks are selected and the track is one of them, prioritize selected tracks then rest of list
     if (selectedTrackIds.size > 1 && selectedTrackIds.has(track.id)) {
       const selectedTracks = top10.filter((t) => selectedTrackIds.has(t.id));
-      const fullQueue = getContinuityQueue(selectedTracks);
+      const clickedIdx = selectedTracks.findIndex((t) => t.id === track.id);
+      const orderedSelected = clickedIdx > 0
+        ? [...selectedTracks.slice(clickedIdx), ...selectedTracks.slice(0, clickedIdx)]
+        : selectedTracks;
+      
+      const remainingTop10 = top10.filter((t) => !selectedTrackIds.has(t.id));
+      const fullQueue = getContinuityQueue([...orderedSelected, ...remainingTop10]);
       playTrack(track, fullQueue);
     } else {
       // Standard playback: queue the Top 10 tracks seamlessly followed by continuous popular tracks
@@ -87,11 +93,12 @@ export const HomeTopTables = ({
       if (e.key === 'Enter') {
         e.preventDefault();
         if (selectedTrackIds.size > 1) {
-          // Play all selected tracks starting with the first selected track in the list
+          // Play selected tracks prioritized, then remaining Top 10, then popular tracks
           const selectedTracks = top10.filter((t) => selectedTrackIds.has(t.id));
           if (selectedTracks.length > 0) {
             const firstTrack = selectedTracks[0];
-            const fullQueue = getContinuityQueue(selectedTracks);
+            const remainingTop10 = top10.filter((t) => !selectedTrackIds.has(t.id));
+            const fullQueue = getContinuityQueue([...selectedTracks, ...remainingTop10]);
             playTrack(firstTrack, fullQueue);
           }
         } else if (selectedTrackIds.size === 1) {
@@ -211,22 +218,27 @@ export const HomeTopTables = ({
                   if (onContextMenu) {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (!selectedTrackIds.has(track.id)) {
+                    const isAlreadySelected = selectedTrackIds.has(track.id);
+                    if (!isAlreadySelected) {
                       setSelectedTrackIds(new Set([track.id]));
                       setLastSelectedTrackIdx(idx);
                     }
-                    const isMulti = selectedTrackIds.has(track.id) && selectedTrackIds.size > 1;
-                    const orderedTracks = isMulti
-                      ? top10.filter((t) => selectedTrackIds.has(t.id))
-                      : [track];
+                    const effectiveSelected = isAlreadySelected ? selectedTrackIds : new Set([track.id]);
+                    const isMulti = effectiveSelected.size > 1;
+                    const selectedList = top10.filter((t) => effectiveSelected.has(t.id));
+                    const remainingTop10 = top10.filter((t) => !effectiveSelected.has(t.id));
+                    const fullPrioritizedQueue = getContinuityQueue([...selectedList, ...remainingTop10]);
+                    const orderedTracks = isMulti ? selectedList : [track];
+
                     onContextMenu(e, 'track', {
                       ...track,
                       selectedTracks: orderedTracks,
+                      fullQueue: isMulti ? fullPrioritizedQueue : getContinuityQueue(top10),
                       track_ids: orderedTracks.map((t) => t.id),
                     });
                   }
                 }}
-                className={`group grid grid-cols-[36px_1fr_40px] md:grid-cols-[40px_4fr_3fr_1fr_100px] items-center px-3.5 py-2.5 rounded-xl transition cursor-pointer select-none border ${
+                className={`group grid grid-cols-[36px_1fr_40px] md:grid-cols-[40px_4fr_3fr_1fr_100px] items-center px-3.5 py-2.5 rounded-xl transition cursor-default select-none border ${
                   isSelected
                     ? 'border-transparent bg-surface-hover ring-1 ring-white/20 text-content-primary shadow-sm'
                     : isThisTrack
@@ -261,7 +273,7 @@ export const HomeTopTables = ({
                         handlePlayFromList(track);
                       }
                     }}
-                    className="hidden group-hover:flex items-center justify-center w-7 h-7 text-content-primary hover:text-brand-400 transition"
+                    className="hidden group-hover:flex items-center justify-center w-7 h-7 text-content-primary hover:text-brand-400 transition cursor-pointer"
                     title={isThisPlaying ? "Pause" : "Play"}
                   >
                     {isThisPlaying ? (
