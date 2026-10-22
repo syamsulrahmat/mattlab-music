@@ -275,7 +275,9 @@ export const SettingsModal = ({
     pipEngine,
     setPipEngine,
     togglePiP,
-    isPiPActive
+    isPiPActive,
+    autoMiniPlayerIntroEnabled,
+    setAutoMiniPlayerIntroEnabled
   } = usePlayer();
   const [clearingCache, setClearingCache] = useState(false);
   const { 
@@ -1583,6 +1585,35 @@ export const SettingsModal = ({
                     >
                       <PictureInPicture2 size={13} />
                       <span>{isPiPActive ? 'Close PiP' : 'Launch PiP Preview'}</span>
+                    </button>
+                  </div>
+
+                  {/* Once-A-Day Auto-Introduction Toggle */}
+                  <div className="pt-3.5 border-t border-border-subtle flex items-center justify-between gap-4">
+                    <div>
+                      <h5 className="text-xs font-bold text-white flex items-center gap-2">
+                        <span>Auto-introduce MiniPlayer on tab / app switch</span>
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand-500/15 text-brand-400 border border-brand-500/25">
+                          1× PER DAY
+                        </span>
+                      </h5>
+                      <p className="text-[11px] text-content-muted mt-0.5 leading-relaxed">
+                        Gently pops out the MiniPlayer when multitasking to another tab or desktop app during playback. Limited to once per calendar day.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setAutoMiniPlayerIntroEnabled(!autoMiniPlayerIntroEnabled)}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        autoMiniPlayerIntroEnabled ? 'bg-brand-500' : 'bg-surface-elevated'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          autoMiniPlayerIntroEnabled ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
                     </button>
                   </div>
                 </div>

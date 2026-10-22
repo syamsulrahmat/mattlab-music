@@ -1844,6 +1844,86 @@ export const PlayerProvider = ({ children }) => {
     setIsMiniPlayerOpen(true);
   };
 
+  // Auto-introduction of MiniPlayer on tab / desktop app switch (once per calendar day)
+  const [autoMiniPlayerIntroEnabled, setAutoMiniPlayerIntroEnabledState] = useState(() => {
+    try {
+      const stored = localStorage.getItem('mattlab_auto_miniplayer_intro');
+      return stored !== null ? stored === 'true' : true;
+    } catch (_) {
+      return true;
+    }
+  });
+
+  const setAutoMiniPlayerIntroEnabled = useCallback((enabled) => {
+    setAutoMiniPlayerIntroEnabledState(enabled);
+    try {
+      localStorage.setItem('mattlab_auto_miniplayer_intro', String(enabled));
+    } catch (_) {}
+    saveUserPreference({ autoMiniPlayerIntroEnabled: enabled });
+  }, [saveUserPreference]);
+
+  // Once-A-Day MiniPlayer Auto-Introduction Effect
+  useEffect(() => {
+    if (!autoMiniPlayerIntroEnabled) return;
+
+    const handleAutoIntro = () => {
+      // Must be actively playing music
+      if (!isPlaying || !currentTrack) return;
+
+      // Skip if miniplayer or PiP is already active
+      if (isMiniPlayerOpen || pipWindow || isCanvasPiPActive) return;
+
+      // Check once-per-calendar-day limit (e.g. "2026-10-22")
+      const today = new Date().toISOString().slice(0, 10);
+      try {
+        const lastTriggered = localStorage.getItem('mattlab_miniplayer_auto_intro_date');
+        if (lastTriggered === today) return;
+
+        // Record today's date
+        localStorage.setItem('mattlab_miniplayer_auto_intro_date', today);
+      } catch (_) {}
+
+      // Launch MiniPlayer
+      togglePiP();
+      if (showToast) {
+        showToast('✨ MiniPlayer launched for background multitasking (daily intro)', 4500);
+      }
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        handleAutoIntro();
+      }
+    };
+
+    const onWindowBlur = () => {
+      // Window lost focus (user switched to another desktop application)
+      handleAutoIntro();
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('blur', onWindowBlur);
+
+    // Register Chrome 120+ Automatic Picture-in-Picture media session action if supported
+    if ('mediaSession' in navigator && 'setActionHandler' in navigator.mediaSession) {
+      try {
+        navigator.mediaSession.setActionHandler('enterpictureinpicture', () => {
+          handleAutoIntro();
+        });
+      } catch (_) {}
+    }
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('blur', onWindowBlur);
+      if ('mediaSession' in navigator && 'setActionHandler' in navigator.mediaSession) {
+        try {
+          navigator.mediaSession.setActionHandler('enterpictureinpicture', null);
+        } catch (_) {}
+      }
+    };
+  }, [autoMiniPlayerIntroEnabled, isPlaying, currentTrack, isMiniPlayerOpen, pipWindow, isCanvasPiPActive, togglePiP, showToast]);
+
   // Smooth Volume Fade Helpers (for 30s song previews)
   const fadePause = useCallback((durationMs = 300) => {
     return new Promise((resolve) => {
@@ -1958,6 +2038,8 @@ export const PlayerProvider = ({ children }) => {
         setIsMiniPlayerOpen,
         pipEngine,
         setPipEngine,
+        autoMiniPlayerIntroEnabled,
+        setAutoMiniPlayerIntroEnabled,
         isPiPActive: Boolean(pipWindow) || isCanvasPiPActive || isMiniPlayerOpen,
         togglePiP,
         lyricsState,
