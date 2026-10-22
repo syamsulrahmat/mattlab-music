@@ -65,7 +65,7 @@ def fetch_spotify_popularity(title: str, artist: str) -> Optional[int]:
                 import math
                 score = min(100, max(20, round(math.log10(max(1000, play_count)) * 10.5)))
                 return score
-            return 75
+            return None
     except Exception as e:
         logger.debug(f"[Popularity] Spotify lookup failed for '{artist} - {title}': {e}")
     return None
@@ -82,8 +82,8 @@ def resolve_track_popularity(title: str, artist: str) -> int:
     if score is not None:
         return score
 
-    # 3. Default base score
-    return 45
+    # 3. Default base score (unverified tracks default to 0)
+    return 0
 
 def backfill_library_popularity_background():
     """Background worker that populates popularity points for tracks that lack them."""

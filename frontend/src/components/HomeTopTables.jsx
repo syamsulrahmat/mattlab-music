@@ -42,11 +42,11 @@ export const HomeTopTables = ({
       
       const remainingTop10 = top10.filter((t) => !selectedTrackIds.has(t.id));
       const fullQueue = getContinuityQueue([...orderedSelected, ...remainingTop10]);
-      playTrack(track, fullQueue);
+      playTrack(track, fullQueue, { preserveOrder: true });
     } else {
       // Standard playback: queue the Top 10 tracks seamlessly followed by continuous popular tracks
       const fullQueue = getContinuityQueue(top10);
-      playTrack(track, fullQueue);
+      playTrack(track, fullQueue, { preserveOrder: true });
     }
   }, [selectedTrackIds, top10, getContinuityQueue, playTrack]);
 
@@ -72,6 +72,11 @@ export const HomeTopTables = ({
       });
       setLastSelectedTrackIdx(idx);
     } else {
+      // If clicking an already selected track in a multi-selection, do NOT collapse the selection on click
+      // This allows double-clicking without losing the multi-track selection!
+      if (selectedTrackIds.size > 1 && selectedTrackIds.has(track.id)) {
+        return;
+      }
       setSelectedTrackIds(new Set([track.id]));
       setLastSelectedTrackIdx(idx);
     }
@@ -99,7 +104,7 @@ export const HomeTopTables = ({
             const firstTrack = selectedTracks[0];
             const remainingTop10 = top10.filter((t) => !selectedTrackIds.has(t.id));
             const fullQueue = getContinuityQueue([...selectedTracks, ...remainingTop10]);
-            playTrack(firstTrack, fullQueue);
+            playTrack(firstTrack, fullQueue, { preserveOrder: true });
           }
         } else if (selectedTrackIds.size === 1) {
           const [singleId] = Array.from(selectedTrackIds);
@@ -234,6 +239,7 @@ export const HomeTopTables = ({
                       ...track,
                       selectedTracks: orderedTracks,
                       fullQueue: isMulti ? fullPrioritizedQueue : getContinuityQueue(top10),
+                      preserveOrder: true,
                       track_ids: orderedTracks.map((t) => t.id),
                     });
                   }

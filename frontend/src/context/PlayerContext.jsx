@@ -1127,7 +1127,7 @@ export const PlayerProvider = ({ children }) => {
     audio.volume = isMuted ? 0 : volume;
 
     if (newQueue) {
-      if (isShuffle && newQueue.length > 1) {
+      if (isShuffle && !options.preserveOrder && newQueue.length > 1) {
         const others = newQueue.filter((t) => t.id !== track.id);
         const shuffledOthers = shuffleArray(others);
         setQueue([track, ...shuffledOthers]);
