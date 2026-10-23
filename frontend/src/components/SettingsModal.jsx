@@ -55,6 +55,7 @@ const SHORTCUT_CATEGORIES = [
   { id: 'navigation', label: 'Navigation' },
   { id: 'playlists', label: 'Playlists & Selection' },
   { id: 'interface', label: 'Interface & Views' },
+  { id: 'lyrics', label: 'Lyrics Studio Editor' },
 ];
 
 const SHORTCUTS_DATA = [
@@ -239,6 +240,52 @@ const SHORTCUTS_DATA = [
         title: 'Queue Island Panel',
         description: 'Toggle the right-side play queue context drawer on and off',
         combos: [['Click Queue Icon']],
+      },
+      {
+        title: 'Bulletin & Announcements',
+        description: 'Opens or closes the Bulletin drawer for announcements and feedback',
+        combos: [['Alt', 'B'], ['Click Megaphone Icon']],
+      },
+      {
+        title: 'Component Inspector (Dev Mode)',
+        description: 'Toggles visual component architecture overlay and file paths',
+        combos: [['Alt', 'C']],
+      },
+      {
+        title: 'Experimental Flags (Dev Mode)',
+        description: 'Opens developer feature flags dashboard',
+        combos: [['Ctrl', 'Shift', 'D'], ['⌘', 'Shift', 'D']],
+      },
+    ],
+  },
+  {
+    category: 'lyrics',
+    categoryLabel: 'Lyrics Studio Editor',
+    items: [
+      {
+        title: 'Stamp Current Time',
+        description: 'Records active playback timestamp to highlighted line and advances focus down',
+        combos: [['Alt', 'S'], ['F8']],
+      },
+      {
+        title: 'Tap-to-Sync Stamping',
+        description: 'When Tap-to-Sync is active, tap Spacebar when the next lyric line starts singing',
+        combos: [['Space']],
+      },
+      {
+        title: 'Insert Line Below',
+        description: 'Inserts a new lyric line directly below the active line',
+        combos: [['Enter']],
+      },
+      {
+        title: 'Undo Lyrics Edit',
+        description: 'Reverts the last timestamp nudge, offset, or lyric text change in Studio mode',
+        combos: [['Ctrl', 'Z'], ['⌘', 'Z']],
+      },
+      {
+        title: 'Preview Line Audio',
+        description: 'Seeks audio directly to line timestamp to verify synchronization',
+        combos: [['Click ▶ on line']],
       },
     ],
   },

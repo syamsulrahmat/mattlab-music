@@ -36,6 +36,7 @@ import { GlobalTooltip } from './components/GlobalTooltip';
 import { AudioMetricsHUD } from './components/AudioMetricsHUD';
 import { ComponentInspectorOverlay } from './components/ComponentInspectorOverlay';
 import { ExperimentalFlagsModal } from './components/ExperimentalFlagsModal';
+import { BulletinDrawer } from './components/BulletinDrawer';
 import { PlayerProvider, usePlayer } from './context/PlayerContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { FlagsProvider, useDevFlags } from './context/FlagsContext';
@@ -200,6 +201,24 @@ const MainAppContent = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState('account');
   const [isBugReportModalOpen, setIsBugReportModalOpen] = useState(false);
+  const [isBulletinOpen, setIsBulletinOpen] = useState(false);
+  const [bulletinUnreadCount, setBulletinUnreadCount] = useState(0);
+
+  const fetchBulletinUnread = useCallback(async () => {
+    try {
+      const res = await fetch('/api/bulletin/unread-count');
+      if (res.ok) {
+        const data = await res.json();
+        setBulletinUnreadCount(data.unread_count || 0);
+      }
+    } catch (_) {}
+  }, []);
+
+  useEffect(() => {
+    fetchBulletinUnread();
+    const interval = setInterval(fetchBulletinUnread, 30000);
+    return () => clearInterval(interval);
+  }, [fetchBulletinUnread]);
 
   const handleOpenSettings = (tab = 'account') => {
     setSettingsInitialTab(tab);
@@ -480,6 +499,13 @@ const MainAppContent = () => {
         // Toggle Component Inspector: Alt + C
         e.preventDefault();
         if (toggleComponentInspector) toggleComponentInspector();
+        return;
+      }
+
+      if (e.altKey && keyLower === 'b') {
+        // Toggle Bulletin & Announcements: Alt + B
+        e.preventDefault();
+        setIsBulletinOpen((prev) => !prev);
         return;
       }
 
@@ -1043,6 +1069,8 @@ const MainAppContent = () => {
         onGoBack={handleGoBack}
         onGoForward={handleGoForward}
         hasNotifications={hasResolvedNotifications}
+        onOpenBulletin={() => setIsBulletinOpen(true)}
+        bulletinUnreadCount={bulletinUnreadCount}
       />
 
       {/* 2. Three Floating Islands Body (Dynamic expandable sidebars, gap: 8px, padding: 8px) */}
@@ -1341,6 +1369,7 @@ const MainAppContent = () => {
         onSelectArtist={handleSelectArtist}
         onRequestMusic={(q) => handleOpenRequestMusic(q || '')}
         onOpenFlags={() => setIsFlagsModalOpen(true)}
+        onOpenBulletin={() => setIsBulletinOpen(true)}
       />
 
       {/* Admin User Management Modal */}
@@ -1442,6 +1471,13 @@ const MainAppContent = () => {
         isOpen={isFlagsModalOpen}
         onClose={() => setIsFlagsModalOpen(false)}
         showToast={showToast}
+      />
+
+      {/* Bulletin & Announcements Drawer */}
+      <BulletinDrawer
+        isOpen={isBulletinOpen}
+        onClose={() => setIsBulletinOpen(false)}
+        onUnreadCountChange={setBulletinUnreadCount}
       />
 
       {/* Global Stylized Tooltip System */}

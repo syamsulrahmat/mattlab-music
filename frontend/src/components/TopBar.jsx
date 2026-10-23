@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Home, Search, X, RefreshCw, HardDrive, DownloadCloud, Users, LogOut, Settings, User, Bug } from 'lucide-react';
+import { Home, Search, X, RefreshCw, HardDrive, DownloadCloud, Users, LogOut, Settings, User, Bug, Megaphone } from 'lucide-react';
 import { MattLabLogo } from './MattLabLogo';
 import { SearchFloatingModal } from './SearchFloatingModal';
 import { UserAvatar } from './UserAvatar';
@@ -25,6 +25,8 @@ export const TopBar = ({
   onGoBack,
   onGoForward,
   hasNotifications = false,
+  onOpenBulletin,
+  bulletinUnreadCount = 0,
 }) => {
     const { user, isAdmin, logout } = useAuth();
   const { currentTrack, playTrack, togglePlay } = usePlayer();
@@ -359,6 +361,21 @@ export const TopBar = ({
           </button>
         )}
 
+        {/* Bulletin Button */}
+        <button
+          onClick={onOpenBulletin}
+          className="relative bg-surface-elevated hover:bg-surface-hover text-content-primary p-2 sm:px-3 sm:py-2 rounded-full flex items-center gap-1.5 transition hover:scale-105 active:scale-95 shadow-sm"
+          title="Bulletin & Announcements"
+        >
+          <Megaphone size={14} className={bulletinUnreadCount > 0 ? "text-brand-400" : "text-content-secondary"} />
+          <span className="hidden sm:inline text-xs font-semibold">Bulletin</span>
+          {bulletinUnreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 px-1.5 py-0.2 rounded-full bg-brand-500 text-black text-[10px] font-extrabold shadow-md ring-2 ring-surface-base animate-pulse">
+              {bulletinUnreadCount}
+            </span>
+          )}
+        </button>
+
         {/* User Profile Avatar & Dropdown */}
         <div className="relative">
           <button
@@ -396,6 +413,24 @@ export const TopBar = ({
                     </div>
                   </div>
                 </div>
+
+                <button
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    onOpenBulletin?.();
+                  }}
+                  className="w-full text-left px-3 py-2 text-content-primary hover:bg-white/10 flex items-center justify-between transition"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Megaphone size={15} className="text-brand-500" />
+                    <span>Bulletin & Announcements</span>
+                  </div>
+                  {bulletinUnreadCount > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-brand-500 text-black">
+                      {bulletinUnreadCount}
+                    </span>
+                  )}
+                </button>
 
                 <button
                   onClick={() => {

@@ -13,6 +13,7 @@ import {
   TrendingUp,
   Loader2,
   FlaskConical,
+  Megaphone,
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { useDevFlags } from '../context/FlagsContext';
@@ -31,6 +32,7 @@ export const CommandPaletteModal = ({
   onSelectArtist,
   onRequestMusic,
   onOpenFlags,
+  onOpenBulletin,
 }) => {
   const { isDevUnlocked, flags, toggleComponentInspector } = useDevFlags();
   const [query, setQuery] = useState('');
@@ -211,6 +213,9 @@ export const CommandPaletteModal = ({
     if (isDevUnlocked && (query.toLowerCase().includes('inspect') || query.toLowerCase().includes('component') || query.toLowerCase().includes('dev'))) {
       items.push({ type: 'inspector' });
     }
+    if (query.toLowerCase().includes('bulletin') || query.toLowerCase().includes('announce') || query.toLowerCase().includes('feedback') || query.toLowerCase().includes('news')) {
+      items.push({ type: 'bulletin' });
+    }
     if (topResult) {
       if (topResult.type === 'track') {
         items.push({ type: 'top_track', data: topResult });
@@ -251,6 +256,11 @@ export const CommandPaletteModal = ({
     if (item.type === 'inspector') {
       if (toggleComponentInspector) toggleComponentInspector();
       onClose();
+      return;
+    }
+    if (item.type === 'bulletin') {
+      onClose();
+      if (onOpenBulletin) onOpenBulletin();
       return;
     }
     if (item.type === 'top_track' || item.type === 'track' || item.type === 'trending_track') {
@@ -416,6 +426,43 @@ export const CommandPaletteModal = ({
                   </div>
                 </div>
                 <ChevronRight size={16} className="text-cyan-400 group-hover:translate-x-0.5 transition" />
+              </div>
+            );
+          })()}
+
+          {/* Bulletin Quick Action */}
+          {(() => {
+            const bulletinIndex = navigableItems.findIndex((i) => i.type === 'bulletin');
+            if (bulletinIndex === -1) return null;
+            return (
+              <div
+                id={`cp-item-${bulletinIndex}`}
+                onClick={() => {
+                  onClose();
+                  if (onOpenBulletin) onOpenBulletin();
+                }}
+                onMouseEnter={() => setSelectedIndex(bulletinIndex)}
+                className={`p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition shadow-md group ${
+                  selectedIndex === bulletinIndex
+                    ? 'bg-brand-500/25 border-brand-500/50 scale-[1.01]'
+                    : 'bg-brand-500/15 border-brand-500/30'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-brand-500/20 text-brand-400">
+                    <Megaphone size={18} />
+                  </div>
+                  <div>
+                    <div className="font-bold text-xs flex items-center gap-2 text-white">
+                      <span>Open Bulletin & Announcements</span>
+                      <span className="text-[9px] bg-brand-500/30 text-brand-300 px-1.5 py-0.2 rounded font-mono">Alt+B</span>
+                    </div>
+                    <div className="text-[11px] text-content-secondary mt-0.5">
+                      Read announcements and leave feedback or replies
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight size={16} className="text-brand-400 group-hover:translate-x-0.5 transition" />
               </div>
             );
           })()}
