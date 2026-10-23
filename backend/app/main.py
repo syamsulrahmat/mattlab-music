@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from app.database import init_db
 from app.auth import get_user_from_request, get_user_count
-from app.routes import stream, library, scan, playlists, lyrics, request_music, auth_routes, spotify_sync, karaoke, bug_reports, dev_repair, bulletin
+from app.routes import stream, library, scan, playlists, lyrics, request_music, auth_routes, spotify_sync, karaoke, bug_reports, dev_repair, bulletin, user_routes
 
 app = FastAPI(
     title="MattLab Music App API",
@@ -123,6 +123,7 @@ app.include_router(karaoke.router, prefix="/api")
 app.include_router(bug_reports.router, prefix="/api")
 app.include_router(dev_repair.router, prefix="/api/dev/repair")
 app.include_router(bulletin.router, prefix="/api")
+app.include_router(user_routes.router, prefix="/api")
 
 class ClientError(BaseModel):
     type: str = ""

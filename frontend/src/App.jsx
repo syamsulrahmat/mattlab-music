@@ -37,6 +37,7 @@ import { AudioMetricsHUD } from './components/AudioMetricsHUD';
 import { ComponentInspectorOverlay } from './components/ComponentInspectorOverlay';
 import { ExperimentalFlagsModal } from './components/ExperimentalFlagsModal';
 import { BulletinDrawer } from './components/BulletinDrawer';
+import { UserProfileView } from './components/UserProfileView';
 import { PlayerProvider, usePlayer } from './context/PlayerContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { FlagsProvider, useDevFlags } from './context/FlagsContext';
@@ -47,6 +48,7 @@ const MainAppContent = () => {
   const [selectedAlbumId, setSelectedAlbumId] = useState(null);
   const [selectedArtistId, setSelectedArtistId] = useState(null);
   const [selectedPlaylistId, setSelectedPlaylistId] = useState(null);
+  const [selectedProfileUserId, setSelectedProfileUserId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLyricsOpen, setIsLyricsOpen] = useState(false);
   const [detailTitle, setDetailTitle] = useState('');
@@ -244,7 +246,7 @@ const MainAppContent = () => {
 
   // History stack for Back/Forward navigation
   const [history, setHistory] = useState([
-    { tab: 'home', albumId: null, artistId: null, playlistId: null, searchQuery: '', isLyricsOpen: false }
+    { tab: 'home', albumId: null, artistId: null, playlistId: null, userId: null, searchQuery: '', isLyricsOpen: false }
   ]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
@@ -374,6 +376,19 @@ const MainAppContent = () => {
     }
   }, [showToast]);
 
+  // Live Playback Heartbeat Synchronization for User Profiles
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    fetch('/api/users/now-playing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        track_id: currentTrack?.id || null,
+        is_playing: Boolean(isPlaying && currentTrack),
+      }),
+    }).catch(() => {});
+  }, [currentTrack?.id, isPlaying, isAuthenticated]);
+
   // Centralized Navigation Dispatcher
   const navigateTo = useCallback((nextState) => {
     const fullState = {
@@ -381,6 +396,7 @@ const MainAppContent = () => {
       albumId: nextState.albumId !== undefined ? nextState.albumId : null,
       artistId: nextState.artistId !== undefined ? nextState.artistId : null,
       playlistId: nextState.playlistId !== undefined ? nextState.playlistId : null,
+      userId: nextState.userId !== undefined ? nextState.userId : null,
       searchQuery: nextState.searchQuery !== undefined ? nextState.searchQuery : '',
       isLyricsOpen: Boolean(nextState.isLyricsOpen),
     };
@@ -395,6 +411,7 @@ const MainAppContent = () => {
     setSelectedAlbumId(fullState.albumId);
     setSelectedArtistId(fullState.artistId);
     setSelectedPlaylistId(fullState.playlistId);
+    setSelectedProfileUserId(fullState.userId);
     setSearchQuery(fullState.searchQuery);
     setIsLyricsOpen(fullState.isLyricsOpen);
   }, [historyIndex]);
@@ -404,6 +421,7 @@ const MainAppContent = () => {
     setSelectedAlbumId(stateObj.albumId);
     setSelectedArtistId(stateObj.artistId);
     setSelectedPlaylistId(stateObj.playlistId);
+    setSelectedProfileUserId(stateObj.userId || null);
     setSearchQuery(stateObj.searchQuery);
     setIsLyricsOpen(stateObj.isLyricsOpen);
   }, []);
@@ -750,6 +768,9 @@ const MainAppContent = () => {
         case 'playlist-detail':
           pageTitle = detailTitle || 'Playlist';
           break;
+        case 'user-profile':
+          pageTitle = 'User Profile';
+          break;
         case 'home':
         default:
           pageTitle = '';
@@ -823,6 +844,11 @@ const MainAppContent = () => {
   const handleSelectPlaylist = (playlistId) => {
     setIsLyricsOpen(false);
     navigateTo({ tab: 'playlist-detail', playlistId, isLyricsOpen: false });
+  };
+
+  const handleSelectUser = (userId) => {
+    setIsLyricsOpen(false);
+    navigateTo({ tab: 'user-profile', userId, isLyricsOpen: false });
   };
 
   const handleSelectTab = (tab) => {
@@ -1071,6 +1097,7 @@ const MainAppContent = () => {
         hasNotifications={hasResolvedNotifications}
         onOpenBulletin={() => setIsBulletinOpen(true)}
         bulletinUnreadCount={bulletinUnreadCount}
+        onSelectUser={handleSelectUser}
       />
 
       {/* 2. Three Floating Islands Body (Dynamic expandable sidebars, gap: 8px, padding: 8px) */}
@@ -1224,6 +1251,19 @@ const MainAppContent = () => {
                 </div>
               )}
 
+              {activeTab === 'user-profile' && selectedProfileUserId && (
+                <div className="w-full">
+                  <UserProfileView
+                    userId={selectedProfileUserId}
+                    onBack={handleGoBack}
+                    onSelectPlaylist={handleSelectPlaylist}
+                    onSelectAlbum={handleSelectAlbum}
+                    onSelectArtist={handleSelectArtist}
+                    onPlaylistCloned={fetchPlaylists}
+                  />
+                </div>
+              )}
+
               {/* Universal Informational & Action Footer */}
               <Footer
                 stats={stats}
@@ -1365,11 +1405,15 @@ const MainAppContent = () => {
       <CommandPaletteModal
         isOpen={isCommandPaletteOpen}
         onClose={() => setIsCommandPaletteOpen(false)}
-        onSelectAlbum={handleSelectAlbum}
-        onSelectArtist={handleSelectArtist}
-        onRequestMusic={(q) => handleOpenRequestMusic(q || '')}
-        onOpenFlags={() => setIsFlagsModalOpen(true)}
+        onSelectUser={handleSelectUser}
+        onSelectTab={handleSelectTab}
         onOpenBulletin={() => setIsBulletinOpen(true)}
+        onOpenSettings={handleOpenSettings}
+        onOpenUserManagement={() => setIsUserManagementOpen(true)}
+        onOpenBugReport={() => setIsBugReportModalOpen(true)}
+        onOpenFlags={() => setIsFlagsModalOpen(true)}
+        onRequestMusic={(q) => handleOpenRequestMusic(q || '')}
+        onRefreshScan={handleRefreshScan}
       />
 
       {/* Admin User Management Modal */}
@@ -1478,6 +1522,7 @@ const MainAppContent = () => {
         isOpen={isBulletinOpen}
         onClose={() => setIsBulletinOpen(false)}
         onUnreadCountChange={setBulletinUnreadCount}
+        onSelectUser={handleSelectUser}
       />
 
       {/* Global Stylized Tooltip System */}

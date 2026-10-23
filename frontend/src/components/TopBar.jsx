@@ -27,6 +27,7 @@ export const TopBar = ({
   hasNotifications = false,
   onOpenBulletin,
   bulletinUnreadCount = 0,
+  onSelectUser,
 }) => {
     const { user, isAdmin, logout } = useAuth();
   const { currentTrack, playTrack, togglePlay } = usePlayer();
@@ -397,10 +398,19 @@ export const TopBar = ({
                 onClick={() => setIsUserMenuOpen(false)} 
               />
               <div className="absolute right-0 mt-2 w-60 bg-surface-panel border border-border-medium rounded-xl shadow-2xl py-2 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
-                <div className="px-3.5 py-2.5 border-b border-border-medium flex items-center gap-3">
+                <div
+                  onClick={() => {
+                    if (user?.id) {
+                      setIsUserMenuOpen(false);
+                      onSelectUser?.(user.id);
+                    }
+                  }}
+                  className="px-3.5 py-2.5 border-b border-border-medium flex items-center gap-3 cursor-pointer hover:bg-white/5 transition group/header"
+                  title="View your public profile"
+                >
                   <UserAvatar user={user} size="md" />
                   <div className="min-w-0 flex-1">
-                    <div className="font-bold text-content-primary text-sm truncate">
+                    <div className="font-bold text-content-primary text-sm truncate group-hover/header:text-brand-400 transition">
                       {user?.display_name || user?.username}
                     </div>
                     <div className="text-content-secondary text-[11px] flex items-center justify-between mt-0.5">
@@ -413,6 +423,17 @@ export const TopBar = ({
                     </div>
                   </div>
                 </div>
+
+                <button
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    if (user?.id) onSelectUser?.(user.id);
+                  }}
+                  className="w-full text-left px-3 py-2 text-content-primary hover:bg-white/10 flex items-center gap-2.5 transition"
+                >
+                  <User size={15} className="text-brand-500" />
+                  <span>My Public Profile</span>
+                </button>
 
                 <button
                   onClick={() => {
@@ -439,8 +460,8 @@ export const TopBar = ({
                   }}
                   className="w-full text-left px-3 py-2 text-content-primary hover:bg-white/10 flex items-center gap-2.5 transition"
                 >
-                  <User size={15} className="text-brand-500" />
-                  <span>Profile & Account</span>
+                  <Settings size={15} className="text-content-secondary" />
+                  <span>Account Settings</span>
                 </button>
 
                 <button

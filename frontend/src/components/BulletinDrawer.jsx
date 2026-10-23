@@ -35,7 +35,7 @@ const formatRelativeTime = (dateStr) => {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 };
 
-export const BulletinDrawer = ({ isOpen, onClose, onUnreadCountChange }) => {
+export const BulletinDrawer = ({ isOpen, onClose, onUnreadCountChange, onSelectUser }) => {
   const { user, isAdmin } = useAuth();
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayer();
 
@@ -433,11 +433,20 @@ export const BulletinDrawer = ({ isOpen, onClose, onUnreadCountChange }) => {
 
                   {/* Author Header */}
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      onClick={() => {
+                        if (b.author?.id) {
+                          onSelectUser?.(b.author.id);
+                          onClose();
+                        }
+                      }}
+                      className="flex items-center gap-2.5 min-w-0 cursor-pointer group/author"
+                      title={`View ${b.author.display_name}'s profile`}
+                    >
                       <UserAvatar user={b.author} size="sm" />
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-white text-xs truncate">
+                          <span className="font-bold text-white text-xs truncate group-hover/author:text-brand-400 group-hover/author:underline transition">
                             {b.author.display_name}
                           </span>
                           {b.author.role === 'admin' && (
@@ -551,8 +560,17 @@ export const BulletinDrawer = ({ isOpen, onClose, onUnreadCountChange }) => {
                               <UserAvatar user={c.user} size="xs" />
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="font-semibold text-white text-[11px]">
+                                  <div
+                                    onClick={() => {
+                                      if (c.user?.id) {
+                                        onSelectUser?.(c.user.id);
+                                        onClose();
+                                      }
+                                    }}
+                                    className="flex items-center gap-1.5 cursor-pointer group/commenter"
+                                    title={`View ${c.user.display_name}'s profile`}
+                                  >
+                                    <span className="font-semibold text-white text-[11px] group-hover/commenter:text-brand-400 group-hover/commenter:underline transition">
                                       {c.user.display_name}
                                     </span>
                                     <span className="text-[10px] text-content-muted">

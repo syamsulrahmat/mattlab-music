@@ -172,10 +172,15 @@ async def create_playlist(payload: PlaylistCreate, current_user: Dict[str, Any] 
 
 @router.get("/playlists/{playlist_id}")
 async def get_playlist_detail(playlist_id: int, current_user: Dict[str, Any] = Depends(get_current_user)):
-    """Get single playlist and its ordered tracks, verifying user ownership."""
+    """Get single playlist and its ordered tracks (accessible to any authenticated user)."""
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM playlists WHERE id = ? AND user_id = ?", (playlist_id, current_user["id"]))
+        cursor.execute("""
+            SELECT p.*, u.username as owner_username, u.display_name as owner_display_name
+            FROM playlists p
+            LEFT JOIN users u ON p.user_id = u.id
+            WHERE p.id = ?
+        """, (playlist_id,))
         playlist = cursor.fetchone()
         if not playlist:
             raise HTTPException(status_code=404, detail="Playlist not found")
@@ -216,6 +221,7 @@ async def get_playlist_detail(playlist_id: int, current_user: Dict[str, Any] = D
         rows = cursor.fetchall()
         playlist_dict = dict(playlist)
         playlist_dict["covers"] = [f"/api/covers/{r['album_id']}" for r in rows]
+        playlist_dict["is_owner"] = bool(playlist["user_id"] == current_user["id"])
 
         # Attach any linked Spotify sources (e.g. multi-playlist collections)
         cursor.execute("""
@@ -233,6 +239,72 @@ async def get_playlist_detail(playlist_id: int, current_user: Dict[str, Any] = D
         **playlist_dict,
         "tracks": tracks,
     }
+
+@router.post("/playlists/{playlist_id}/clone")
+def clone_playlist(playlist_id: int, current_user: Dict[str, Any] = Depends(get_current_user)):
+    """Clone any public playlist into current user's library with all its tracks."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT p.id, p.name, p.description, p.user_id, u.display_name, u.username
+            FROM playlists p
+            LEFT JOIN users u ON p.user_id = u.id
+            WHERE p.id = ?
+        """, (playlist_id,))
+        source = cursor.fetchone()
+        if not source:
+            raise HTTPException(status_code=404, detail="Playlist not found")
+
+        source_name = source["name"]
+        author_name = source["display_name"] or source["username"] or "Unknown"
+        is_own = source["user_id"] == current_user["id"]
+        new_name = f"{source_name} (Copy)" if is_own else f"{source_name} (by {author_name})"
+
+        # Shift existing user playlists down
+        cursor.execute("UPDATE playlists SET position = position + 1 WHERE user_id = ?", (current_user["id"],))
+
+        # Insert new playlist
+        cursor.execute("""
+            INSERT INTO playlists (name, description, user_id, position)
+            VALUES (?, ?, ?, 0)
+        """, (new_name, source["description"] or "", current_user["id"]))
+        new_playlist_id = cursor.lastrowid
+
+        # Copy tracks
+        cursor.execute("""
+            SELECT track_id, position
+            FROM playlist_tracks
+            WHERE playlist_id = ?
+            ORDER BY position ASC, added_at ASC
+        """, (playlist_id,))
+        source_tracks = cursor.fetchall()
+
+        for st in source_tracks:
+            cursor.execute("""
+                INSERT OR IGNORE INTO playlist_tracks (playlist_id, track_id, position)
+                VALUES (?, ?, ?)
+            """, (new_playlist_id, st["track_id"], st["position"]))
+
+        # Fetch up to 4 covers for collage
+        cursor.execute("""
+            SELECT a.id AS album_id
+            FROM playlist_tracks pt
+            JOIN tracks t ON pt.track_id = t.id
+            JOIN albums a ON t.album_id = a.id
+            WHERE pt.playlist_id = ? AND a.cover_path IS NOT NULL
+            GROUP BY a.id
+            ORDER BY MIN(pt.position) ASC
+            LIMIT 4
+        """, (new_playlist_id,))
+        covers = [f"/api/covers/{r['album_id']}" for r in cursor.fetchall()]
+
+        return {
+            "id": new_playlist_id,
+            "name": new_name,
+            "track_count": len(source_tracks),
+            "covers": covers,
+            "status": "cloned"
+        }
 
 class PlaylistUpdate(BaseModel):
     name: Optional[str] = None

@@ -125,13 +125,13 @@ const SHORTCUTS_DATA = [
     categoryLabel: 'Navigation',
     items: [
       {
-        title: 'Focus Search',
-        description: 'Focus top bar search input to search tracks, albums, or artists',
-        combos: [['Ctrl', 'Shift', 'K'], ['⌘', 'Shift', 'K'], ['S']],
+        title: 'Music Search (Library & Catalog)',
+        description: 'Focus top bar search input to search tracks, albums, and artists in catalog',
+        combos: [['S'], ['Ctrl', 'Shift', 'K'], ['⌘', 'Shift', 'K']],
       },
       {
-        title: 'Quick Search & Command Palette',
-        description: 'Instantly search tracks, albums, artists, or request missing music',
+        title: 'Command Palette (Global Switcher)',
+        description: 'Open quick switcher for user profiles, navigation, audio tools, and system commands',
         combos: [['Ctrl', 'K'], ['⌘', 'K']],
       },
       {
