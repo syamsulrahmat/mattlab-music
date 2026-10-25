@@ -41,8 +41,10 @@ export const TracklistFilterBar = ({
   // ----------------------------------------------------
   if (mode === 'desktop') {
     return (
-      <div className={`relative flex-1 sm:w-52 max-w-xs ${className}`}>
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-muted pointer-events-none" />
+      <div className={`relative flex-1 sm:w-64 max-w-sm ${className}`}>
+        <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-content-secondary flex items-center">
+          <Search size={16} />
+        </div>
         <input
           ref={inputRef}
           type="text"
@@ -50,7 +52,7 @@ export const TracklistFilterBar = ({
           value={searchQuery}
           onChange={(e) => setSearchQuery?.(e.target.value)}
           onKeyDown={onKeyDown}
-          className="w-full bg-surface-elevated2 hover:bg-surface-hover focus:bg-surface-hover text-content-primary text-xs pl-8 pr-7 py-2 rounded-full border border-border-subtle focus:border-border-strong outline-none transition placeholder:text-content-subtle"
+          className="w-full bg-surface-elevated hover:bg-surface-elevated2 focus:bg-surface-elevated2 text-content-primary text-xs sm:text-sm pl-10 pr-9 py-2.5 rounded-full border border-transparent focus:border-border-strong outline-none transition placeholder-content-secondary"
         />
         {searchQuery && (
           <button
@@ -59,10 +61,10 @@ export const TracklistFilterBar = ({
               setSearchQuery?.('');
               onClear?.();
             }}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-content-muted hover:text-content-primary p-0.5 cursor-pointer"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-content-secondary hover:text-content-primary p-0.5 rounded-full cursor-pointer"
             title="Clear filter"
           >
-            <X size={12} />
+            <X size={14} />
           </button>
         )}
       </div>
@@ -73,9 +75,9 @@ export const TracklistFilterBar = ({
   // MOBILE VERSION (Sticky Floating Top Bar)
   // ----------------------------------------------------
   return (
-    <div className={`md:hidden sticky top-0 z-30 px-4 py-3 bg-surface-base/95 backdrop-blur-xl border-none transition-all flex items-center gap-2.5 ${className}`}>
-      <div className="relative flex-1 bg-surface-elevated/60 rounded-xl overflow-hidden shadow-sm">
-        <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-content-muted pointer-events-none" />
+    <div className={`md:hidden sticky top-0 z-30 px-4 py-2.5 bg-black md:bg-surface-base border-none transition-all flex items-center gap-2.5 ${className}`}>
+      <div className="relative flex-1 flex items-center">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-content-secondary pointer-events-none" size={20} />
         <input
           ref={inputRef}
           type="text"
@@ -85,7 +87,7 @@ export const TracklistFilterBar = ({
           onBlur={onBlur}
           onChange={(e) => setSearchQuery?.(e.target.value)}
           onKeyDown={onKeyDown}
-          className="w-full bg-transparent text-content-primary text-sm pl-11 pr-10 py-2.5 outline-none placeholder:text-content-muted border-0 focus:ring-0 focus:outline-none"
+          className="w-full bg-surface-elevated hover:bg-surface-hover focus:bg-surface-hover text-content-primary pl-12 pr-10 py-3 rounded-full text-sm font-medium outline-none border border-transparent focus:border-border-strong transition placeholder:text-content-secondary shadow-md"
         />
         {searchQuery && (
           <button
@@ -94,10 +96,10 @@ export const TracklistFilterBar = ({
               setSearchQuery?.('');
               onClear?.();
             }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-content-muted hover:text-content-primary p-1 cursor-pointer"
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-content-secondary hover:text-white"
             title="Clear filter"
           >
-            <X size={16} />
+            <X size={18} />
           </button>
         )}
       </div>

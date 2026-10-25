@@ -105,6 +105,33 @@ const MainAppContent = () => {
     }
   }, [activeTab, selectedAlbumId, selectedArtistId, selectedPlaylistId, selectedProfileUserId]);
 
+  // When Search tab is selected or active, automatically focus the search input so user can immediately type
+  useEffect(() => {
+    if (activeTab === 'search') {
+      const focusSearchInput = () => {
+        const mobileInput = document.getElementById('mobile-search-input');
+        const desktopInput = document.getElementById('global-search-input');
+        if (mobileInput && window.innerWidth < 640) {
+          mobileInput.focus();
+        } else if (desktopInput) {
+          desktopInput.focus();
+          desktopInput.select();
+        } else if (mobileInput) {
+          mobileInput.focus();
+        }
+      };
+
+      // Try immediate and next animation frame / tick
+      focusSearchInput();
+      const t1 = setTimeout(focusSearchInput, 50);
+      const t2 = setTimeout(focusSearchInput, 150);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
+    }
+  }, [activeTab]);
+
   // Persist sidebar widths
   useEffect(() => {
     try {
@@ -863,6 +890,18 @@ const MainAppContent = () => {
   const handleSelectTab = (tab) => {
     setIsLyricsOpen(false);
     navigateTo({ tab, isLyricsOpen: false });
+    if (tab === 'search') {
+      setTimeout(() => {
+        const mobileInput = document.getElementById('mobile-search-input');
+        const desktopInput = document.getElementById('global-search-input');
+        if (window.innerWidth < 640 && mobileInput) {
+          mobileInput.focus();
+        } else if (desktopInput) {
+          desktopInput.focus();
+          desktopInput.select();
+        }
+      }, 50);
+    }
   };
 
   const handleToggleLyrics = (open) => {

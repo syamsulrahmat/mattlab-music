@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Search,
   X,
@@ -37,6 +37,18 @@ export const SearchView = ({
   const [localQuery, setLocalQuery] = useState('');
   const query = propQuery !== undefined ? propQuery : localQuery;
   const setQuery = propSetQuery || setLocalQuery;
+
+  const mobileSearchInputRef = useRef(null);
+
+  // Auto-focus search input when navigating to Search stage
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (mobileSearchInputRef.current) {
+        mobileSearchInputRef.current.focus();
+      }
+    }, 50);
+    return () => clearTimeout(timer);
+  }, []);
 
   const [results, setResults] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -179,6 +191,8 @@ export const SearchView = ({
       <div className="relative max-w-xl mb-6 sm:hidden">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-content-secondary" size={20} />
         <input
+          ref={mobileSearchInputRef}
+          id="mobile-search-input"
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -187,7 +201,10 @@ export const SearchView = ({
         />
         {query && (
           <button
-            onClick={() => setQuery('')}
+            onClick={() => {
+              setQuery('');
+              mobileSearchInputRef.current?.focus();
+            }}
             className="absolute right-4 top-1/2 -translate-y-1/2 text-content-secondary hover:text-white"
           >
             <X size={18} />

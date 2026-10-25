@@ -114,6 +114,73 @@ export const PlayerBar = ({
   const isFav = currentTrack ? isFavorite(currentTrack.id) : false;
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
+  // Interactive Mobile Floating Player Drag Physics (YouTube-style draggable preview with spring-back)
+  const [mobileDragOffset, setMobileDragOffset] = useState({ x: 0, y: 0 });
+  const [isMobileDragging, setIsMobileDragging] = useState(false);
+  const mobileDragStartRef = useRef({ x: 0, y: 0, pointerId: null });
+  const hasMobileDraggedRef = useRef(false);
+
+  const handleMobilePointerDown = (e) => {
+    // Only capture primary touch/mouse button
+    if (e.button !== undefined && e.button !== 0) return;
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (_) {}
+    mobileDragStartRef.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId };
+    hasMobileDraggedRef.current = false;
+    setIsMobileDragging(true);
+  };
+
+  const handleMobilePointerMove = (e) => {
+    if (!isMobileDragging || mobileDragStartRef.current.pointerId !== e.pointerId) return;
+    const deltaX = e.clientX - mobileDragStartRef.current.x;
+    const deltaY = e.clientY - mobileDragStartRef.current.y;
+    const distance = Math.hypot(deltaX, deltaY);
+
+    if (distance > 5) {
+      hasMobileDraggedRef.current = true;
+    }
+
+    // Apply interactive elastic resistance: 0.6 dampening
+    setMobileDragOffset({
+      x: deltaX * 0.6,
+      y: deltaY * 0.6,
+    });
+  };
+
+  const handleMobilePointerUp = (e) => {
+    if (!isMobileDragging) return;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch (_) {}
+    setIsMobileDragging(false);
+    // Smoothly spring snap back to original position
+    setMobileDragOffset({ x: 0, y: 0 });
+
+    // Reset drag flag after short delay so click handler knows if it was a drag
+    setTimeout(() => {
+      hasMobileDraggedRef.current = false;
+    }, 120);
+  };
+
+  const handleMobilePointerCancel = (e) => {
+    if (!isMobileDragging) return;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch (_) {}
+    setIsMobileDragging(false);
+    setMobileDragOffset({ x: 0, y: 0 });
+    setTimeout(() => {
+      hasMobileDraggedRef.current = false;
+    }, 120);
+  };
+
+  const handleMobileCardClick = () => {
+    // If the user was dragging the card, do not open the now playing sheet
+    if (hasMobileDraggedRef.current) return;
+    setIsMobileNowPlayingOpen(true);
+  };
+
   return (
     <footer 
       data-dev-component="PlayerBar"
@@ -125,12 +192,23 @@ export const PlayerBar = ({
       {currentTrack && !isLyricsOpen && (
         <div className="md:hidden px-3.5 pb-2 pointer-events-auto max-w-lg mx-auto w-full">
           <div 
-            onClick={() => setIsMobileNowPlayingOpen(true)}
-            className="relative flex items-center justify-between h-16 px-3.5 rounded-2xl bg-neutral-900/95 backdrop-blur-xl border border-white/10 shadow-[0_8px_24px_rgba(0,0,0,0.65)] cursor-pointer active:scale-[0.99] transition-all select-none overflow-hidden"
+            onPointerDown={handleMobilePointerDown}
+            onPointerMove={handleMobilePointerMove}
+            onPointerUp={handleMobilePointerUp}
+            onPointerCancel={handleMobilePointerCancel}
+            onClick={handleMobileCardClick}
+            style={{
+              transform: `translate3d(${mobileDragOffset.x}px, ${mobileDragOffset.y}px, 0)`,
+              transition: isMobileDragging ? 'none' : 'transform 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28)',
+              touchAction: 'none',
+            }}
+            className={`relative flex items-center justify-between h-16 px-3.5 rounded-2xl bg-neutral-900/95 backdrop-blur-xl border border-white/10 shadow-[0_8px_24px_rgba(0,0,0,0.65)] cursor-grab active:cursor-grabbing select-none overflow-hidden ${
+              isMobileDragging ? 'shadow-[0_14px_32px_rgba(0,0,0,0.85)] scale-[1.02]' : 'active:scale-[0.99]'
+            }`}
           >
             {/* Left: Thumbnail & Track info */}
             <div 
-              className="flex items-center gap-3 min-w-0 flex-1"
+              className="flex items-center gap-3 min-w-0 flex-1 pointer-events-none"
               onContextMenu={(e) => {
                 if (onContextMenu) {
                   e.preventDefault();
@@ -142,7 +220,8 @@ export const PlayerBar = ({
               <img
                 src={resolveCoverUrl(currentTrack)}
                 alt=""
-                className="w-11 h-11 rounded-lg object-cover bg-surface-elevated shrink-0 shadow-sm"
+                className="w-11 h-11 rounded-lg object-cover bg-surface-elevated shrink-0 shadow-sm select-none pointer-events-none"
+                draggable={false}
               />
               <div className="min-w-0 flex-1 pr-1">
                 <div className="flex items-center gap-1.5 min-w-0">
@@ -172,7 +251,11 @@ export const PlayerBar = ({
             </div>
 
             {/* Right: Quick Actions */}
-            <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+            <div 
+              className="flex items-center gap-2 shrink-0 z-10" 
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
               <button
                 type="button"
                 onClick={() => toggleFavorite(currentTrack.id)}
@@ -197,7 +280,7 @@ export const PlayerBar = ({
             </div>
 
             {/* Bottom Scrubber Progress Bar */}
-            <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-white/10">
+            <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-white/10 pointer-events-none">
               <div 
                 className="h-full bg-brand-500 transition-all duration-150"
                 style={{ width: `${progressPercent}%` }}

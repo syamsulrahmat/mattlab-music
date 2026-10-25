@@ -17,7 +17,15 @@ export const MobileNav = ({ activeTab, setActiveTab }) => {
         return (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => {
+              setActiveTab(tab.id);
+              if (tab.id === 'search') {
+                const searchEl = document.getElementById('mobile-search-input') || document.getElementById('global-search-input');
+                if (searchEl) {
+                  searchEl.focus();
+                }
+              }
+            }}
             className={`flex flex-col items-center justify-center py-1 px-4 rounded-lg transition active:scale-95 ${
               isActive ? 'text-brand-500 font-bold' : 'text-neutral-400 hover:text-white'
             }`}
