@@ -141,13 +141,6 @@ export const MobileQueueSheet = ({
                   Clear Queue
                 </button>
               )}
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-8 h-8 rounded-full bg-surface-elevated flex items-center justify-center text-content-secondary hover:text-content-primary transition active:scale-95"
-              >
-                <X size={16} />
-              </button>
             </div>
           </div>
         </div>

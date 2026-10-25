@@ -520,7 +520,7 @@ export const LyricsView = ({ onClose }) => {
       {isUserScrolled && (parsedLines.length > 0 || lyricsData?.plainLyrics) && (
         <button
           onClick={handleResumeSync}
-          className="absolute bottom-20 md:bottom-6 right-6 bg-brand-500 hover:bg-brand-400 text-black font-bold text-xs px-3.5 py-2 rounded-full shadow-2xl transition-all duration-200 active:scale-95 flex items-center gap-1.5 z-20 animate-bounce"
+          className="absolute bottom-40 md:bottom-6 right-6 bg-brand-500 hover:bg-brand-400 text-black font-bold text-xs px-3.5 py-2 rounded-full shadow-2xl transition-all duration-200 active:scale-95 flex items-center gap-1.5 z-30 animate-bounce"
         >
           <ArrowDownCircle size={15} />
           <span>Resume Auto-scroll</span>
@@ -537,7 +537,7 @@ export const LyricsView = ({ onClose }) => {
           showTimeLabels={true}
           timeClassName="text-[10px] text-content-muted font-mono"
         />
-        <div className="flex items-center justify-center -mt-1 pb-1">
+        <div className="flex items-center justify-center -mt-1 pb-3">
           <button
             type="button"
             onClick={togglePlay}

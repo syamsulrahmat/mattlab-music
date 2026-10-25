@@ -1026,16 +1026,17 @@ export const FavoritesView = ({
                     </span>
                     <button
                       type="button"
+                      onTouchStart={(e) => e.stopPropagation()}
                       onClick={(e) => {
                         e.stopPropagation();
                         if (onContextMenu) {
                           onContextMenu(e, 'track', track);
                         }
                       }}
-                      className="md:hidden w-7 h-7 rounded-full flex items-center justify-center text-content-secondary hover:text-white active:scale-90 transition shrink-0 -mr-1"
+                      className="md:hidden w-11 h-11 -mr-2 rounded-full flex items-center justify-center text-content-secondary hover:text-white active:scale-90 transition shrink-0"
                       title="Track Options"
                     >
-                      <MoreVertical size={16} />
+                      <MoreVertical size={18} />
                     </button>
                   </div>
                 </div>

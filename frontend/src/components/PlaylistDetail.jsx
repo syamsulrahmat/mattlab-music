@@ -80,10 +80,19 @@ export const PlaylistDetail = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [focusedTrackIdx, setFocusedTrackIdx] = useState(-1);
   const filterInputRef = useRef(null);
+  const tracklistAnchorRef = useRef(null);
   const [sortBy, setSortBy] = useState('custom'); // 'custom', 'title', 'artist', 'album', 'added_at', 'duration'
   const [sortOrder, setSortOrder] = useState('asc'); // 'asc', 'desc'
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const sortMenuRef = useRef(null);
+
+  const handleMobileFilterChange = (e) => {
+    const val = e.target.value;
+    setSearchQuery(val);
+    if (val.trim() && tracklistAnchorRef.current) {
+      tracklistAnchorRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   const handleColumnHeaderSort = (columnKey) => {
     if (sortBy === columnKey) {
@@ -1006,7 +1015,12 @@ export const PlaylistDetail = ({
             type="text"
             placeholder="Filter playlist..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => {
+              if (searchQuery.trim() && tracklistAnchorRef.current) {
+                tracklistAnchorRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }}
+            onChange={handleMobileFilterChange}
             className="w-full bg-transparent text-content-primary text-xs pl-10 pr-9 py-2 outline-none placeholder:text-content-muted border-0 focus:ring-0 focus:outline-none"
           />
           {searchQuery && (
@@ -1404,7 +1418,7 @@ export const PlaylistDetail = ({
           </button>
         </div>
       ) : (
-        <div className="px-2 sm:px-8">
+        <div ref={tracklistAnchorRef} className="px-2 sm:px-8 scroll-mt-14">
           <div>
             {/* Sticky Tracklist Column Header Row */}
             <div 
@@ -1872,6 +1886,7 @@ export const PlaylistDetail = ({
                       <button
                         type="button"
                         data-no-drag="true"
+                        onTouchStart={(e) => e.stopPropagation()}
                         onClick={(e) => {
                           e.stopPropagation();
                           if (onContextMenu && !track.isSyncPending) {
@@ -1886,10 +1901,10 @@ export const PlaylistDetail = ({
                             });
                           }
                         }}
-                        className="md:hidden w-7 h-7 rounded-full flex items-center justify-center text-content-secondary hover:text-white active:scale-90 transition shrink-0 -mr-1"
+                        className="md:hidden w-11 h-11 -mr-2 rounded-full flex items-center justify-center text-content-secondary hover:text-white active:scale-90 transition shrink-0"
                         title="Options"
                       >
-                        <MoreVertical size={16} />
+                        <MoreVertical size={18} />
                       </button>
                     </div>
                   </div>

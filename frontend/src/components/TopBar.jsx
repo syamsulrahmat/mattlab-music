@@ -35,6 +35,60 @@ export const TopBar = ({
   const [isScanning, setIsScanning] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isFloatingSearchOpen, setIsFloatingSearchOpen] = useState(false);
+
+  // Touch swipe-down to dismiss gesture for mobile avatar user menu sheet
+  const userMenuTouchStartY = useRef(0);
+  const userMenuTouchStartX = useRef(0);
+  const userMenuTouchCurrentY = useRef(0);
+  const userMenuHasDragged = useRef(false);
+  const userMenuListRef = useRef(null);
+  const [userMenuDragOffset, setUserMenuDragOffset] = useState(0);
+  const [isUserMenuDragging, setIsUserMenuDragging] = useState(false);
+
+  useEffect(() => {
+    if (!isUserMenuOpen) {
+      setUserMenuDragOffset(0);
+      setIsUserMenuDragging(false);
+      userMenuHasDragged.current = false;
+    }
+  }, [isUserMenuOpen]);
+
+  const handleUserMenuTouchStart = (e) => {
+    userMenuTouchStartY.current = e.touches[0].clientY;
+    userMenuTouchStartX.current = e.touches[0].clientX;
+    userMenuTouchCurrentY.current = e.touches[0].clientY;
+    userMenuHasDragged.current = false;
+    setIsUserMenuDragging(true);
+  };
+
+  const handleUserMenuTouchMove = (e) => {
+    if (!isUserMenuDragging) return;
+    userMenuTouchCurrentY.current = e.touches[0].clientY;
+    const diffY = userMenuTouchCurrentY.current - userMenuTouchStartY.current;
+    const diffX = Math.abs(e.touches[0].clientX - userMenuTouchStartX.current);
+
+    if (userMenuListRef.current && userMenuListRef.current.scrollTop > 0) {
+      return;
+    }
+
+    if (diffY > 8 && diffY > diffX) {
+      userMenuHasDragged.current = true;
+      setUserMenuDragOffset(diffY);
+    }
+  };
+
+  const handleUserMenuTouchEnd = () => {
+    if (!isUserMenuDragging) return;
+    setIsUserMenuDragging(false);
+    if (userMenuDragOffset > 80) {
+      setIsUserMenuOpen(false);
+    } else {
+      setUserMenuDragOffset(0);
+    }
+    setTimeout(() => {
+      userMenuHasDragged.current = false;
+    }, 150);
+  };
   const [searchResults, setSearchResults] = useState({
     tracks: [],
     albums: [],
@@ -376,51 +430,67 @@ export const TopBar = ({
                     onClick={() => setIsUserMenuOpen(false)} 
                   />
                   {/* Bottom Sheet */}
-                  <div className="fixed inset-x-0 bottom-0 z-[101] bg-surface-panel/95 backdrop-blur-2xl rounded-t-3xl border-t border-white/10 shadow-2xl max-h-[85vh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom,0px)+7rem)] animate-in slide-in-from-bottom-full duration-300">
-                    {/* Grab Handle */}
-                    <div className="w-full flex justify-center pt-3 pb-1">
-                      <div className="w-12 h-1.5 bg-neutral-600/60 rounded-full" />
-                    </div>
-
-                    {/* Profile Header */}
-                    <div
-                      onClick={() => {
-                        if (user?.id) {
-                          setIsUserMenuOpen(false);
-                          onSelectUser?.(user.id);
-                        }
-                      }}
-                      className="px-5 py-3 border-b border-white/10 flex items-center justify-between cursor-pointer active:bg-white/5 transition"
+                  <div 
+                    style={{
+                      transform: `translateY(${userMenuDragOffset}px)`,
+                    }}
+                    className="fixed inset-x-0 bottom-0 z-[101] bg-surface-base backdrop-blur-2xl rounded-t-3xl border-t border-border-subtle shadow-2xl max-h-[85vh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom,0px)+7rem)] transition-transform duration-150 ease-out animate-in slide-in-from-bottom-full duration-300"
+                  >
+                    {/* Grab Handle & Header Area (Swipe Down Anchor) */}
+                    <div 
+                      onTouchStart={handleUserMenuTouchStart}
+                      onTouchMove={handleUserMenuTouchMove}
+                      onTouchEnd={handleUserMenuTouchEnd}
+                      className="cursor-grab active:cursor-grabbing select-none"
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <UserAvatar user={user} size="lg" />
-                        <div className="min-w-0 flex-1">
-                          <div className="font-bold text-white text-base truncate">
-                            {user?.display_name || user?.username}
-                          </div>
-                          <div className="text-neutral-400 text-xs flex items-center gap-2 mt-0.5">
-                            <span className="truncate">@{user?.username}</span>
-                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
-                              isAdmin ? 'bg-brand-500/20 text-brand-400 border border-brand-500/30' : 'bg-white/10 text-neutral-300'
-                            }`}>
-                              {isAdmin ? 'Admin' : 'User'}
-                            </span>
+                      <div className="w-full flex justify-center pt-3 pb-1">
+                        <div className="w-12 h-1.5 bg-neutral-600/60 rounded-full" />
+                      </div>
+
+                      {/* Profile Header */}
+                      <div
+                        onClick={() => {
+                          if (userMenuHasDragged.current) return;
+                          if (user?.id) {
+                            setIsUserMenuOpen(false);
+                            onSelectUser?.(user.id);
+                          }
+                        }}
+                        className="px-5 py-3 border-b border-border-subtle flex items-center justify-between cursor-pointer active:bg-white/5 transition"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <UserAvatar user={user} size="lg" />
+                          <div className="min-w-0 flex-1">
+                            <div className="font-bold text-content-primary text-base truncate">
+                              {user?.display_name || user?.username}
+                            </div>
+                            <div className="text-content-secondary text-xs flex items-center gap-2 mt-0.5">
+                              <span className="truncate">@{user?.username}</span>
+                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
+                                isAdmin ? 'bg-brand-500/20 text-brand-400 border border-brand-500/30' : 'bg-surface-elevated text-content-secondary'
+                              }`}>
+                                {isAdmin ? 'Admin' : 'User'}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsUserMenuOpen(false);
-                        }}
-                        className="p-1.5 rounded-full bg-white/5 text-neutral-400 hover:text-white"
-                      >
-                        <X size={18} />
-                      </button>
                     </div>
 
                     {/* Menu items */}
-                    <div className="p-3 space-y-1">
+                    <div 
+                      ref={userMenuListRef}
+                      onTouchStart={handleUserMenuTouchStart}
+                      onTouchMove={handleUserMenuTouchMove}
+                      onTouchEnd={handleUserMenuTouchEnd}
+                      onClickCapture={(e) => {
+                        if (userMenuHasDragged.current || userMenuDragOffset > 5) {
+                          e.stopPropagation();
+                          e.preventDefault();
+                        }
+                      }}
+                      className="p-3 space-y-1"
+                    >
                       <button
                         onClick={() => {
                           setIsUserMenuOpen(false);
