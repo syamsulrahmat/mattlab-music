@@ -1263,7 +1263,7 @@ const MainAppContent = () => {
               )}
 
               {activeTab === 'favorites' && (
-                <div className="p-4 sm:p-6">
+                <div className="w-full">
                   <FavoritesView 
                     onSelectAlbum={handleSelectAlbum}
                     onSelectArtist={handleSelectArtist}

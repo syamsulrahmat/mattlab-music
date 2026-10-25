@@ -35,6 +35,34 @@ const formatRelativeTime = (dateStr) => {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 };
 
+/**
+ * Formats message text: detects URLs (http/https), renders them as
+ * secure clickable links with break-all so long links never blow out the mobile drawer.
+ */
+const renderFormattedContent = (text) => {
+  if (!text) return null;
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+
+  return parts.map((part, index) => {
+    if (urlRegex.test(part)) {
+      return (
+        <a
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="text-brand-400 hover:text-brand-300 underline underline-offset-2 break-all font-medium transition"
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+};
+
 export const BulletinDrawer = ({ isOpen, onClose, onUnreadCountChange, onSelectUser }) => {
   const { user, isAdmin } = useAuth();
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayer();
@@ -242,23 +270,23 @@ export const BulletinDrawer = ({ isOpen, onClose, onUnreadCountChange, onSelectU
 
   return (
     <div
-      className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-hidden"
       onClick={onClose}
     >
       <div
         ref={drawerRef}
         onClick={(e) => e.stopPropagation()}
-        className="w-full sm:w-[460px] h-full bg-surface-elevated border-l border-border-medium flex flex-col shadow-2xl animate-in slide-in-from-right duration-200 text-white select-text"
+        className="w-full sm:w-[460px] max-w-full h-full bg-surface-elevated border-l border-border-medium flex flex-col shadow-2xl animate-in slide-in-from-right duration-200 text-white select-text overflow-hidden"
       >
         {/* ── Top Header ── */}
         <div className="flex items-center justify-between px-5 py-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)] border-b border-border-subtle bg-surface-island/40 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-brand-500/15 border border-brand-500/30 flex items-center justify-center text-brand-400 shadow-sm">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-brand-500/15 border border-brand-500/30 flex items-center justify-center text-brand-400 shadow-sm shrink-0">
               <Megaphone size={16} />
             </div>
-            <div>
-              <h2 className="font-bold text-white text-base leading-tight">Bulletin</h2>
-              <p className="text-[11px] text-content-secondary">Announcements & Community Feedback</p>
+            <div className="min-w-0">
+              <h2 className="font-bold text-white text-base leading-tight truncate">Bulletin</h2>
+              <p className="text-[11px] text-content-secondary truncate">Announcements & Community Feedback</p>
             </div>
           </div>
 
@@ -393,7 +421,7 @@ export const BulletinDrawer = ({ isOpen, onClose, onUnreadCountChange, onSelectU
         )}
 
         {/* ── Broadcasts List ── */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 min-w-0">
           {isLoading && broadcasts.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-content-secondary gap-2">
               <Loader2 size={24} className="animate-spin text-brand-500" />
@@ -419,7 +447,7 @@ export const BulletinDrawer = ({ isOpen, onClose, onUnreadCountChange, onSelectU
               return (
                 <div
                   key={b.id}
-                  className={`bg-surface-island/70 border rounded-2xl p-4 flex flex-col gap-3 transition shadow-sm ${
+                  className={`bg-surface-island/70 border rounded-2xl p-4 flex flex-col gap-3 transition shadow-sm min-w-0 max-w-full overflow-hidden ${
                     b.is_pinned ? 'border-brand-500/40 bg-brand-500/[0.03]' : 'border-border-subtle'
                   }`}
                 >
@@ -450,7 +478,7 @@ export const BulletinDrawer = ({ isOpen, onClose, onUnreadCountChange, onSelectU
                             {b.author.display_name}
                           </span>
                           {b.author.role === 'admin' && (
-                            <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-brand-500/15 text-brand-400 font-bold border border-brand-500/30">
+                            <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-brand-500/15 text-brand-400 font-bold border border-brand-500/30 shrink-0">
                               Admin
                             </span>
                           )}
@@ -474,13 +502,13 @@ export const BulletinDrawer = ({ isOpen, onClose, onUnreadCountChange, onSelectU
                     )}
                   </div>
 
-                  {/* Title & Body */}
-                  <div>
-                    <h3 className="font-bold text-white text-sm sm:text-base leading-snug">
+                  {/* Title & Body with robust word wrapping */}
+                  <div className="min-w-0 max-w-full overflow-hidden">
+                    <h3 className="font-bold text-white text-sm sm:text-base leading-snug break-words [overflow-wrap:anywhere]">
                       {b.title}
                     </h3>
-                    <p className="text-xs text-content-secondary whitespace-pre-wrap leading-relaxed mt-1.5">
-                      {b.content}
+                    <p className="text-xs text-content-secondary whitespace-pre-wrap leading-relaxed mt-1.5 break-words [overflow-wrap:anywhere]">
+                      {renderFormattedContent(b.content)}
                     </p>
                   </div>
 
@@ -588,8 +616,8 @@ export const BulletinDrawer = ({ isOpen, onClose, onUnreadCountChange, onSelectU
                                     </button>
                                   )}
                                 </div>
-                                <p className="text-content-secondary text-xs mt-0.5 whitespace-pre-wrap">
-                                  {c.content}
+                                <p className="text-content-secondary text-xs mt-0.5 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                                  {renderFormattedContent(c.content)}
                                 </p>
                               </div>
                             </div>

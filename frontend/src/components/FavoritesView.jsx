@@ -521,30 +521,35 @@ export const FavoritesView = ({
         mode="mobile"
       />
       {/* Hero Header (Hidden on mobile when filtering) */}
-      <div className={`${isFilterFocused || searchQuery.trim() ? 'hidden md:flex' : 'flex'} flex-col md:flex-row gap-6 md:gap-8 items-start md:items-end mb-6 -mx-4 sm:-mx-6 -mt-4 sm:-mt-6 p-6 sm:p-8 bg-gradient-to-b from-indigo-900/80 via-indigo-950/40 to-surface-island rounded-t-lg`}>
-        <div className="w-44 h-44 sm:w-52 sm:h-52 rounded-lg shadow-2xl bg-gradient-to-br from-indigo-600 via-indigo-800 to-purple-900 flex items-center justify-center shrink-0">
-          <Heart size={72} className="fill-white text-white drop-shadow-md" />
-        </div>
-        <div>
-          <span className="text-xs uppercase font-bold tracking-wider text-white/80">Playlist</span>
-          <h1 className="text-3xl sm:text-5xl font-black text-white mt-1 mb-2 tracking-tight">
-            Liked Songs
-          </h1>
-          <p className="text-xs sm:text-sm text-content-secondary font-medium">
-            <span className="text-white font-semibold">{rawTracks.length} songs</span>
-            {searchQuery && tracks.length !== rawTracks.length && (
-              <span className="text-brand-400 font-semibold"> ({tracks.length} matching)</span>
-            )}
-            {' '}• {totalHours > 0 ? `${totalHours} hr ${remainingMins} min` : `${totalMins} minutes`}
-          </p>
+      <div className={`${isFilterFocused || searchQuery.trim() ? 'hidden md:block' : 'block'} bg-gradient-to-b from-indigo-950/70 via-surface-panel/75 to-surface-base md:to-surface-island px-6 sm:px-8 pt-4 sm:pt-10 pb-8 sm:pb-10 w-full border-b-0 md:border-b md:border-border-subtle`}>
+        <div className="flex flex-col md:flex-row gap-6 md:gap-7 items-start md:items-end">
+          <div className="w-44 h-44 sm:w-52 sm:h-52 md:w-56 md:h-56 rounded-lg shadow-2xl bg-gradient-to-br from-indigo-600 via-indigo-800 to-purple-900 flex items-center justify-center shrink-0">
+            <Heart size={72} className="fill-white text-white drop-shadow-md" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <span className="text-xs uppercase font-extrabold tracking-widest text-brand-500">
+              Playlist
+            </span>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-content-primary mt-1 mb-2 tracking-tight">
+              Liked Songs
+            </h1>
+            <p className="text-xs sm:text-sm text-content-secondary font-medium flex flex-wrap items-center gap-1.5">
+              <span className="text-content-primary font-semibold">{rawTracks.length} songs</span>
+              {searchQuery && tracks.length !== rawTracks.length && (
+                <span className="text-brand-400 font-semibold"> ({tracks.length} matching)</span>
+              )}
+              <span>•</span>
+              <span>{totalHours > 0 ? `${totalHours} hr ${remainingMins} min` : `${totalMins} minutes`}</span>
+            </p>
+          </div>
         </div>
       </div>
 
       {/* Action Bar (Play, Shuffle, Search Filter, Sort Dropdown - Hidden on mobile when filtering) */}
       {rawTracks.length > 0 && (
-        <div className={`${isFilterFocused || searchQuery.trim() ? 'hidden md:flex' : 'flex'} items-center justify-between gap-4 mb-6 overflow-visible`}>
+        <div className={`${isFilterFocused || searchQuery.trim() ? 'hidden md:flex' : 'flex'} px-4 sm:px-8 py-4 sm:py-5 items-center justify-between gap-3 overflow-visible`}>
           {/* Left: Play/Pause button + Shuffle toggle + Options */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <button
               onClick={handlePlayAll}
               className="w-14 h-14 min-w-[3.5rem] min-h-[3.5rem] rounded-full aspect-square bg-brand-500 hover:bg-brand-400 hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-xl transition cursor-pointer shrink-0"
@@ -681,13 +686,13 @@ export const FavoritesView = ({
 
       {/* Tracklist Table */}
       {rawTracks.length === 0 ? (
-        <div className="text-center py-20 text-content-subtle border border-border-subtle rounded-xl bg-surface-panel/40">
+        <div className="mx-6 sm:px-8 text-center py-20 text-content-subtle border border-border-subtle rounded-xl bg-surface-panel/40">
           <Heart size={44} className="mx-auto mb-3 text-content-subtle" />
           <h3 className="text-base font-bold text-content-secondary">Songs you like will appear here</h3>
           <p className="text-xs text-content-muted mt-1">Tap the heart icon on any song to add it to Liked Songs.</p>
         </div>
       ) : tracks.length === 0 ? (
-        <div className="text-center py-16 text-content-subtle border border-border-subtle rounded-xl bg-surface-panel/40">
+        <div className="mx-6 sm:px-8 text-center py-16 text-content-subtle border border-border-subtle rounded-xl bg-surface-panel/40">
           <p className="text-xs text-content-muted">No songs match "{searchQuery}"</p>
           <button
             onClick={() => setSearchQuery('')}
@@ -697,7 +702,7 @@ export const FavoritesView = ({
           </button>
         </div>
       ) : (
-        <div ref={tracklistAnchorRef} className="scroll-mt-14">
+        <div ref={tracklistAnchorRef} className="px-2 sm:px-8 scroll-mt-14">
           {/* Sticky Tracklist Column Header Row */}
           <div className="hidden md:block sticky top-0 z-20 bg-surface-island/95 backdrop-blur-md rounded-lg mb-1 border-b border-border-medium shadow-md">
             <div className="grid grid-cols-[40px_3fr_2fr_36px_60px] lg:grid-cols-[40px_4fr_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-content-secondary items-center select-none">
