@@ -5,6 +5,8 @@ import {
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { shuffleArray, shuffledQueueStartingWith } from '../utils/shuffle';
+import { TracklistFilterBar } from './TracklistFilterBar';
+import { SortDropdownMenu } from './SortDropdownMenu';
 
 const formatDuration = (seconds) => {
   if (!seconds || isNaN(seconds)) return '0:00';
@@ -52,8 +54,10 @@ export const FavoritesView = ({
 
   // Filter & sort state
   const [searchQuery, setSearchQuery] = useState('');
+  const [isFilterFocused, setIsFilterFocused] = useState(false);
   const [focusedTrackIdx, setFocusedTrackIdx] = useState(-1);
   const filterInputRef = useRef(null);
+  const tracklistAnchorRef = useRef(null);
 
   const [sortBy, setSortBy] = useState('added_at'); // 'added_at', 'title', 'artist', 'album', 'duration'
   const [sortOrder, setSortOrder] = useState('desc'); // 'desc', 'asc' (desc by default for newest likes first)
@@ -496,10 +500,28 @@ export const FavoritesView = ({
       data-dev-component="FavoritesView"
       data-dev-file="src/components/FavoritesView.jsx"
       data-dev-desc="Liked Songs playlist view with in-view search filter, column sorting, shuffle, and bulk unlike"
-      className="pb-12 select-none"
+      className="pb-12 select-none relative w-full"
     >
-      {/* Hero Header */}
-      <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-start md:items-end mb-6 -mx-4 sm:-mx-6 -mt-4 sm:-mt-6 p-6 sm:p-8 bg-gradient-to-b from-indigo-900/80 via-indigo-950/40 to-surface-island rounded-t-lg">
+      {/* Mobile Sticky Floating Filter Bar */}
+      <TracklistFilterBar
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        onFocus={() => setIsFilterFocused(true)}
+        onBlur={() => {
+          if (!searchQuery.trim()) {
+            setIsFilterFocused(false);
+          }
+        }}
+        onClear={() => {
+          setIsFilterFocused(false);
+          setFocusedTrackIdx(-1);
+        }}
+        isFilterActive={isFilterFocused || Boolean(searchQuery.trim())}
+        placeholder="Filter liked songs..."
+        mode="mobile"
+      />
+      {/* Hero Header (Hidden on mobile when filtering) */}
+      <div className={`${isFilterFocused || searchQuery.trim() ? 'hidden md:flex' : 'flex'} flex-col md:flex-row gap-6 md:gap-8 items-start md:items-end mb-6 -mx-4 sm:-mx-6 -mt-4 sm:-mt-6 p-6 sm:p-8 bg-gradient-to-b from-indigo-900/80 via-indigo-950/40 to-surface-island rounded-t-lg`}>
         <div className="w-44 h-44 sm:w-52 sm:h-52 rounded-lg shadow-2xl bg-gradient-to-br from-indigo-600 via-indigo-800 to-purple-900 flex items-center justify-center shrink-0">
           <Heart size={72} className="fill-white text-white drop-shadow-md" />
         </div>
@@ -518,9 +540,9 @@ export const FavoritesView = ({
         </div>
       </div>
 
-      {/* Action Bar (Play, Shuffle, Search Filter, Sort Dropdown) */}
+      {/* Action Bar (Play, Shuffle, Search Filter, Sort Dropdown - Hidden on mobile when filtering) */}
       {rawTracks.length > 0 && (
-        <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
+        <div className={`${isFilterFocused || searchQuery.trim() ? 'hidden md:flex' : 'flex'} items-center justify-between gap-4 mb-6 overflow-visible`}>
           {/* Left: Play/Pause button + Shuffle toggle + Options */}
           <div className="flex items-center gap-3">
             <button
@@ -562,32 +584,20 @@ export const FavoritesView = ({
           </div>
 
           {/* Right: In-view search + Sort dropdown */}
-          <div className="flex items-center gap-2 flex-1 max-w-md justify-end">
+          <div className="flex items-center gap-2 shrink-0 md:flex-1 md:max-w-md justify-end">
             {/* Search Filter */}
-            <div className="relative flex-1 sm:w-52 max-w-xs">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-muted" />
-              <input
-                ref={filterInputRef}
-                type="text"
-                placeholder="Filter liked songs..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={handleFilterKeyDown}
-                className="w-full bg-surface-elevated2 hover:bg-surface-hover focus:bg-surface-hover text-content-primary text-xs pl-8 pr-7 py-2 rounded-full border border-border-subtle focus:border-border-strong outline-none transition placeholder:text-content-subtle"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => {
-                    setSearchQuery('');
-                    setFocusedTrackIdx(-1);
-                  }}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-content-muted hover:text-content-primary p-0.5 cursor-pointer"
-                  title="Clear filter"
-                >
-                  <X size={12} />
-                </button>
-              )}
-            </div>
+            <TracklistFilterBar
+              searchQuery={searchQuery}
+              setSearchQuery={(val) => {
+                setSearchQuery(val);
+                if (!val) setFocusedTrackIdx(-1);
+              }}
+              placeholder="Filter liked songs..."
+              onKeyDown={handleFilterKeyDown}
+              inputRef={filterInputRef}
+              mode="desktop"
+              className="hidden md:block"
+            />
 
             {/* Sort Menu Dropdown */}
             <div className="relative shrink-0 flex items-center gap-1 bg-surface-elevated2 hover:bg-surface-hover border border-border-subtle rounded-full px-2.5 py-1.5 transition" ref={sortMenuRef}>
@@ -628,88 +638,42 @@ export const FavoritesView = ({
                 {sortOrder === 'asc' ? '↑' : '↓'}
               </button>
 
-              {isSortMenuOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-48 bg-surface-panel border border-border-medium rounded-lg shadow-2xl py-1 z-50 text-xs">
-                  <div className="px-3 py-1 text-[10px] uppercase font-bold text-content-subtle tracking-wider">
-                    Sort By
-                  </div>
-                  <button
-                    onClick={() => {
-                      setSortBy('added_at');
-                      setIsSortMenuOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-white/10 transition cursor-pointer ${
-                      sortBy === 'added_at' ? 'text-brand-500 font-bold' : 'text-content-primary'
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <Calendar size={14} />
-                      <span>Date added</span>
-                    </span>
-                    {sortBy === 'added_at' && <Check size={13} />}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSortBy('title');
-                      setIsSortMenuOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-white/10 transition cursor-pointer ${
-                      sortBy === 'title' ? 'text-brand-500 font-bold' : 'text-content-primary'
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <Type size={14} />
-                      <span>Title</span>
-                    </span>
-                    {sortBy === 'title' && <Check size={13} />}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSortBy('artist');
-                      setIsSortMenuOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-white/10 transition cursor-pointer ${
-                      sortBy === 'artist' ? 'text-brand-500 font-bold' : 'text-content-primary'
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <Mic2 size={14} />
-                      <span>Artist</span>
-                    </span>
-                    {sortBy === 'artist' && <Check size={13} />}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSortBy('album');
-                      setIsSortMenuOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-white/10 transition cursor-pointer ${
-                      sortBy === 'album' ? 'text-brand-500 font-bold' : 'text-content-primary'
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <Disc3 size={14} />
-                      <span>Album</span>
-                    </span>
-                    {sortBy === 'album' && <Check size={13} />}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSortBy('duration');
-                      setIsSortMenuOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-white/10 transition cursor-pointer ${
-                      sortBy === 'duration' ? 'text-brand-500 font-bold' : 'text-content-primary'
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <Clock size={14} />
-                      <span>Duration</span>
-                    </span>
-                    {sortBy === 'duration' && <Check size={13} />}
-                  </button>
-                </div>
-              )}
+              <SortDropdownMenu
+                isOpen={isSortMenuOpen}
+                onClose={() => setIsSortMenuOpen(false)}
+                sortBy={sortBy}
+                onSelectSortBy={(newSortBy) => {
+                  setSortBy(newSortBy);
+                }}
+                options={[
+                  {
+                    id: 'added_at',
+                    label: 'Date added',
+                    icon: <Calendar size={15} />,
+                  },
+                  {
+                    id: 'title',
+                    label: 'Title',
+                    icon: <Type size={15} />,
+                  },
+                  {
+                    id: 'artist',
+                    label: 'Artist',
+                    icon: <Mic2 size={15} />,
+                  },
+                  {
+                    id: 'album',
+                    label: 'Album',
+                    icon: <Disc3 size={15} />,
+                  },
+                  {
+                    id: 'duration',
+                    label: 'Duration',
+                    icon: <Clock size={15} />,
+                  },
+                ]}
+                desktopRef={sortMenuRef}
+              />
             </div>
           </div>
         </div>
@@ -733,7 +697,7 @@ export const FavoritesView = ({
           </button>
         </div>
       ) : (
-        <div>
+        <div ref={tracklistAnchorRef} className="scroll-mt-14">
           {/* Sticky Tracklist Column Header Row */}
           <div className="hidden md:block sticky top-0 z-20 bg-surface-island/95 backdrop-blur-md rounded-lg mb-1 border-b border-border-medium shadow-md">
             <div className="grid grid-cols-[40px_3fr_2fr_36px_60px] lg:grid-cols-[40px_4fr_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-content-secondary items-center select-none">
@@ -966,7 +930,7 @@ export const FavoritesView = ({
                       className="w-10 h-10 rounded object-cover bg-surface-elevated shrink-0 shadow-sm"
                     />
                     <div className="truncate min-w-0">
-                      <p className={`text-sm font-medium truncate ${
+                      <p className={`text-base md:text-sm font-medium truncate ${
                         isThisTrack 
                           ? 'text-brand-500 font-bold' 
                           : isFocused 
@@ -975,9 +939,10 @@ export const FavoritesView = ({
                       }`}>
                         {track.title}
                       </p>
-                      <p className="text-xs text-content-secondary truncate mt-0.5">
+                      <p className="text-sm md:text-xs text-content-secondary truncate mt-0.5">
                         <span
                           onClick={(e) => {
+                            if (window.innerWidth < 768) return;
                             e.stopPropagation();
                             if (onSelectArtist) onSelectArtist(track.artist_id);
                           }}
@@ -985,7 +950,6 @@ export const FavoritesView = ({
                         >
                           {track.artist_name}
                         </span>
-                        <span className="md:hidden text-content-muted"> • {track.album_title}</span>
                       </p>
                     </div>
                   </div>

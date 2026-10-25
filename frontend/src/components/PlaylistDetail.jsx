@@ -10,6 +10,8 @@ import { PlaylistCover } from './PlaylistCover';
 import { SpotifyIcon } from './SpotifyIcon';
 import { ConfirmModal } from './ConfirmModal';
 import { MergeSpotifyModal } from './MergeSpotifyModal';
+import { TracklistFilterBar } from './TracklistFilterBar';
+import { SortDropdownMenu } from './SortDropdownMenu';
 import { shuffleArray, shuffledQueueStartingWith } from '../utils/shuffle';
 
 const formatDuration = (seconds) => {
@@ -78,6 +80,7 @@ export const PlaylistDetail = ({
 
   // In-playlist filter & sort
   const [searchQuery, setSearchQuery] = useState('');
+  const [isFilterFocused, setIsFilterFocused] = useState(false);
   const [focusedTrackIdx, setFocusedTrackIdx] = useState(-1);
   const filterInputRef = useRef(null);
   const tracklistAnchorRef = useRef(null);
@@ -1008,38 +1011,28 @@ export const PlaylistDetail = ({
       className={`pb-16 select-none relative w-full ${playlist?.spotify_id && draggedTrackIdx !== null ? 'cursor-not-allowed' : ''}`}
     >
       {/* Mobile Sticky Floating Filter Bar */}
-      <div className="md:hidden sticky top-0 z-30 px-4 py-2.5 bg-surface-base/90 backdrop-blur-xl border-none transition-all">
-        <div className="relative w-full bg-surface-elevated/40 rounded-lg overflow-hidden shadow-sm">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-content-muted pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Filter playlist..."
-            value={searchQuery}
-            onFocus={() => {
-              if (searchQuery.trim() && tracklistAnchorRef.current) {
-                tracklistAnchorRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }
-            }}
-            onChange={handleMobileFilterChange}
-            className="w-full bg-transparent text-content-primary text-xs pl-10 pr-9 py-2 outline-none placeholder:text-content-muted border-0 focus:ring-0 focus:outline-none"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => {
-                setSearchQuery('');
-                setFocusedTrackIdx(-1);
-              }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-content-muted hover:text-content-primary p-0.5"
-            >
-              <X size={14} />
-            </button>
-          )}
-        </div>
-      </div>
+      <TracklistFilterBar
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        onFocus={() => setIsFilterFocused(true)}
+        onBlur={() => {
+          // If no query typed, exit focused mode on blur
+          if (!searchQuery.trim()) {
+            setIsFilterFocused(false);
+          }
+        }}
+        onClear={() => {
+          setIsFilterFocused(false);
+          setFocusedTrackIdx(-1);
+        }}
+        isFilterActive={isFilterFocused || Boolean(searchQuery.trim())}
+        placeholder="Filter playlist..."
+        mode="mobile"
+      />
 
-      {/* 4. Full-bleed Header Banner taking all the area without back button */}
+      {/* 4. Full-bleed Header Banner taking all the area without back button (Hidden on mobile when filtering) */}
       <div 
-        className="bg-gradient-to-b from-emerald-950/45 via-surface-panel/75 to-surface-base md:to-surface-island px-6 sm:px-8 pt-4 sm:pt-10 pb-8 sm:pb-10 w-full border-b-0 md:border-b md:border-border-subtle"
+        className={`${isFilterFocused || searchQuery.trim() ? 'hidden md:block' : 'block'} bg-gradient-to-b from-emerald-950/45 via-surface-panel/75 to-surface-base md:to-surface-island px-6 sm:px-8 pt-4 sm:pt-10 pb-8 sm:pb-10 w-full border-b-0 md:border-b md:border-border-subtle`}
       >
         <div className="flex flex-col md:flex-row gap-6 md:gap-7 items-start md:items-end">
           <div 
@@ -1067,7 +1060,7 @@ export const PlaylistDetail = ({
             <div className="group flex items-center gap-2.5 mt-1 mb-2">
               <h1 
                 onClick={() => setIsEditingDetails(true)}
-                className="text-2xl sm:text-4xl md:text-5xl font-black text-content-primary tracking-tight cursor-pointer hover:underline truncate"
+                className="text-3xl sm:text-4xl md:text-5xl font-black text-content-primary tracking-tight cursor-pointer hover:underline truncate"
                 title="Click to rename"
               >
                 {playlist.name}
@@ -1084,20 +1077,20 @@ export const PlaylistDetail = ({
             {playlist.description ? (
               <p 
                 onClick={() => setIsEditingDetails(true)}
-                className="text-xs sm:text-sm text-content-secondary mb-3 line-clamp-2 cursor-pointer hover:text-content-primary transition"
+                className="text-sm sm:text-base text-content-secondary mb-3 line-clamp-2 cursor-pointer hover:text-content-primary transition"
               >
                 {playlist.description}
               </p>
             ) : (
               <p 
                 onClick={() => setIsEditingDetails(true)}
-                className="text-xs text-content-subtle hover:text-content-secondary cursor-pointer mb-3 italic"
+                className="text-xs sm:text-sm text-content-subtle hover:text-content-secondary cursor-pointer mb-3 italic"
               >
                 + Add description
               </p>
             )}
 
-            <div className="flex items-center gap-2 text-xs sm:text-sm text-content-secondary font-medium flex-wrap">
+            <div className="flex items-center gap-2 text-sm sm:text-sm text-content-secondary font-medium flex-wrap">
               <span className="text-content-primary font-semibold">{rawTracks.length} songs</span>
               {totalSeconds > 0 && (
                 <>
@@ -1136,7 +1129,7 @@ export const PlaylistDetail = ({
       </div>
 
       {/* 3. Action & Filter Bar (scrolls naturally with the page, all buttons horizontally aligned) */}
-      <div className="px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between gap-3 overflow-x-auto no-scrollbar">
+      <div className={`${isFilterFocused || searchQuery.trim() ? 'hidden md:flex' : 'flex'} px-4 sm:px-8 py-4 sm:py-5 items-center justify-between gap-3 overflow-visible`}>
         {/* Left: Play/Pause in green circle, shuffle, 3-dots options */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <button
@@ -1186,29 +1179,18 @@ export const PlaylistDetail = ({
         {/* Right: In-playlist search, icon sort dropdown, merge button, sync now icon, open in spotify icon */}
         <div className="flex items-center gap-2 shrink-0">
           {/* In-playlist search (Desktop only - mobile has it at top of header banner) */}
-          <div className="hidden md:block relative flex-1 sm:w-52">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-muted" />
-            <input
-              ref={filterInputRef}
-              type="text"
-              placeholder="Filter playlist..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={handleFilterKeyDown}
-              className="w-full bg-surface-elevated2 hover:bg-surface-hover focus:bg-surface-hover text-content-primary text-xs pl-8 pr-7 py-2 rounded-full border border-border-subtle focus:border-border-strong outline-none transition placeholder:text-content-subtle"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => {
-                  setSearchQuery('');
-                  setFocusedTrackIdx(-1);
-                }}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-content-muted hover:text-content-primary p-0.5"
-              >
-                <X size={12} />
-              </button>
-            )}
-          </div>
+          <TracklistFilterBar
+            searchQuery={searchQuery}
+            setSearchQuery={(val) => {
+              setSearchQuery(val);
+              if (!val) setFocusedTrackIdx(-1);
+            }}
+            placeholder="Filter playlist..."
+            onKeyDown={handleFilterKeyDown}
+            inputRef={filterInputRef}
+            mode="desktop"
+            className="hidden md:block"
+          />
 
           {/* Sort dropdown with icons */}
           <div className="relative shrink-0 flex items-center gap-1 bg-surface-elevated2 hover:bg-surface-hover border border-border-subtle rounded-full px-2.5 py-1.5 transition" ref={sortMenuRef}>
@@ -1255,104 +1237,50 @@ export const PlaylistDetail = ({
               </button>
             )}
 
-            {isSortMenuOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-48 bg-surface-panel border border-border-medium rounded-lg shadow-2xl py-1 z-50 text-xs">
-                <div className="px-3 py-1 text-[10px] uppercase font-bold text-content-subtle tracking-wider">
-                  Sort By
-                </div>
-                <button
-                  onClick={() => {
-                    setSortBy('custom');
-                    setSortOrder('asc');
-                    setIsSortMenuOpen(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-white/10 transition ${
-                    sortBy === 'custom' ? 'text-brand-500 font-bold' : 'text-content-primary'
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    {playlist?.spotify_id && !playlist?.is_collection ? <Lock size={14} className="text-brand-500" /> : <ListOrdered size={14} />}
-                    <span>{playlist?.spotify_id && !playlist?.is_collection ? 'Spotify chart order' : 'Custom order'}</span>
-                  </span>
-                  {sortBy === 'custom' && <Check size={13} />}
-                </button>
-                <button
-                  onClick={() => {
-                    setSortBy('title');
-                    setIsSortMenuOpen(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-white/10 transition ${
-                    sortBy === 'title' ? 'text-brand-500 font-bold' : 'text-content-primary'
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <Type size={14} />
-                    <span>Title</span>
-                  </span>
-                  {sortBy === 'title' && <Check size={13} />}
-                </button>
-                <button
-                  onClick={() => {
-                    setSortBy('artist');
-                    setIsSortMenuOpen(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-white/10 transition ${
-                    sortBy === 'artist' ? 'text-brand-500 font-bold' : 'text-content-primary'
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <Mic2 size={14} />
-                    <span>Artist</span>
-                  </span>
-                  {sortBy === 'artist' && <Check size={13} />}
-                </button>
-                <button
-                  onClick={() => {
-                    setSortBy('album');
-                    setIsSortMenuOpen(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-white/10 transition ${
-                    sortBy === 'album' ? 'text-brand-500 font-bold' : 'text-content-primary'
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <Disc3 size={14} />
-                    <span>Album</span>
-                  </span>
-                  {sortBy === 'album' && <Check size={13} />}
-                </button>
-                <button
-                  onClick={() => {
-                    setSortBy('added_at');
-                    setIsSortMenuOpen(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-white/10 transition ${
-                    sortBy === 'added_at' ? 'text-brand-500 font-bold' : 'text-content-primary'
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <Calendar size={14} />
-                    <span>Date added</span>
-                  </span>
-                  {sortBy === 'added_at' && <Check size={13} />}
-                </button>
-                <button
-                  onClick={() => {
-                    setSortBy('duration');
-                    setIsSortMenuOpen(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-white/10 transition ${
-                    sortBy === 'duration' ? 'text-brand-500 font-bold' : 'text-content-primary'
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <Clock size={14} />
-                    <span>Duration</span>
-                  </span>
-                  {sortBy === 'duration' && <Check size={13} />}
-                </button>
-              </div>
-            )}
+            <SortDropdownMenu
+              isOpen={isSortMenuOpen}
+              onClose={() => setIsSortMenuOpen(false)}
+              sortBy={sortBy}
+              onSelectSortBy={(newSortBy) => {
+                setSortBy(newSortBy);
+                if (newSortBy === 'custom') {
+                  setSortOrder('asc');
+                }
+              }}
+              options={[
+                {
+                  id: 'custom',
+                  label: playlist?.spotify_id && !playlist?.is_collection ? 'Spotify chart order' : 'Custom order',
+                  icon: playlist?.spotify_id && !playlist?.is_collection ? <Lock size={15} className="text-brand-500" /> : <ListOrdered size={15} />,
+                },
+                {
+                  id: 'title',
+                  label: 'Title',
+                  icon: <Type size={15} />,
+                },
+                {
+                  id: 'artist',
+                  label: 'Artist',
+                  icon: <Mic2 size={15} />,
+                },
+                {
+                  id: 'album',
+                  label: 'Album',
+                  icon: <Disc3 size={15} />,
+                },
+                {
+                  id: 'added_at',
+                  label: 'Date added',
+                  icon: <Calendar size={15} />,
+                },
+                {
+                  id: 'duration',
+                  label: 'Duration',
+                  icon: <Clock size={15} />,
+                },
+              ]}
+              desktopRef={sortMenuRef}
+            />
           </div>
 
           {/* Add Spotify Playlists / Merge Links button */}
@@ -1797,7 +1725,7 @@ export const PlaylistDetail = ({
                       )}
                       <div className="truncate min-w-0">
                         <div className="flex items-center gap-2 truncate">
-                          <p className={`text-sm font-medium truncate ${
+                          <p className={`text-base md:text-sm font-medium truncate ${
                             track.isSyncPending 
                               ? 'text-content-primary' 
                               : isThisTrack 
@@ -1835,7 +1763,7 @@ export const PlaylistDetail = ({
                           </div>
                         )}
 
-                        <p className="text-xs text-content-secondary truncate mt-0.5">
+                        <p className="text-sm md:text-xs text-content-secondary truncate mt-0.5">
                           {/* Desktop clickable artist link; mobile non-clickable to prevent accidental navigation */}
                           <span
                             data-no-drag="true"
@@ -1853,7 +1781,6 @@ export const PlaylistDetail = ({
                           <span className="md:hidden text-content-secondary">
                             {track.artist_name}
                           </span>
-                          <span className="md:hidden text-content-muted"> • {track.album_title}</span>
                         </p>
                       </div>
                     </div>

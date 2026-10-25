@@ -78,6 +78,7 @@ export const PlayerProvider = ({ children }) => {
   // Restore saved playback state on initial mount
   const savedState = useMemo(() => loadSavedPlaybackState(), []);
   const initialSeekTimeRef = useRef(savedState?.currentTime || 0);
+  const currentTimeRef = useRef(savedState?.currentTime || 0);
   const hasRestoredAudioRef = useRef(false);
   const lastSavedTimeRef = useRef(0);
   const debouncePrefSaveRef = useRef(null);
@@ -858,11 +859,30 @@ export const PlayerProvider = ({ children }) => {
 
     const handleTimeUpdate = (e) => {
       if (e.target !== audioRef.current) return;
-      // Guard: do not let an uninitialized paused audio element overwrite restored currentTime
-      if (initialSeekTimeRef.current > 0 && e.target.paused && e.target.currentTime === 0) {
+      const t = e.target.currentTime;
+
+      // Guard: when a track was restored from localStorage, do not let an initial 0.00s timeupdate overwrite the restored time
+      if (initialSeekTimeRef.current > 0) {
+        if (t < 0.5) {
+          // If playback hasn't jumped to the restored target yet, attempt seek and avoid wiping currentTime in state
+          if (!e.target.paused) {
+            try {
+              e.target.currentTime = initialSeekTimeRef.current;
+            } catch (_) {}
+          }
+          return;
+        } else if (t >= initialSeekTimeRef.current - 1.0) {
+          // Seek completed successfully! Clear the pending restore target
+          initialSeekTimeRef.current = 0;
+        }
+      }
+
+      // Guard: do not let a paused audio element overwrite restored non-zero currentTime with 0
+      if (e.target.paused && currentTimeRef.current > 0 && t === 0) {
         return;
       }
-      const t = e.target.currentTime;
+
+      currentTimeRef.current = t;
       setCurrentTime(t);
       updateBufferedTime(e.target);
       if (!e.target.paused && t > 0) {
@@ -890,11 +910,11 @@ export const PlayerProvider = ({ children }) => {
       if (d > 0) setDuration(d);
       updateBufferedTime(e.target);
 
-      if (initialSeekTimeRef.current > 0) {
+      const targetSeek = initialSeekTimeRef.current || currentTimeRef.current || 0;
+      if (targetSeek > 0) {
         try {
-          e.target.currentTime = initialSeekTimeRef.current;
+          e.target.currentTime = targetSeek;
         } catch (_) {}
-        initialSeekTimeRef.current = 0;
       }
     };
 
@@ -916,6 +936,7 @@ export const PlayerProvider = ({ children }) => {
         } catch (_) {}
       }
 
+      currentTimeRef.current = 0;
       setCurrentTime(0);
       initialSeekTimeRef.current = 0;
       if (currentTrack) {
@@ -947,6 +968,13 @@ export const PlayerProvider = ({ children }) => {
       if (e.target !== audioRef.current) return;
       setIsBuffering(false);
       setIsPlaying(true);
+      // Ensure audio element is synchronized to intended position on initial playback start
+      const targetTime = initialSeekTimeRef.current || currentTimeRef.current || 0;
+      if (targetTime > 0 && Math.abs(e.target.currentTime - targetTime) > 1.0) {
+        try {
+          e.target.currentTime = targetTime;
+        } catch (_) {}
+      }
     };
 
     const handleLoadStart = (e) => {
@@ -957,11 +985,11 @@ export const PlayerProvider = ({ children }) => {
     const handleCanPlay = (e) => {
       if (e.target !== audioRef.current) return;
       updateBufferedTime(e.target);
-      if (initialSeekTimeRef.current > 0) {
+      const targetSeek = initialSeekTimeRef.current || currentTimeRef.current || 0;
+      if (targetSeek > 0) {
         try {
-          e.target.currentTime = initialSeekTimeRef.current;
+          e.target.currentTime = targetSeek;
         } catch (_) {}
-        initialSeekTimeRef.current = 0;
       }
       if (!e.target.paused && e.target.currentTime > 0) {
         setIsBuffering(false);
@@ -1164,6 +1192,7 @@ export const PlayerProvider = ({ children }) => {
     setIsBuffering(true);
 
     initialSeekTimeRef.current = 0;
+    currentTimeRef.current = 0;
     lastSavedTimeRef.current = 0;
     const activeQueue = newQueue || queue;
     const activeIdx = newQueue ? (isShuffle ? 0 : newQueue.findIndex((t) => t.id === track.id)) : queueIndex;
@@ -1272,21 +1301,32 @@ export const PlayerProvider = ({ children }) => {
 
       // If at or within 1.5s of the end of the song, restart cleanly from 0:00
       const trackDur = audio.duration || duration || 0;
-      if (trackDur > 5 && (audio.currentTime >= trackDur - 1.5 || currentTime >= trackDur - 1.5)) {
+      const targetTime = initialSeekTimeRef.current || currentTimeRef.current || currentTime || 0;
+      if (trackDur > 5 && (audio.currentTime >= trackDur - 1.5 || targetTime >= trackDur - 1.5)) {
         try {
           audio.currentTime = 0;
         } catch (_) {}
+        currentTimeRef.current = 0;
         setCurrentTime(0);
         initialSeekTimeRef.current = 0;
-      } else if (initialSeekTimeRef.current > 0) {
+      } else if (targetTime > 0) {
+        // Attempt immediate seek if ready
         try {
-          audio.currentTime = initialSeekTimeRef.current;
+          audio.currentTime = targetTime;
         } catch (_) {}
-        initialSeekTimeRef.current = 0;
-      } else if (currentTime > 0 && Math.abs(audio.currentTime - currentTime) > 0.5) {
-        try {
-          audio.currentTime = currentTime;
-        } catch (_) {}
+
+        // In addition, if audio element is still loading metadata/data, guarantee seek triggers once ready
+        if (audio.readyState < 1) {
+          const applySeekOnReady = () => {
+            if (initialSeekTimeRef.current > 0 || currentTimeRef.current > 0) {
+              try {
+                audio.currentTime = targetTime;
+              } catch (_) {}
+            }
+          };
+          audio.addEventListener('loadedmetadata', applySeekOnReady, { once: true });
+          audio.addEventListener('canplay', applySeekOnReady, { once: true });
+        }
       }
 
       if (audio.readyState < 3) {
@@ -1315,6 +1355,7 @@ export const PlayerProvider = ({ children }) => {
       }
     }
     initialSeekTimeRef.current = 0;
+    currentTimeRef.current = time;
     try {
       audio.currentTime = time;
     } catch (_) {}
