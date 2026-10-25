@@ -861,18 +861,9 @@ export const PlayerProvider = ({ children }) => {
       if (e.target !== audioRef.current) return;
       const t = e.target.currentTime;
 
-      // Guard: when a track was restored from localStorage, do not let an initial 0.00s timeupdate overwrite the restored time
+      // Guard: when a track was restored from localStorage, clear pending restore target once playback advances
       if (initialSeekTimeRef.current > 0) {
-        if (t < 0.5) {
-          // If playback hasn't jumped to the restored target yet, attempt seek and avoid wiping currentTime in state
-          if (!e.target.paused) {
-            try {
-              e.target.currentTime = initialSeekTimeRef.current;
-            } catch (_) {}
-          }
-          return;
-        } else if (t >= initialSeekTimeRef.current - 1.0) {
-          // Seek completed successfully! Clear the pending restore target
+        if (t >= initialSeekTimeRef.current - 1.0) {
           initialSeekTimeRef.current = 0;
         }
       }
@@ -910,8 +901,10 @@ export const PlayerProvider = ({ children }) => {
       if (d > 0) setDuration(d);
       updateBufferedTime(e.target);
 
-      const targetSeek = initialSeekTimeRef.current || currentTimeRef.current || 0;
-      if (targetSeek > 0) {
+      // Only seek if there is an active initial cold-start seek request
+      if (initialSeekTimeRef.current > 0) {
+        const targetSeek = initialSeekTimeRef.current;
+        initialSeekTimeRef.current = 0;
         try {
           e.target.currentTime = targetSeek;
         } catch (_) {}
@@ -968,13 +961,6 @@ export const PlayerProvider = ({ children }) => {
       if (e.target !== audioRef.current) return;
       setIsBuffering(false);
       setIsPlaying(true);
-      // Ensure audio element is synchronized to intended position on initial playback start
-      const targetTime = initialSeekTimeRef.current || currentTimeRef.current || 0;
-      if (targetTime > 0 && Math.abs(e.target.currentTime - targetTime) > 1.0) {
-        try {
-          e.target.currentTime = targetTime;
-        } catch (_) {}
-      }
     };
 
     const handleLoadStart = (e) => {
@@ -985,12 +971,6 @@ export const PlayerProvider = ({ children }) => {
     const handleCanPlay = (e) => {
       if (e.target !== audioRef.current) return;
       updateBufferedTime(e.target);
-      const targetSeek = initialSeekTimeRef.current || currentTimeRef.current || 0;
-      if (targetSeek > 0) {
-        try {
-          e.target.currentTime = targetSeek;
-        } catch (_) {}
-      }
       if (!e.target.paused && e.target.currentTime > 0) {
         setIsBuffering(false);
       }
