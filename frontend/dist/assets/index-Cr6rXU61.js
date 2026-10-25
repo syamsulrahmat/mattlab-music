@@ -590,4 +590,4 @@ Component Stack:
 
 `,(s=this.state.error)==null?void 0:s.stack]}),((r=this.state.errorInfo)==null?void 0:r.componentStack)&&e.jsxs("div",{className:"bg-surface-panel border border-border-medium rounded-lg p-4 text-content-muted whitespace-pre-wrap text-xs",children:[e.jsx("strong",{children:"Component Tree:"}),`
 `,this.state.errorInfo.componentStack]}),e.jsx("button",{onClick:()=>window.location.reload(),className:"mt-5 px-5 py-2.5 bg-brand-500 text-black font-bold rounded-full cursor-pointer hover:bg-brand-400 transition",children:"Reload Application"})]}):this.props.children}}Mo.createRoot(document.getElementById("root")).render(e.jsx(_r.StrictMode,{children:e.jsx(rg,{children:e.jsx(sg,{})})}));
-//# sourceMappingURL=index-DsjZSnuD.js.map
+//# sourceMappingURL=index-Cr6rXU61.js.map

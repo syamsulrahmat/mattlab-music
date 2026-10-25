@@ -1,12 +1,15 @@
 {
   "name": "MattLab Music",
-  "short_name": "MattLab Music",
+  "short_name": "MattLab",
   "description": "Stream your personal lossless music library from Unraid",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "orientation": "any",
-  "background_color": "#121212",
-  "theme_color": "#121212",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "categories": ["music", "entertainment"],
   "icons": [
     {
       "src": "/favicon.svg",

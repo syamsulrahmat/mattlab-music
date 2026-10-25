@@ -227,10 +227,13 @@
 button, a, input, [role="button"], [data-track-id] {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
 }
 
 html, body {
   overscroll-behavior-y: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .overflow-y-auto {
