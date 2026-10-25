@@ -138,6 +138,9 @@ export const PlayerProvider = ({ children }) => {
       : base;
   }, [audioQuality]);
 
+  // Mobile Now Playing Full-Screen Sheet State
+  const [isMobileNowPlayingOpen, setIsMobileNowPlayingOpen] = useState(false);
+
   // Karaoke Mode (Pure Demucs AI Instrumental Toggle - starts OFF by default on load/reload)
   const [isKaraokeMode, setIsKaraokeMode] = useState(() => {
     try {
@@ -298,18 +301,21 @@ export const PlayerProvider = ({ children }) => {
       setIsKaraokeMode(targetMode);
     }
 
-    // Prepare standby audio at 0 volume so it can buffer and sync silently
-    standbyAudio.src = targetSrc;
-    standbyAudio.preload = 'auto';
-    standbyAudio.volume = 0;
+    // If standbyAudio already has targetSrc loaded and buffered, don't re-assign or call load() which flushes the mobile buffer!
+    const needsNewSource = !standbyAudio.src || !standbyAudio.src.includes(targetSrc);
+    if (needsNewSource) {
+      standbyAudio.src = targetSrc;
+      standbyAudio.preload = 'auto';
+      try {
+        standbyAudio.load();
+      } catch (_) {}
+    }
     standbyAudio.playbackRate = currentAudio.playbackRate;
-    try {
-      standbyAudio.load();
-    } catch (_) {}
+    standbyAudio.volume = 0;
 
     let isHandled = false;
 
-    // Direct seamless swap fallback if standby buffering / seek stalls > 350ms
+    // Direct seamless swap fallback if standby buffering / seek stalls > 1200ms (tuned for mobile Safari decode)
     const fallbackTimer = setTimeout(() => {
       if (isHandled) return;
       isHandled = true;
@@ -333,7 +339,7 @@ export const PlayerProvider = ({ children }) => {
           crossfadeTimerRef.current = null;
         }
       }
-    }, 350);
+    }, 1200);
 
     const cleanupFallback = () => {
       clearTimeout(fallbackTimer);
@@ -1032,8 +1038,8 @@ export const PlayerProvider = ({ children }) => {
   }, [currentTrack?.id, fetchKaraokeStatus]);
 
   // Pre-buffer alternate audio stream (instrumental or vocal) on standby element for instant 0ms crossfade
-  // Only eager-preload if Karaoke mode is actually toggled ON; otherwise keep preload='none'
-  // to avoid consuming tunnel bandwidth with duplicate audio streams during regular playback.
+  // Whenever stems exist for the track, keep standbyAudio eager-loaded (preload='auto') so toggling between
+  // full stem and instrumental is instantaneous on both desktop and mobile networks.
   useEffect(() => {
     if (!currentTrack?.id || isCrossfadingRef.current) return;
     const standbyAudio = standbyAudioRef.current;
@@ -1048,37 +1054,45 @@ export const PlayerProvider = ({ children }) => {
 
       if (!standbyAudio.src || !standbyAudio.src.includes(targetSrc)) {
         standbyAudio.src = targetSrc;
-        standbyAudio.preload = isKaraokeMode ? 'auto' : 'none';
+        standbyAudio.preload = 'auto';
         standbyAudio.volume = 0;
       } else {
-        standbyAudio.preload = isKaraokeMode ? 'auto' : 'none';
+        standbyAudio.preload = 'auto';
       }
     }
   }, [currentTrack?.id, karaokeStemStatus, isKaraokeMode]);
 
   // Update Media Session API for iOS / OS lock screen & PiP controls
   useEffect(() => {
-    if ('mediaSession' in navigator && currentTrack) {
-      const cover = audioPreloader.getPreloadedCover(currentTrack.id) || currentTrack.cover_url || '/api/covers/0';
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: currentTrack.title || 'Unknown Title',
-        artist: currentTrack.artist_name || currentTrack.artist || 'MattLab Music',
-        album: currentTrack.album_title || 'MattLab Music',
-        artwork: [
-          { src: cover, sizes: '512x512', type: 'image/jpeg' },
-          { src: cover, sizes: '300x300', type: 'image/jpeg' },
-          { src: cover, sizes: '96x96', type: 'image/jpeg' },
-        ],
-      });
-
-      navigator.mediaSession.setActionHandler('play', () => togglePlay());
-      navigator.mediaSession.setActionHandler('pause', () => togglePlay());
-      navigator.mediaSession.setActionHandler('previoustrack', () => prevTrack());
-      navigator.mediaSession.setActionHandler('nexttrack', () => nextTrack());
-      navigator.mediaSession.setActionHandler('seekto', (details) => {
-        if (details.seekTime !== undefined) seek(details.seekTime);
-      });
+    if ('mediaSession' in navigator && window.MediaMetadata && currentTrack) {
       try {
+        const cover = audioPreloader.getPreloadedCover(currentTrack.id) || currentTrack.cover_url || '/api/covers/0';
+        const absoluteCover = typeof cover === 'string' && cover.startsWith('http')
+          ? cover 
+          : `${window.location.origin}${typeof cover === 'string' && cover.startsWith('/') ? cover : `/${cover || 'api/covers/0'}`}`;
+
+        navigator.mediaSession.metadata = new window.MediaMetadata({
+          title: String(currentTrack.title || 'Unknown Title'),
+          artist: String(currentTrack.artist_name || currentTrack.artist || 'MattLab Music'),
+          album: String(currentTrack.album_title || 'MattLab Music'),
+          artwork: [
+            { src: absoluteCover, sizes: '512x512', type: 'image/jpeg' },
+            { src: absoluteCover, sizes: '300x300', type: 'image/jpeg' },
+            { src: absoluteCover, sizes: '96x96', type: 'image/jpeg' },
+          ],
+        });
+      } catch (err) {
+        console.warn('[MEDIASESSION] Failed to set metadata:', err);
+      }
+
+      try {
+        navigator.mediaSession.setActionHandler('play', () => togglePlay());
+        navigator.mediaSession.setActionHandler('pause', () => togglePlay());
+        navigator.mediaSession.setActionHandler('previoustrack', () => prevTrack());
+        navigator.mediaSession.setActionHandler('nexttrack', () => nextTrack());
+        navigator.mediaSession.setActionHandler('seekto', (details) => {
+          if (details.seekTime !== undefined) seek(details.seekTime);
+        });
         navigator.mediaSession.setActionHandler('seekbackward', (details) => {
           seek(Math.max(0, currentTime - (details.seekOffset || 10)));
         });
@@ -1890,6 +1904,9 @@ export const PlayerProvider = ({ children }) => {
       // Must be actively playing music
       if (!isPlaying || !currentTrack) return;
 
+      // Do not launch miniplayer on mobile screens (< 768px)
+      if (typeof window !== 'undefined' && window.innerWidth < 768) return;
+
       // Skip if miniplayer or PiP is already active
       if (isMiniPlayerOpen || pipWindow || isCanvasPiPActive) return;
 
@@ -2077,6 +2094,8 @@ export const PlayerProvider = ({ children }) => {
         fetchKaraokeStatus,
         generateKaraokeStems,
         batchGenerateKaraoke,
+        isMobileNowPlayingOpen,
+        setIsMobileNowPlayingOpen,
         toastMessage,
         showToast,
       }}

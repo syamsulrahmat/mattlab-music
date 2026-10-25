@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Pause, Headphones, Heart, Clock3 } from 'lucide-react';
+import { Play, Pause, Headphones, Heart, Clock3, MoreVertical } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 
 const formatDuration = (seconds) => {
@@ -50,10 +50,20 @@ export const HomeTopTables = ({
     }
   }, [selectedTrackIds, top10, getContinuityQueue, playTrack]);
 
-  // Single-click selection matching PlaylistDetail behavior (supports Shift & Ctrl/Cmd)
+  // Single-click: on mobile (<768px) plays track directly; on desktop (>=768px) selects track for double-click/enter/play button
   const handleRowClick = (e, track, idx) => {
     // If clicked directly on interactive child buttons or links, ignore row selection
     if (e.target.closest('button, a')) return;
+
+    // Mobile single tap plays directly, or toggles pause if already currently playing
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      if (currentTrack?.id === track.id) {
+        togglePlay();
+      } else {
+        handlePlayFromList(track);
+      }
+      return;
+    }
 
     if (e.shiftKey && lastSelectedTrackIdx !== null) {
       const start = Math.min(lastSelectedTrackIdx, idx);
@@ -72,8 +82,7 @@ export const HomeTopTables = ({
       });
       setLastSelectedTrackIdx(idx);
     } else {
-      // If clicking an already selected track in a multi-selection, do NOT collapse the selection on click
-      // This allows double-clicking without losing the multi-track selection!
+      // If clicking an already selected track in a multi-selection on desktop, do not collapse
       if (selectedTrackIds.size > 1 && selectedTrackIds.has(track.id)) {
         return;
       }
@@ -82,7 +91,7 @@ export const HomeTopTables = ({
     }
   };
 
-  // Double-click: play the selected track (like in playlist view)
+  // Double-click: play the selected track on desktop
   const handleRowDoubleClick = (track) => {
     handlePlayFromList(track);
   };
@@ -201,15 +210,13 @@ export const HomeTopTables = ({
           </button>
         </div>
 
-        {/* Playlist-style Table Card */}
-        <div className="bg-surface-panel/70 rounded-lg p-2 border border-border-subtle mt-4">
+        {/* Playlist-style Table (Seamless, borderless, matching Playlist view) */}
+        <div className="mt-4">
           {/* Column Header */}
-          <div className="bg-surface-island/95 backdrop-blur-md rounded-lg mb-1 border-b border-border-medium shadow-md">
-            <div className="grid grid-cols-[36px_1fr_40px] md:grid-cols-[40px_4fr_3fr_1fr_100px] px-3.5 py-2.5 text-xs font-semibold uppercase text-content-secondary items-center select-none">
-              <div className="text-center">#</div>
+          <div className="hidden md:block bg-surface-island/95 backdrop-blur-md rounded-lg mb-1 border-b border-border-medium shadow-md">
+            <div className="grid grid-cols-[4fr_3fr_100px] px-1 md:px-2 py-2.5 text-xs font-semibold uppercase text-content-secondary items-center select-none">
               <div>Title</div>
-              <div className="hidden md:block">Album</div>
-              <div className="hidden md:block text-right">Plays</div>
+              <div>Album</div>
               <div className="flex items-center justify-end pr-2">
                 <Clock3 size={14} />
               </div>
@@ -254,7 +261,7 @@ export const HomeTopTables = ({
                     });
                   }
                 }}
-                className={`group grid grid-cols-[36px_1fr_40px] md:grid-cols-[40px_4fr_3fr_1fr_100px] items-center px-3.5 py-2.5 rounded-xl transition cursor-default select-none border ${
+                className={`group grid grid-cols-[1fr_auto] md:grid-cols-[4fr_3fr_100px] items-center px-0 md:px-2 py-2.5 rounded-xl transition cursor-default select-none border ${
                   isSelected
                     ? 'border-transparent bg-surface-hover ring-1 ring-white/20 text-content-primary shadow-sm'
                     : isThisTrack
@@ -262,53 +269,47 @@ export const HomeTopTables = ({
                     : 'border-transparent hover:bg-surface-elevated text-content-primary'
                 }`}
               >
-                {/* 1. Rank Number / Play-Pause Indicator (Playlist View Hover & Selection Behavior) */}
-                <div className="flex items-center justify-center w-8 h-8 shrink-0">
-                  <div className="flex items-center justify-center group-hover:hidden">
-                    {isThisPlaying ? (
-                      <div className="flex items-end justify-center gap-[2.5px] w-3.5 h-3.5 pb-0.5" title="Playing">
-                        <span className="w-[3px] bg-brand-500 rounded-full animate-eq-1" />
-                        <span className="w-[3px] bg-brand-500 rounded-full animate-eq-2" />
-                        <span className="w-[3px] bg-brand-500 rounded-full animate-eq-3" />
-                        <span className="w-[3px] bg-brand-500 rounded-full animate-eq-4" />
-                      </div>
-                    ) : (
-                      <span className={`text-sm font-medium ${isThisTrack ? 'text-brand-500 font-bold' : 'text-content-secondary'}`}>
-                        {idx + 1}
-                      </span>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (isThisTrack) {
-                        togglePlay();
-                      } else {
-                        handlePlayFromList(track);
-                      }
-                    }}
-                    className="hidden group-hover:flex items-center justify-center w-7 h-7 text-content-primary hover:text-brand-400 transition cursor-pointer"
-                    title={isThisPlaying ? "Pause" : "Play"}
-                  >
-                    {isThisPlaying ? (
-                      <Pause size={15} className="fill-current" />
-                    ) : (
-                      <Play size={15} className="fill-current ml-0.5" />
-                    )}
-                  </button>
-                </div>
-
-                {/* 2. Cover Art, Title & Artist (No accidental link clicking on row hover) */}
+                {/* 1. Cover Art (with play/pause overlay on web hover), Title & Artist */}
                 <div className="flex items-center gap-3 truncate pr-3 min-w-0">
-                  <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-surface-elevated shrink-0 shadow-md">
+                  <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-surface-elevated shrink-0 shadow-md group/cover">
                     <img
                       src={track.cover_url}
                       alt={track.title}
                       loading="lazy"
                       className="w-full h-full object-cover"
                     />
+                    {/* Desktop Play / Equalizer Overlay */}
+                    <div 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isThisTrack) {
+                          togglePlay();
+                        } else {
+                          handlePlayFromList(track);
+                        }
+                      }}
+                      className={`hidden md:flex absolute inset-0 bg-black/50 items-center justify-center transition cursor-pointer ${
+                        isThisPlaying 
+                          ? 'opacity-100' 
+                          : 'opacity-0 group-hover:opacity-100'
+                      }`}
+                    >
+                      {isThisPlaying ? (
+                        <div className="group-hover/cover:hidden flex items-end justify-center gap-[2.5px] w-4 h-4 pb-0.5" title="Playing">
+                          <span className="w-[3px] bg-brand-500 rounded-full animate-eq-1" />
+                          <span className="w-[3px] bg-brand-500 rounded-full animate-eq-2" />
+                          <span className="w-[3px] bg-brand-500 rounded-full animate-eq-3" />
+                          <span className="w-[3px] bg-brand-500 rounded-full animate-eq-4" />
+                        </div>
+                      ) : null}
+                      <span className={isThisPlaying ? "hidden group-hover/cover:inline-block" : ""}>
+                        {isThisPlaying ? (
+                          <Pause size={16} className="text-white fill-white" />
+                        ) : (
+                          <Play size={16} className="text-white fill-white ml-0.5" />
+                        )}
+                      </span>
+                    </div>
                   </div>
                   <div className="truncate min-w-0 flex-1">
                     <div className="flex items-center gap-2 truncate">
@@ -354,14 +355,7 @@ export const HomeTopTables = ({
                   </span>
                 </div>
 
-                {/* 4. Plays Badge */}
-                <div className="hidden md:block text-right pr-3 text-xs font-mono text-content-secondary">
-                  <span className="px-2.5 py-1 rounded-full bg-white/5 font-semibold text-content-primary text-[11px]">
-                    {track.user_play_count > 0 ? `${track.user_play_count} plays` : 'Top pick'}
-                  </span>
-                </div>
-
-                {/* 5. Heart Favorite & Duration */}
+                {/* 4. Heart Favorite, Duration & Mobile 3-Dots */}
                 <div className="flex items-center justify-end gap-2 text-xs text-content-muted">
                   <button
                     type="button"
@@ -369,7 +363,7 @@ export const HomeTopTables = ({
                       e.stopPropagation();
                       toggleFavorite(track.id);
                     }}
-                    className={`p-1.5 rounded-full hover:bg-white/10 transition ${
+                    className={`hidden md:inline-flex p-1.5 rounded-full hover:bg-white/10 transition ${
                       isFav
                         ? 'text-brand-500'
                         : 'text-content-muted hover:text-content-primary opacity-0 group-hover:opacity-100'
@@ -379,9 +373,27 @@ export const HomeTopTables = ({
                     <Heart size={15} className={isFav ? 'fill-brand-500 text-brand-500' : ''} />
                   </button>
 
-                  <span className="font-mono text-xs w-10 text-right text-content-secondary">
+                  <span className="hidden md:inline font-mono text-xs w-10 text-right text-content-secondary">
                     {formatDuration(track.duration_seconds)}
                   </span>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onContextMenu) {
+                        onContextMenu(e, 'track', {
+                          ...track,
+                          selectedTracks: [track],
+                          track_ids: [track.id],
+                        });
+                      }
+                    }}
+                    className="md:hidden w-7 h-7 rounded-full flex items-center justify-center text-content-secondary hover:text-white active:scale-90 transition shrink-0 -mr-1"
+                    title="Track Options"
+                  >
+                    <MoreVertical size={16} />
+                  </button>
                 </div>
               </div>
             );

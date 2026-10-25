@@ -175,9 +175,29 @@ export const SearchView = ({
       data-dev-desc="Comprehensive search results stage displaying top result, matching songs, albums, and artists"
       className="pb-12 max-w-6xl"
     >
-      {/* Search Input Box (fallback if not using TopBar) */}
+      {/* Search Input Box: always present on mobile viewports since TopBar search is hidden */}
+      <div className="relative max-w-xl mb-6 sm:hidden">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-content-secondary" size={20} />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="What do you want to play?"
+          className="w-full bg-surface-elevated hover:bg-surface-hover focus:bg-surface-hover text-content-primary pl-12 pr-10 py-3 rounded-full text-sm font-medium outline-none border border-transparent focus:border-border-strong transition placeholder:text-content-secondary shadow-md"
+        />
+        {query && (
+          <button
+            onClick={() => setQuery('')}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-content-secondary hover:text-white"
+          >
+            <X size={18} />
+          </button>
+        )}
+      </div>
+
+      {/* Search Input Box (fallback on desktop if not using TopBar) */}
       {propQuery === undefined && (
-        <div className="relative max-w-md mb-8">
+        <div className="hidden sm:block relative max-w-md mb-8">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-content-secondary" size={20} />
           <input
             type="text"
@@ -498,7 +518,16 @@ export const SearchView = ({
                   return (
                     <div
                       key={track.id}
-                      onClick={() => setSelectedTrackId(track.id)}
+                      onClick={() => {
+                        setSelectedTrackId(track.id);
+                        if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                          if (currentTrack?.id === track.id) {
+                            togglePlay();
+                          } else {
+                            playTrack(track, results.tracks);
+                          }
+                        }
+                      }}
                       onDoubleClick={() => playTrack(track, results.tracks)}
                       onContextMenu={(e) => {
                         if (onContextMenu) {

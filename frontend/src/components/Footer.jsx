@@ -33,7 +33,7 @@ export const Footer = ({
       data-dev-component="Footer"
       data-dev-file="src/components/Footer.jsx"
       data-dev-desc="Universal page footer with system telemetry, music request modal triggers, and shortcuts guide"
-      className="mt-16 pt-12 pb-0 px-4 sm:px-8 border-t border-border-subtle bg-surface-island/40 text-xs text-content-secondary select-none"
+      className="mt-16 pt-12 pb-0 px-4 sm:px-8 border-t border-border-subtle bg-surface-island text-xs text-content-secondary select-none"
     >
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 mb-10">
@@ -65,27 +65,27 @@ export const Footer = ({
           </div>
 
           {/* Column 2: Tools & Actions */}
-          <div className="space-y-2.5">
-            <h4 className="text-[11px] font-bold uppercase tracking-wider text-content-primary">
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-content-primary">
               Tools & Actions
             </h4>
-            <ul className="space-y-2">
+            <ul className="space-y-1">
               <li>
                 <button
                   onClick={onOpenBugReport}
-                  className="flex items-center gap-2 text-content-secondary hover:text-brand-500 transition group text-left cursor-pointer"
+                  className="w-full flex items-center gap-3 py-2 text-content-secondary hover:text-brand-500 transition group text-left cursor-pointer active:scale-[0.98]"
                 >
                   <div className="relative shrink-0">
-                    <Bug size={14} className="text-amber-400 group-hover:scale-110 transition" />
+                    <Bug size={18} className="text-amber-400 group-hover:scale-110 transition" />
                     {hasResolvedIssues && (
                       <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 animate-pulse ring-2 ring-surface-island" />
                     )}
                   </div>
-                  <span className="font-semibold text-content-primary group-hover:text-brand-500">
+                  <span className="font-semibold text-content-primary group-hover:text-brand-500 text-sm flex-1">
                     Report an Issue / Bug
                   </span>
                   {hasResolvedIssues && (
-                    <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 animate-pulse">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 animate-pulse">
                       Update
                     </span>
                   )}
@@ -96,36 +96,37 @@ export const Footer = ({
                 <li>
                   <button
                     onClick={onRequestMusic}
-                    className="flex items-center gap-2 text-content-secondary hover:text-content-primary transition group text-left cursor-pointer"
+                    className="w-full flex items-center gap-3 py-2 text-content-secondary hover:text-brand-400 transition group text-left cursor-pointer active:scale-[0.98]"
                   >
-                    <DownloadCloud size={14} className="text-brand-500 group-hover:scale-110 transition" />
-                    <span>Request Music</span>
+                    <DownloadCloud size={18} className="text-brand-400 group-hover:scale-110 transition shrink-0" />
+                    <span className="font-semibold text-content-primary group-hover:text-brand-400 text-sm">Request Music (Lidarr)</span>
                   </button>
                 </li>
               )}
-
-              <li>
-                <button
-                  onClick={onOpenShortcuts}
-                  className="flex items-center gap-2 text-content-secondary hover:text-content-primary transition group text-left cursor-pointer"
-                >
-                  <Keyboard size={14} className="text-sky-400 group-hover:scale-110 transition" />
-                  <span>Keyboard Shortcuts</span>
-                </button>
-              </li>
 
               {isAdmin && onRefreshScan && (
                 <li>
                   <button
                     onClick={onRefreshScan}
                     disabled={isScanning}
-                    className="flex items-center gap-2 text-content-secondary hover:text-content-primary transition group text-left cursor-pointer disabled:opacity-50"
+                    className="w-full flex items-center gap-3 py-2 text-content-secondary hover:text-brand-500 transition group text-left cursor-pointer disabled:opacity-50 active:scale-[0.98]"
                   >
-                    <RefreshCw size={14} className={`text-brand-500 ${isScanning ? 'animate-spin' : 'group-hover:scale-110'} transition`} />
-                    <span>{isScanning ? 'Syncing Library...' : 'Rescan Music Library'}</span>
+                    <RefreshCw size={17} className={`text-brand-500 ${isScanning ? 'animate-spin' : 'group-hover:scale-110'} transition shrink-0`} />
+                    <span className="font-semibold text-content-primary group-hover:text-brand-500 text-sm">{isScanning ? 'Syncing Library...' : 'Rescan Music Library'}</span>
                   </button>
                 </li>
               )}
+
+              {/* Keyboard shortcuts: hidden on mobile, visible on desktop */}
+              <li className="hidden md:block">
+                <button
+                  onClick={onOpenShortcuts}
+                  className="w-full flex items-center gap-3 py-2 text-content-secondary hover:text-content-primary transition group text-left cursor-pointer"
+                >
+                  <Keyboard size={17} className="text-sky-400 group-hover:scale-110 transition shrink-0" />
+                  <span className="font-semibold text-content-primary group-hover:text-sky-400 text-sm">Keyboard Shortcuts</span>
+                </button>
+              </li>
             </ul>
           </div>
 

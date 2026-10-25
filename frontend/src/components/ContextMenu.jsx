@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Play, Pause, Plus, Heart, ListPlus, Disc3, Mic2, CornerDownRight, Trash2,
-  ListMusic, RefreshCw, ExternalLink, Edit2, Copy, Loader2, Mic, MicOff, UserCheck
+  ListMusic, RefreshCw, ExternalLink, Edit2, Copy, Loader2, Mic, MicOff, UserCheck, X
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { useDevFlags } from '../context/FlagsContext';
@@ -147,22 +148,86 @@ export const ContextMenu = ({
   const isMulti = type === 'track' && Array.isArray(data?.selectedTracks) && data.selectedTracks.length > 1;
   const trackCount = isMulti ? data.selectedTracks.length : 1;
 
-  return (
-    <div
-      ref={menuRef}
-      data-dev-component="ContextMenu"
-      data-dev-file="src/components/ContextMenu.jsx"
-      data-dev-desc="Right-click action menu for tracks, albums, artists, and playlists"
-      style={{
-        top: `${coords.top}px`,
-        left: `${coords.left}px`,
-        maxHeight: 'calc(100vh - 150px)',
-      }}
-      className={`fixed z-50 w-56 bg-surface-panel text-content-primary rounded-md shadow-2xl border border-border-medium py-1.5 text-xs font-medium select-none overflow-y-auto animate-in fade-in zoom-in-95 duration-100 ${
-        coords.isFlipped ? 'origin-bottom-left' : 'origin-top-left'
-      }`}
-      onClick={(e) => e.stopPropagation()}
-    >
+  const [isMobile, setIsMobile] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 768 : false));
+
+  // Touch swipe-down to dismiss gesture for mobile bottom sheet
+  const touchStartY = useRef(0);
+  const touchCurrentY = useRef(0);
+  const touchStartX = useRef(0);
+  const hasDragged = useRef(false);
+  const listScrollRef = useRef(null);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setDragOffset(0);
+      setIsDragging(false);
+      hasDragged.current = false;
+    }
+  }, [isOpen]);
+
+  const handleTouchStart = (e) => {
+    touchStartY.current = e.touches[0].clientY;
+    touchStartX.current = e.touches[0].clientX;
+    touchCurrentY.current = e.touches[0].clientY;
+    hasDragged.current = false;
+    setIsDragging(true);
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isDragging) return;
+    touchCurrentY.current = e.touches[0].clientY;
+    const diffY = touchCurrentY.current - touchStartY.current;
+    const diffX = Math.abs(e.touches[0].clientX - touchStartX.current);
+
+    // If starting inside scrollable list, only drag if at the top (scrollTop <= 0) and pulling downwards
+    if (listScrollRef.current && listScrollRef.current.scrollTop > 0) {
+      return;
+    }
+
+    if (diffY > 8 && diffY > diffX) {
+      hasDragged.current = true;
+      setDragOffset(diffY);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    if (dragOffset > 80) {
+      onClose();
+    } else {
+      setDragOffset(0);
+    }
+    // Reset hasDragged after a short tick to prevent any pending click event from firing
+    setTimeout(() => {
+      hasDragged.current = false;
+    }, 150);
+  };
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const headerTitle = type === 'track' 
+    ? (isMulti ? `${trackCount} tracks selected` : data?.title || 'Track Options')
+    : type === 'album'
+    ? data?.title || 'Album Options'
+    : type === 'artist'
+    ? data?.name || 'Artist Options'
+    : type === 'playlist'
+    ? data?.name || 'Playlist Options'
+    : 'Options';
+
+  const headerSubtitle = type === 'track' && !isMulti ? data?.artist_name : null;
+
+  const menuItems = (
+    <>
       {type === 'track' && (
         <>
           <button
@@ -247,7 +312,7 @@ export const ContextMenu = ({
                 onEditLyrics(data);
                 onClose();
               }}
-              className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
+              className="hidden md:flex w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary items-center gap-2.5 transition"
             >
               <Edit2 size={15} className="text-content-secondary" />
               <span>Edit / Add Lyrics</span>
@@ -633,7 +698,7 @@ export const ContextMenu = ({
                   onClose();
                   window.open(`https://open.spotify.com/playlist/${data.spotify_id}`, '_blank', 'noopener,noreferrer');
                 }}
-                className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition"
+                className="hidden md:flex w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary items-center gap-2.5 transition"
               >
                 <ExternalLink size={15} className="text-brand-500" />
                 <span>Open on Spotify</span>
@@ -657,7 +722,11 @@ export const ContextMenu = ({
           <button
             onClick={() => {
               onClose();
-              onPromptDeletePlaylist?.(data);
+              if (data?.onDelete) {
+                data.onDelete();
+              } else {
+                onPromptDeletePlaylist?.(data);
+              }
             }}
             className="w-full text-left px-3.5 py-2 hover:bg-red-500/20 hover:text-red-400 flex items-center gap-2.5 transition text-red-400 font-semibold"
           >
@@ -778,6 +847,85 @@ export const ContextMenu = ({
           )}
         </>
       )}
+    </>
+  );
+
+  if (isMobile) {
+    return createPortal(
+      <div 
+        className="fixed inset-0 z-[110] flex flex-col justify-end bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+        onClick={onClose}
+      >
+        <div
+          ref={menuRef}
+          data-dev-component="ContextMenuSheet"
+          data-dev-file="src/components/ContextMenu.jsx"
+          data-dev-desc="Touch-friendly bottom sheet action menu on mobile"
+          style={{
+            transform: `translateY(${dragOffset}px)`,
+          }}
+          className="w-full max-h-[80vh] bg-surface-panel/95 backdrop-blur-2xl rounded-t-3xl border-t border-white/10 shadow-2xl flex flex-col overflow-hidden pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] transition-transform duration-150 ease-out animate-in slide-in-from-bottom-full duration-300"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Pull Handle & Header Area (Swipe Down Anchor) */}
+          <div 
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            className="w-full cursor-grab active:cursor-grabbing select-none"
+          >
+            <div className="w-full flex justify-center pt-3 pb-2">
+              <div className="w-12 h-1.5 bg-neutral-600/70 rounded-full" />
+            </div>
+
+            {/* Header Info */}
+            <div className="px-5 py-2.5 flex items-center justify-between border-b border-white/5">
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-white truncate">{headerTitle}</h3>
+                {headerSubtitle && <p className="text-xs text-neutral-400 truncate">{headerSubtitle}</p>}
+              </div>
+            </div>
+          </div>
+
+          {/* Action List (larger tap height, with click capture protection while dragging) */}
+          <div 
+            ref={listScrollRef}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onClickCapture={(e) => {
+              if (hasDragged.current || dragOffset > 5) {
+                e.stopPropagation();
+                e.preventDefault();
+              }
+            }}
+            className="overflow-y-auto px-2 py-2 space-y-1 text-sm font-medium text-neutral-200 [&_button]:py-3 [&_button]:px-4 [&_button]:rounded-xl [&_button]:text-sm"
+          >
+            {menuItems}
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  }
+
+  return (
+    <div
+      ref={menuRef}
+      data-dev-component="ContextMenu"
+      data-dev-file="src/components/ContextMenu.jsx"
+      data-dev-desc="Right-click action menu for tracks, albums, artists, and playlists"
+      style={{
+        top: `${coords.top}px`,
+        left: `${coords.left}px`,
+        maxHeight: 'calc(100vh - 150px)',
+      }}
+      className={`fixed z-50 w-56 bg-surface-panel text-content-primary rounded-md shadow-2xl border border-border-medium py-1.5 text-xs font-medium select-none overflow-y-auto animate-in fade-in zoom-in-95 duration-100 ${
+        coords.isFlipped ? 'origin-bottom-left' : 'origin-top-left'
+      }`}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {menuItems}
     </div>
   );
 };

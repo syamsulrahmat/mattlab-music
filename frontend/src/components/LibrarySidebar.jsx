@@ -775,17 +775,6 @@ export const LibrarySidebar = ({
           </div>
         )}
       </div>
-
-      {/* Subtle Library Counter Widget at the Bottom */}
-      {!isCollapsed && stats && (
-        <div className="px-4 py-3 bg-surface-island border-t border-border-subtle text-[11px] text-content-secondary flex items-center justify-between shrink-0">
-          <span>{stats.tracks.toLocaleString()} songs</span>
-          <span className="text-content-subtle">•</span>
-          <span>{stats.albums.toLocaleString()} albums</span>
-          <span className="text-content-subtle">•</span>
-          <span>{stats.artists.toLocaleString()} artists</span>
-        </div>
-      )}
     </div>
   );
 

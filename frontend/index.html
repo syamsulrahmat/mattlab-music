@@ -39,6 +39,12 @@
         }
 
         window.onerror = function(msg, url, line, col, err) {
+          var strMsg = String(msg || '');
+          var strUrl = String(url || '');
+          // Ignore external browser extensions, Safari share sheet internals, and cross-origin script error noise
+          if (strMsg === 'Script error.' || (!strUrl && line === 0 && col === 0) || strUrl.indexOf('safari-extension') !== -1 || strUrl.indexOf('webkit-masked-url') !== -1) {
+            return;
+          }
           displayError('WINDOW ERROR', msg + ' (at ' + url + ':' + line + ':' + col + ')', err ? err.stack : '');
         };
         window.addEventListener('unhandledrejection', function(e) {
@@ -55,7 +61,7 @@
     <!-- Mobile Web App Support -->
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <meta name="apple-mobile-web-app-title" content="MattLab Music" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2" />
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useDevFlags } from '../context/FlagsContext';
 import { usePlayer } from '../context/PlayerContext';
-import { Copy, Eye, EyeOff, Layers, Sparkles } from 'lucide-react';
+import { Copy, Eye, EyeOff, Layers, Sparkles, GripVertical } from 'lucide-react';
 
 export const ComponentInspectorOverlay = () => {
   const { isDevUnlocked, flags, setFlag, toggleComponentInspector } = useDevFlags();
@@ -12,6 +12,89 @@ export const ComponentInspectorOverlay = () => {
   const [allTaggedElements, setAllTaggedElements] = useState([]);
   const [copiedName, setCopiedName] = useState(null);
   const [isDockExpanded, setIsDockExpanded] = useState(false);
+
+  // Draggable floating dock position state
+  const [dockPos, setDockPos] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mattlab_inspector_dock_pos');
+      if (saved) return JSON.parse(saved);
+    } catch (_) {}
+    return null;
+  });
+  const [isDraggingDock, setIsDraggingDock] = useState(false);
+  const dragStartRef = useRef({ x: 0, y: 0, startLeft: 0, startTop: 0, hasMoved: false });
+  const dockRef = useRef(null);
+
+  const handlePointerDown = (e) => {
+    // Only drag with left click or touch
+    if (e.button !== undefined && e.button !== 0) return;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    const dockEl = dockRef.current;
+    if (!dockEl) return;
+    const rect = dockEl.getBoundingClientRect();
+
+    dragStartRef.current = {
+      x: clientX,
+      y: clientY,
+      startLeft: rect.left,
+      startTop: rect.top,
+      hasMoved: false,
+    };
+    setIsDraggingDock(true);
+  };
+
+  useEffect(() => {
+    if (!isDraggingDock) return;
+
+    const handlePointerMove = (e) => {
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const dx = clientX - dragStartRef.current.x;
+      const dy = clientY - dragStartRef.current.y;
+
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+        dragStartRef.current.hasMoved = true;
+      }
+
+      const dockEl = dockRef.current;
+      const dockWidth = dockEl ? dockEl.offsetWidth : 260;
+      const dockHeight = dockEl ? dockEl.offsetHeight : 40;
+
+      const rawLeft = dragStartRef.current.startLeft + dx;
+      const rawTop = dragStartRef.current.startTop + dy;
+
+      const clampedLeft = Math.max(8, Math.min(window.innerWidth - dockWidth - 8, rawLeft));
+      const clampedTop = Math.max(8, Math.min(window.innerHeight - dockHeight - 8, rawTop));
+
+      setDockPos({ x: clampedLeft, y: clampedTop });
+    };
+
+    const handlePointerUp = () => {
+      setIsDraggingDock(false);
+      setDockPos((curr) => {
+        if (curr) {
+          try {
+            localStorage.setItem('mattlab_inspector_dock_pos', JSON.stringify(curr));
+          } catch (_) {}
+        }
+        return curr;
+      });
+    };
+
+    window.addEventListener('mousemove', handlePointerMove);
+    window.addEventListener('mouseup', handlePointerUp);
+    window.addEventListener('touchmove', handlePointerMove, { passive: false });
+    window.addEventListener('touchend', handlePointerUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handlePointerMove);
+      window.removeEventListener('mouseup', handlePointerUp);
+      window.removeEventListener('touchmove', handlePointerMove);
+      window.removeEventListener('touchend', handlePointerUp);
+    };
+  }, [isDraggingDock]);
 
   // Copy component reference to clipboard
   const handleCopyComponent = useCallback((name, file, e) => {
@@ -186,15 +269,42 @@ export const ComponentInspectorOverlay = () => {
         </div>
       )}
 
-      {/* 3. Floating Quick Controller Dock (Bottom Right) */}
+      {/* 3. Floating Quick Controller Dock (Draggable anywhere on screen) */}
       <aside
+        ref={dockRef}
         id="dev-component-inspector-dock"
         aria-label="Developer Component Inspector"
-        className="fixed bottom-24 right-4 z-[9999] select-none flex items-center gap-1.5 bg-slate-950/90 backdrop-blur-md border border-cyan-500/60 text-content-primary rounded-full px-2.5 py-1.5 shadow-2xl transition-all"
+        style={
+          dockPos
+            ? {
+                position: 'fixed',
+                left: `${dockPos.x}px`,
+                top: `${dockPos.y}px`,
+                right: 'auto',
+                bottom: 'auto',
+              }
+            : undefined
+        }
+        className={`fixed bottom-24 right-4 z-[9999] select-none flex items-center gap-1.5 bg-slate-950/95 backdrop-blur-md border border-cyan-500/60 text-content-primary rounded-full px-2 py-1.5 shadow-2xl transition-shadow ${
+          isDraggingDock ? 'shadow-[0_0_20px_rgba(6,182,212,0.4)] ring-2 ring-cyan-400 cursor-grabbing' : ''
+        }`}
       >
+        {/* Drag Handle */}
+        <div
+          onMouseDown={handlePointerDown}
+          onTouchStart={handlePointerDown}
+          className="p-1 -ml-0.5 rounded-full text-cyan-400/70 hover:text-cyan-300 hover:bg-white/10 cursor-grab active:cursor-grabbing transition"
+          title="Drag to reposition inspector"
+        >
+          <GripVertical size={13} />
+        </div>
+
         <button
           type="button"
-          onClick={toggleComponentInspector}
+          onClick={(e) => {
+            if (dragStartRef.current.hasMoved) return;
+            toggleComponentInspector();
+          }}
           className="flex items-center gap-1.5 text-xs font-semibold cursor-pointer outline-none hover:text-white transition"
           title={`Component Inspector: ${inspectorMode.toUpperCase()} (Click to cycle or press Alt+C)`}
         >

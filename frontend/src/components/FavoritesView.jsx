@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { 
   Play, Pause, Heart, Clock, Search, X, Shuffle, 
-  Calendar, Type, Mic2, Disc3, ChevronDown, ChevronUp, ListOrdered, Check 
+  Calendar, Type, Mic2, Disc3, ChevronDown, ChevronUp, ListOrdered, Check, MoreVertical 
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { shuffleArray, shuffledQueueStartingWith } from '../utils/shuffle';
@@ -444,8 +444,18 @@ export const FavoritesView = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [tracks, isShuffle, playTrack]);
 
-  // Row click multi-selection handling
+  // Row click multi-selection handling (single-click play on mobile, double-click on desktop)
   const handleRowClick = (e, track, idx) => {
+    // On mobile devices, single tap triggers playback directly, or toggles pause if already playing
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      if (currentTrack?.id === track.id) {
+        togglePlay();
+      } else {
+        handleTrackPlay(track);
+      }
+      return;
+    }
+
     if (e.shiftKey && lastSelectedTrackIdx !== null) {
       const start = Math.min(lastSelectedTrackIdx, idx);
       const end = Math.max(lastSelectedTrackIdx, idx);
@@ -511,11 +521,11 @@ export const FavoritesView = ({
       {/* Action Bar (Play, Shuffle, Search Filter, Sort Dropdown) */}
       {rawTracks.length > 0 && (
         <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
-          {/* Left: Play/Pause button + Shuffle toggle */}
-          <div className="flex items-center gap-4">
+          {/* Left: Play/Pause button + Shuffle toggle + Options */}
+          <div className="flex items-center gap-3">
             <button
               onClick={handlePlayAll}
-              className="w-14 h-14 rounded-full bg-brand-500 hover:bg-brand-400 hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-xl transition cursor-pointer"
+              className="w-14 h-14 min-w-[3.5rem] min-h-[3.5rem] rounded-full aspect-square bg-brand-500 hover:bg-brand-400 hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-xl transition cursor-pointer shrink-0"
               title="Play Liked Songs"
             >
               {isCurrentPlayingInFav && isPlaying ? (
@@ -527,7 +537,7 @@ export const FavoritesView = ({
 
             <button
               onClick={handleToggleShuffle}
-              className={`w-10 h-10 rounded-full flex items-center justify-center transition cursor-pointer ${
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition cursor-pointer shrink-0 ${
                 isShuffle 
                   ? 'bg-brand-500/20 text-brand-400 hover:bg-brand-500/30' 
                   : 'bg-white/5 hover:bg-white/10 text-content-secondary hover:text-white'
@@ -535,6 +545,19 @@ export const FavoritesView = ({
               title={isShuffle ? 'Shuffle is ON (Click to turn OFF)' : 'Shuffle is OFF (Click to turn ON)'}
             >
               <Shuffle size={18} className={isShuffle ? 'text-brand-500' : ''} />
+            </button>
+
+            {/* Liked Songs 3-Dots Button */}
+            <button
+              onClick={(e) => {
+                if (onContextMenu) {
+                  onContextMenu(e, 'favorites', { id: 'favorites', name: 'Liked Songs' });
+                }
+              }}
+              className="w-10 h-10 rounded-full flex items-center justify-center text-content-secondary hover:text-white hover:bg-white/10 active:scale-90 transition shrink-0"
+              title="Liked Songs options"
+            >
+              <MoreVertical size={20} />
             </button>
           </div>
 
@@ -710,10 +733,10 @@ export const FavoritesView = ({
           </button>
         </div>
       ) : (
-        <div className="bg-surface-panel/70 rounded-lg p-2 border border-border-subtle">
+        <div>
           {/* Sticky Tracklist Column Header Row */}
-          <div className="sticky top-0 z-20 bg-surface-island/95 backdrop-blur-md rounded-lg mb-1 border-b border-border-medium shadow-md">
-            <div className="grid grid-cols-[36px_1fr_36px_50px] md:grid-cols-[40px_3fr_2fr_36px_60px] lg:grid-cols-[40px_4fr_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-content-secondary items-center select-none">
+          <div className="hidden md:block sticky top-0 z-20 bg-surface-island/95 backdrop-blur-md rounded-lg mb-1 border-b border-border-medium shadow-md">
+            <div className="grid grid-cols-[40px_3fr_2fr_36px_60px] lg:grid-cols-[40px_4fr_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-content-secondary items-center select-none">
               {/* # Column */}
               <div className="flex items-center justify-center">
                 <button
@@ -778,8 +801,8 @@ export const FavoritesView = ({
                 </button>
               </div>
 
-              {/* Heart column spacer */}
-              <span />
+              {/* Heart column spacer (hidden on mobile) */}
+              <span className="hidden md:block" />
 
               {/* Duration Column */}
               <div className="text-right flex items-center justify-end select-none">
@@ -872,7 +895,7 @@ export const FavoritesView = ({
                     e.dataTransfer.setData('application/json', JSON.stringify(payload));
                     e.dataTransfer.setData('text/plain', trackIds.join(','));
                   }}
-                  className={`grid grid-cols-[36px_1fr_36px_50px] md:grid-cols-[40px_3fr_2fr_36px_60px] lg:grid-cols-[40px_4fr_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center cursor-default select-none ${
+                  className={`grid grid-cols-[1fr_auto] md:grid-cols-[40px_3fr_2fr_36px_60px] lg:grid-cols-[40px_4fr_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center cursor-default select-none ${
                     isFocused
                       ? 'bg-surface-hover ring-1 ring-brand-500/60 shadow-md text-content-primary'
                       : isSelected
@@ -880,8 +903,8 @@ export const FavoritesView = ({
                       : 'hover:bg-surface-elevated text-content-primary'
                   }`}
                 >
-                  {/* Column 1: Index / Play-Pause / Animated Equalizer / Loading Spinner */}
-                  <div className="flex items-center justify-center w-8 h-8">
+                  {/* Column 1: Index / Play-Pause / Animated Equalizer / Loading Spinner (hidden on mobile) */}
+                  <div className="hidden md:flex items-center justify-center w-8 h-8">
                     {isThisBuffering ? (
                       <div
                         onClick={(e) => {
@@ -985,8 +1008,8 @@ export const FavoritesView = ({
                     {formatAddedAt(track.added_at || track.favorited_at)}
                   </span>
 
-                  {/* Column 5: Heart button */}
-                  <div className="flex items-center justify-center">
+                  {/* Column 5: Heart button (hidden on mobile) */}
+                  <div className="hidden md:flex items-center justify-center">
                     <button
                       onClick={(e) => handleHeartClick(e, track.id)}
                       className="p-1 text-brand-500 hover:scale-110 active:scale-95 transition cursor-pointer"
@@ -996,10 +1019,25 @@ export const FavoritesView = ({
                     </button>
                   </div>
 
-                  {/* Column 6: Duration */}
-                  <span className="text-right text-xs font-mono text-content-secondary">
-                    {formatDuration(track.duration_seconds)}
-                  </span>
+                  {/* Column 6: Duration & Mobile 3-Dots */}
+                  <div className="flex items-center justify-end gap-1">
+                    <span className="hidden md:inline text-right text-xs font-mono text-content-secondary">
+                      {formatDuration(track.duration_seconds)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onContextMenu) {
+                          onContextMenu(e, 'track', track);
+                        }
+                      }}
+                      className="md:hidden w-7 h-7 rounded-full flex items-center justify-center text-content-secondary hover:text-white active:scale-90 transition shrink-0 -mr-1"
+                      title="Track Options"
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+                  </div>
                 </div>
               );
             })}

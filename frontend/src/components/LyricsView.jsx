@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import { Mic2, Music, RefreshCw, X, ArrowDownCircle, MicOff, Mic, Loader2, Edit3 } from 'lucide-react';
+import { Mic2, Music, RefreshCw, X, ArrowDownCircle, MicOff, Mic, Loader2, Edit3, Play, Pause } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
+import { TimelineScrubber } from './TimelineScrubber';
 import { parseLrc, formatPlainLyrics } from '../utils/lyrics';
 import { LYRICS_CONFIG } from '../config/lyricsConfig';
 import { DESIGN_TOKENS } from '../config/designTokens';
@@ -11,13 +12,25 @@ export const LyricsView = ({ onClose }) => {
     currentTrack, 
     currentTime, 
     duration, 
+    bufferedTime,
+    isPlaying,
+    togglePlay,
     seek,
     isKaraokeMode,
     toggleKaraoke,
     karaokeStemStatus,
     isGeneratingStems,
-    generateKaraokeStems
+    generateKaraokeStems,
+    setIsMobileNowPlayingOpen
   } = usePlayer();
+
+  const handleClose = () => {
+    if (onClose) onClose();
+    // On mobile screens, return directly to MobileNowPlayingSheet
+    if (typeof window !== 'undefined' && window.innerWidth < 768 && setIsMobileNowPlayingOpen) {
+      setIsMobileNowPlayingOpen(true);
+    }
+  };
   const [lyricsData, setLyricsData] = useState(() => {
     if (currentTrack?.id) {
       try {
@@ -294,50 +307,32 @@ export const LyricsView = ({ onClose }) => {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {/* Karaoke Mode Pill */}
-          <div className="flex items-center gap-2 bg-surface-elevated/90 border border-border-medium rounded-full px-2.5 py-1 text-xs text-content-primary">
+          {/* Karaoke Mode Button (Icon only with state title) */}
+          <div className="flex items-center bg-surface-elevated/90 border border-border-medium rounded-full p-1 shadow-sm">
             <button
               onClick={toggleKaraoke}
-              className={`flex items-center gap-1.5 transition font-semibold ${
-                isKaraokeMode ? 'text-brand-500' : 'text-content-secondary hover:text-content-primary'
+              className={`p-1.5 rounded-full transition active:scale-95 ${
+                isKaraokeMode 
+                  ? 'bg-brand-500/20 text-brand-400 ring-1 ring-brand-500/50' 
+                  : 'text-content-secondary hover:text-content-primary hover:bg-white/5'
               }`}
               title={
                 isKaraokeMode 
-                  ? 'Karaoke Active (Click to restore vocals)' 
+                  ? 'Karaoke Active: Instrumental Playing (Click to restore vocals)' 
                   : karaokeStemStatus[currentTrack?.id]?.exists
-                  ? 'Click to play Studio Instrumental'
+                  ? 'Click to switch to Karaoke Instrumental'
                   : 'Generate Studio Instrumental with AI'
               }
+              aria-label={isKaraokeMode ? 'Restore vocals' : 'Toggle Karaoke'}
             >
-              <MicOff size={14} className={isKaraokeMode ? 'text-brand-500' : ''} />
-              <span className="hidden sm:inline">Karaoke</span>
-            </button>
-
-            {/* Stem Badge or Generate Button */}
-            {currentTrack && (
-              karaokeStemStatus[currentTrack.id]?.exists ? (
-                <span className="flex items-center gap-1 text-[10px] font-bold bg-brand-500/20 text-brand-300 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                  <Mic size={10} className="text-brand-400" />
-                  Studio
-                </span>
+              {isGeneratingStems || karaokeStemStatus[currentTrack?.id]?.status === 'processing' || karaokeStemStatus[currentTrack?.id]?.status === 'queued' ? (
+                <Loader2 size={16} className="animate-spin text-brand-500" />
+              ) : isKaraokeMode ? (
+                <MicOff size={16} className="text-brand-400" />
               ) : (
-                <button
-                  onClick={() => generateKaraokeStems(currentTrack.id)}
-                  disabled={isGeneratingStems || karaokeStemStatus[currentTrack.id]?.status === 'queued' || karaokeStemStatus[currentTrack.id]?.status === 'processing'}
-                  className="flex items-center gap-1 text-[10px] font-medium text-brand-400 hover:text-brand-300 disabled:opacity-50 transition px-1"
-                  title="Generate pristine studio stems with server Demucs"
-                >
-                  {isGeneratingStems || karaokeStemStatus[currentTrack.id]?.status === 'processing' || karaokeStemStatus[currentTrack.id]?.status === 'queued' ? (
-                    <>
-                      <Loader2 size={10} className="animate-spin text-brand-500" />
-                      <span>Separating (~1.5 min)...</span>
-                    </>
-                  ) : (
-                    <span>Generate Instrumental</span>
-                  )}
-                </button>
-              )
-            )}
+                <Mic size={16} />
+              )}
+            </button>
           </div>
 
           {/* Romanization 3-Way Pill (Option C: Original | Both | Romaji) */}
@@ -381,7 +376,7 @@ export const LyricsView = ({ onClose }) => {
 
           <button
             onClick={() => setIsEditModalOpen(true)}
-            className="p-2 rounded-full hover:bg-white/10 text-content-secondary hover:text-content-primary transition"
+            className="hidden md:inline-flex p-2 rounded-full hover:bg-white/10 text-content-secondary hover:text-content-primary transition"
             title="Edit or Paste Lyrics"
           >
             <Edit3 size={16} />
@@ -396,7 +391,7 @@ export const LyricsView = ({ onClose }) => {
           </button>
           {onClose && (
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="p-2 rounded-full hover:bg-white/10 text-content-secondary hover:text-content-primary transition"
               title="Close Lyrics"
             >
@@ -525,12 +520,38 @@ export const LyricsView = ({ onClose }) => {
       {isUserScrolled && (parsedLines.length > 0 || lyricsData?.plainLyrics) && (
         <button
           onClick={handleResumeSync}
-          className="absolute bottom-6 right-6 bg-brand-500 hover:bg-brand-400 text-black font-bold text-xs px-3.5 py-2 rounded-full shadow-2xl transition-all duration-200 active:scale-95 flex items-center gap-1.5 z-20 animate-bounce"
+          className="absolute bottom-20 md:bottom-6 right-6 bg-brand-500 hover:bg-brand-400 text-black font-bold text-xs px-3.5 py-2 rounded-full shadow-2xl transition-all duration-200 active:scale-95 flex items-center gap-1.5 z-20 animate-bounce"
         >
           <ArrowDownCircle size={15} />
           <span>Resume Auto-scroll</span>
         </button>
       )}
+
+      {/* Mobile Streamlined Spotify-Style Scrubber & Play Bar */}
+      <div className="md:hidden shrink-0 px-4 pt-5 pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] bg-gradient-to-t from-surface-island via-surface-island/95 to-transparent border-none z-20 flex flex-col gap-6">
+        <TimelineScrubber
+          currentTime={currentTime}
+          duration={duration}
+          bufferedTime={bufferedTime}
+          onSeek={seek}
+          showTimeLabels={true}
+          timeClassName="text-[10px] text-content-muted font-mono"
+        />
+        <div className="flex items-center justify-center -mt-1 pb-1">
+          <button
+            type="button"
+            onClick={togglePlay}
+            className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center shadow-lg active:scale-95 transition"
+            title={isPlaying ? 'Pause' : 'Play'}
+          >
+            {isPlaying ? (
+              <Pause size={22} className="fill-black" />
+            ) : (
+              <Play size={22} className="fill-black ml-0.5" />
+            )}
+          </button>
+        </div>
+      </div>
 
       {/* Edit / Paste Lyrics Modal */}
       <EditLyricsModal

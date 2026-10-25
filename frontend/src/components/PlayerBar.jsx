@@ -2,11 +2,13 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, 
   Volume2, VolumeX, ListMusic, Heart, Mic2, MicOff, PictureInPicture2,
-  Loader2, X
+  Loader2, X, Disc3
 } from 'lucide-react';
 import { usePlayer, resolveCoverUrl } from '../context/PlayerContext';
 import { TimelineScrubber } from './TimelineScrubber';
 import { VolumeSlider } from './VolumeSlider';
+import { MobileNowPlayingSheet } from './MobileNowPlayingSheet';
+import { MobileQueueSheet } from './MobileQueueSheet';
 
 const formatTime = (seconds) => {
   if (!seconds || isNaN(seconds)) return '0:00';
@@ -58,7 +60,11 @@ export const PlayerBar = ({
     isGeneratingStems,
     generateKaraokeStems,
     fetchKaraokeStatus,
+    isMobileNowPlayingOpen,
+    setIsMobileNowPlayingOpen,
   } = usePlayer();
+
+  const [isMobileQueueOpen, setIsMobileQueueOpen] = useState(false);
 
   const handleToggleAudioQuality = (e) => {
     e.stopPropagation();
@@ -113,25 +119,22 @@ export const PlayerBar = ({
       data-dev-component="PlayerBar"
       data-dev-file="src/components/PlayerBar.jsx"
       data-dev-desc="Bottom persistent playback bar with track information, transport controls, and volume"
-      className="relative bg-surface-base border-t border-border-subtle z-40 select-none shrink-0"
+      className="relative md:bg-surface-base md:border-t md:border-border-subtle z-40 select-none shrink-0"
     >
-      {/* Mobile Thin Progress Line */}
-      <div className="md:hidden absolute top-0 left-0 right-0 h-1 bg-surface-elevated overflow-hidden">
-        <div 
-          className="h-full bg-brand-500 transition-all duration-150"
-          style={{ width: `${progressPercent}%` }}
-        />
-      </div>
-
-      {/* ================= MOBILE MINI PLAYER (< md) ================= */}
-      <div className="flex md:hidden h-16 items-center justify-between px-3.5 gap-2">
-        {currentTrack ? (
-          <>
+      {/* ================= MOBILE FLOATING MINI PLAYER (< md) ================= */}
+      {currentTrack && !isLyricsOpen && (
+        <div className="md:hidden px-3.5 pb-2 pointer-events-auto max-w-lg mx-auto w-full">
+          <div 
+            onClick={() => setIsMobileNowPlayingOpen(true)}
+            className="relative flex items-center justify-between h-16 px-3.5 rounded-2xl bg-neutral-900/95 backdrop-blur-xl border border-white/10 shadow-[0_8px_24px_rgba(0,0,0,0.65)] cursor-pointer active:scale-[0.99] transition-all select-none overflow-hidden"
+          >
+            {/* Left: Thumbnail & Track info */}
             <div 
-              className="flex items-center gap-3 truncate flex-1 min-w-0"
+              className="flex items-center gap-3 min-w-0 flex-1"
               onContextMenu={(e) => {
                 if (onContextMenu) {
                   e.preventDefault();
+                  e.stopPropagation();
                   onContextMenu(e, 'track', currentTrack);
                 }
               }}
@@ -139,35 +142,21 @@ export const PlayerBar = ({
               <img
                 src={resolveCoverUrl(currentTrack)}
                 alt=""
-                onClick={() => onSelectAlbum && onSelectAlbum(currentTrack.album_id)}
-                className="w-11 h-11 rounded-md object-cover bg-surface-elevated shrink-0 shadow cursor-pointer active:scale-95 transition"
+                className="w-11 h-11 rounded-lg object-cover bg-surface-elevated shrink-0 shadow-sm"
               />
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 pr-1">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <h4 
-                    onClick={() => onSelectAlbum && onSelectAlbum(currentTrack.album_id)}
-                    className="text-xs font-bold text-content-primary truncate cursor-pointer hover:underline"
-                  >
+                  <h4 className="text-xs sm:text-sm font-bold text-white truncate leading-tight">
                     {currentTrack.title}
                   </h4>
                   {audioQuality === 'data_saver' ? (
-                    <button
-                      type="button"
-                      onClick={handleToggleAudioQuality}
-                      className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0 uppercase tracking-wider active:scale-95 transition cursor-pointer select-none"
-                      title="Switch to HQ"
-                    >
+                    <span className="text-[9px] font-bold px-1 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0">
                       LQ
-                    </button>
+                    </span>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={handleToggleAudioQuality}
-                      className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30 shrink-0 uppercase tracking-wider active:scale-95 transition cursor-pointer select-none"
-                      title="Switch to LQ"
-                    >
+                    <span className="text-[9px] font-bold px-1 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30 shrink-0">
                       {currentTrack.file_format?.toLowerCase() === 'flac' ? 'FLAC' : 'HQ'}
-                    </button>
+                    </span>
                   )}
                   {isTrackPreloaded && isTrackPreloaded(currentTrack.id) && (
                     <span 
@@ -176,44 +165,28 @@ export const PlayerBar = ({
                     />
                   )}
                 </div>
-                <p 
-                  onClick={() => onSelectArtist && onSelectArtist(currentTrack.artist_id)}
-                  className="text-[11px] text-content-secondary truncate mt-0.5 cursor-pointer hover:text-content-primary hover:underline"
-                >
+                <p className="text-xs text-neutral-400 truncate mt-0.5 leading-tight">
                   {currentTrack.artist_name}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 shrink-0">
+            {/* Right: Quick Actions */}
+            <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
               <button
-                onClick={handleToggleKaraoke}
-                className={`p-1.5 transition rounded-md ${
-                  isKaraokeMode ? 'text-brand-500 bg-brand-500/15' : 'text-content-secondary hover:text-content-primary'
-                }`}
-                title="Karaoke Mode"
-              >
-                <MicOff size={17} />
-              </button>
-
-              <button
-                onClick={() => setIsLyricsOpen && setIsLyricsOpen(!isLyricsOpen)}
-                className={`p-1.5 transition ${isLyricsOpen ? 'text-brand-500' : 'text-content-secondary hover:text-content-primary'}`}
-                title="Lyrics"
-              >
-                <Mic2 size={17} />
-              </button>
-
-              <button
+                type="button"
                 onClick={() => toggleFavorite(currentTrack.id)}
-                className={`p-1.5 transition ${isFav ? 'text-brand-500' : 'text-content-secondary hover:text-content-primary'}`}
+                className={`p-2.5 transition active:scale-90 ${isFav ? 'text-brand-500' : 'text-neutral-400 hover:text-white'}`}
+                title={isFav ? 'Remove from Liked' : 'Save to Liked'}
               >
-                <Heart size={18} className={isFav ? 'fill-brand-500' : ''} />
+                <Heart size={20} className={isFav ? 'fill-brand-500' : ''} />
               </button>
 
               <button
+                type="button"
                 onClick={togglePlay}
-                className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-lg active:scale-95 transition"
+                className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-md active:scale-95 transition"
+                title={isPlaying ? 'Pause' : 'Play'}
               >
                 {isPlaying ? (
                   <Pause size={18} className="fill-black" />
@@ -221,21 +194,18 @@ export const PlayerBar = ({
                   <Play size={18} className="fill-black ml-0.5" />
                 )}
               </button>
-
-              <button
-                onClick={nextTrack}
-                className="p-1.5 text-content-secondary hover:text-content-primary"
-              >
-                <SkipForward size={18} />
-              </button>
             </div>
-          </>
-        ) : (
-          <div className="flex items-center gap-2 text-xs text-content-subtle">
-            <span>No track selected</span>
+
+            {/* Bottom Scrubber Progress Bar */}
+            <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-white/10">
+              <div 
+                className="h-full bg-brand-500 transition-all duration-150"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ================= DESKTOP FULL PLAYER (>= md) ~80px ================= */}
       <div className="hidden md:flex h-20 px-4 lg:px-6 items-center justify-between">
@@ -453,6 +423,28 @@ export const PlayerBar = ({
           />
         </div>
       </div>
+
+      {/* Mobile Full-Screen Now Playing Sheet */}
+      <MobileNowPlayingSheet
+        isOpen={isMobileNowPlayingOpen}
+        onClose={() => setIsMobileNowPlayingOpen(false)}
+        onOpenQueue={() => setIsMobileQueueOpen(true)}
+        onOpenLyrics={() => {
+          setIsMobileNowPlayingOpen(false);
+          setIsLyricsOpen?.(true);
+        }}
+        onSelectAlbum={onSelectAlbum}
+        onSelectArtist={onSelectArtist}
+        onContextMenu={onContextMenu}
+      />
+
+      {/* Mobile Queue Bottom Sheet */}
+      <MobileQueueSheet
+        isOpen={isMobileQueueOpen}
+        onClose={() => setIsMobileQueueOpen(false)}
+        onSelectAlbum={onSelectAlbum}
+        onSelectArtist={onSelectArtist}
+      />
     </footer>
   );
 };

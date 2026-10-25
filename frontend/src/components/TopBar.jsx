@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Home, Search, X, RefreshCw, HardDrive, DownloadCloud, Users, LogOut, Settings, User, Bug, Megaphone } from 'lucide-react';
 import { MattLabLogo } from './MattLabLogo';
 import { SearchFloatingModal } from './SearchFloatingModal';
@@ -216,36 +217,41 @@ export const TopBar = ({
       data-dev-component="TopBar"
       data-dev-file="src/components/TopBar.jsx"
       data-dev-desc="Header bar with branding, search input, library statistics, and profile menu"
-      className="h-16 bg-surface-base px-4 md:px-5 flex items-center justify-between gap-4 z-40 select-none shrink-0 border-b border-border-subtle"
+      className="bg-[#121212] md:bg-surface-base shrink-0 z-40 select-none border-b-0 md:border-b md:border-border-subtle"
     >
-      {/* Left: MattLab Brand */}
-      <div className="flex items-center gap-3 shrink-0">
-        <div 
-          onClick={onGoHome}
-          className="flex items-center gap-2.5 cursor-pointer group shrink-0"
-        >
-          <MattLabLogo
-            variant="badge"
-            bgColor="var(--brand-primary)"
-            color="var(--surface-base)"
-            className="w-9 h-9 rounded-full shadow-md group-hover:scale-105 transition"
-          />
-          <span className="font-extrabold text-lg tracking-tight text-content-primary group-hover:text-brand-400 transition hidden sm:inline">
-            MattLab Music
-          </span>
-        </div>
-      </div>
+      {/* Notch & Status Bar Safe Area Spacer (crisp solid background without overlay blur) */}
+      <div className="h-[env(safe-area-inset-top,0px)] w-full bg-[#121212]" />
 
-      {/* Center: Circular Home Button + Capsule Search Input */}
-      <div className="flex-1 max-w-xl mx-auto flex items-center gap-2.5 justify-center">
-        {/* Circular Home button */}
-        <button
-          onClick={onGoHome}
-          className="w-10 h-10 rounded-full bg-surface-elevated hover:bg-surface-hover text-content-primary flex items-center justify-center transition hover:scale-105 active:scale-95 shrink-0"
-          title="Home"
-        >
-          <Home size={20} />
-        </button>
+      {/* Main TopBar Content Bar (Fixed 56px on mobile, 64px on desktop) */}
+      <div className="h-14 md:h-16 px-4 md:px-5 flex items-center justify-between gap-4">
+        {/* Left: MattLab Brand */}
+        <div className="flex items-center gap-3 shrink-0">
+          <div 
+            onClick={onGoHome}
+            className="flex items-center gap-2.5 cursor-pointer group shrink-0"
+          >
+            <MattLabLogo
+              variant="badge"
+              bgColor="var(--brand-primary)"
+              color="var(--surface-base)"
+              className="w-9 h-9 rounded-full shadow-md group-hover:scale-105 transition"
+            />
+            <span className="font-extrabold text-base sm:text-lg tracking-tight text-content-primary group-hover:text-brand-400 transition">
+              MattLab Music
+            </span>
+          </div>
+        </div>
+
+        {/* Center: Circular Home Button + Capsule Search Input (Desktop/Tablet) */}
+        <div className="hidden sm:flex flex-1 max-w-xl mx-auto items-center gap-2.5 justify-center">
+          {/* Circular Home button */}
+          <button
+            onClick={onGoHome}
+            className="w-10 h-10 rounded-full bg-surface-elevated hover:bg-surface-hover text-content-primary flex items-center justify-center transition hover:scale-105 active:scale-95 shrink-0"
+            title="Home"
+          >
+            <Home size={20} />
+          </button>
 
         {/* Pill/Capsule Search Input: matching floating search dropdown width */}
         <div className="relative flex-1 flex items-center">
@@ -326,41 +332,10 @@ export const TopBar = ({
         </div>
       </div>
 
-      {/* Right: Unraid Sync Status + Rescan Button + User Profile Avatar */}
+      {/* Right: Bulletin & Announcements + User Profile Avatar */}
       <div className="flex items-center gap-3 shrink-0">
-        {stats && (
-          <div className="hidden lg:flex items-center gap-1.5 text-xs text-content-secondary font-medium px-2 py-1 bg-surface-island rounded-full border border-border-subtle">
-            <HardDrive size={13} className="text-brand-500" />
-            <span>{stats.tracks.toLocaleString()} tracks</span>
-            <span className="text-content-subtle">•</span>
-            <span>{stats.total_duration_hours} hrs</span>
-          </div>
-        )}
 
-        {/* Admin only: Request Music button */}
-        {isAdmin && (
-          <button
-            onClick={onRequestMusic}
-            className="bg-brand-500 hover:bg-brand-400 text-black text-xs font-bold px-3 py-2 rounded-full flex items-center gap-1.5 transition hover:scale-105 active:scale-95 shadow-md shrink-0"
-            title="Request Music via Torrent (Lidarr)"
-          >
-            <DownloadCloud size={14} className="stroke-[2.5]" />
-            <span className="hidden sm:inline">Request</span>
-          </button>
-        )}
 
-        {/* Admin only: Rescan library button */}
-        {isAdmin && (
-          <button
-            onClick={handleScanClick}
-            disabled={isScanning}
-            className="bg-surface-elevated hover:bg-surface-hover text-content-primary text-xs font-semibold px-3 py-2 rounded-full flex items-center gap-1.5 transition hover:scale-105 active:scale-95 disabled:opacity-50"
-            title="Rescan Unraid Music Library"
-          >
-            <RefreshCw size={13} className={isScanning ? 'animate-spin text-brand-500' : 'text-content-secondary'} />
-            <span className="hidden sm:inline">{isScanning ? 'Syncing...' : 'Rescan'}</span>
-          </button>
-        )}
 
         {/* Bulletin Button */}
         <button
@@ -392,12 +367,149 @@ export const TopBar = ({
 
           {isUserMenuOpen && (
             <>
-              {/* Backdrop */}
-              <div 
-                className="fixed inset-0 z-40" 
-                onClick={() => setIsUserMenuOpen(false)} 
-              />
-              <div className="absolute right-0 mt-2 w-60 bg-surface-panel border border-border-medium rounded-xl shadow-2xl py-2 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
+              {/* Mobile Bottom Sheet (< md) rendered in portal to escape all container stacking contexts */}
+              {createPortal(
+                <div className="md:hidden">
+                  {/* Backdrop */}
+                  <div 
+                    className="fixed inset-0 z-[100] bg-black/75 backdrop-blur-sm animate-in fade-in duration-200" 
+                    onClick={() => setIsUserMenuOpen(false)} 
+                  />
+                  {/* Bottom Sheet */}
+                  <div className="fixed inset-x-0 bottom-0 z-[101] bg-surface-panel/95 backdrop-blur-2xl rounded-t-3xl border-t border-white/10 shadow-2xl max-h-[85vh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom,0px)+7rem)] animate-in slide-in-from-bottom-full duration-300">
+                    {/* Grab Handle */}
+                    <div className="w-full flex justify-center pt-3 pb-1">
+                      <div className="w-12 h-1.5 bg-neutral-600/60 rounded-full" />
+                    </div>
+
+                    {/* Profile Header */}
+                    <div
+                      onClick={() => {
+                        if (user?.id) {
+                          setIsUserMenuOpen(false);
+                          onSelectUser?.(user.id);
+                        }
+                      }}
+                      className="px-5 py-3 border-b border-white/10 flex items-center justify-between cursor-pointer active:bg-white/5 transition"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <UserAvatar user={user} size="lg" />
+                        <div className="min-w-0 flex-1">
+                          <div className="font-bold text-white text-base truncate">
+                            {user?.display_name || user?.username}
+                          </div>
+                          <div className="text-neutral-400 text-xs flex items-center gap-2 mt-0.5">
+                            <span className="truncate">@{user?.username}</span>
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
+                              isAdmin ? 'bg-brand-500/20 text-brand-400 border border-brand-500/30' : 'bg-white/10 text-neutral-300'
+                            }`}>
+                              {isAdmin ? 'Admin' : 'User'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsUserMenuOpen(false);
+                        }}
+                        className="p-1.5 rounded-full bg-white/5 text-neutral-400 hover:text-white"
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+
+                    {/* Menu items */}
+                    <div className="p-3 space-y-1">
+                      <button
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          if (user?.id) onSelectUser?.(user.id);
+                        }}
+                        className="w-full text-left px-4 py-3 text-white rounded-xl active:bg-white/10 flex items-center gap-3 transition text-sm font-medium"
+                      >
+                        <User size={18} className="text-brand-500" />
+                        <span>My Public Profile</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          onOpenBulletin?.();
+                        }}
+                        className="w-full text-left px-4 py-3 text-white rounded-xl active:bg-white/10 flex items-center justify-between transition text-sm font-medium"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Megaphone size={18} className="text-brand-500" />
+                          <span>Bulletin & Announcements</span>
+                        </div>
+                        {bulletinUnreadCount > 0 && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-500 text-black">
+                            {bulletinUnreadCount}
+                          </span>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          onOpenSettings?.('account');
+                        }}
+                        className="w-full text-left px-4 py-3 text-white rounded-xl active:bg-white/10 flex items-center gap-3 transition text-sm font-medium"
+                      >
+                        <Settings size={18} className="text-neutral-400" />
+                        <span>Account Settings</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          onOpenSettings?.('issues');
+                        }}
+                        className="w-full text-left px-4 py-3 text-white rounded-xl active:bg-white/10 flex items-center justify-between transition text-sm font-medium"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Bug size={18} className="text-amber-400" />
+                          <span>Issues & Notes</span>
+                        </div>
+                        {hasNotifications && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            Update
+                          </span>
+                        )}
+                      </button>
+
+                      {isAdmin && (
+                        <button
+                          onClick={() => {
+                            setIsUserMenuOpen(false);
+                            onOpenUserManagement?.();
+                          }}
+                          className="w-full text-left px-4 py-3 text-white rounded-xl active:bg-white/10 flex items-center gap-3 transition text-sm font-medium"
+                        >
+                          <Users size={18} className="text-brand-500" />
+                          <span>User Management</span>
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          logout();
+                        }}
+                        className="w-full text-left px-4 py-3 text-red-400 rounded-xl active:bg-red-500/10 flex items-center gap-3 transition text-sm font-medium"
+                      >
+                        <LogOut size={18} />
+                        <span>Log Out</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>,
+                document.body
+              )}
+
+              {/* Desktop Floating Dropdown (>= md) */}
+              <div className="hidden md:block absolute right-0 mt-2 w-60 bg-surface-panel border border-border-medium rounded-xl shadow-2xl py-2 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
                 <div
                   onClick={() => {
                     if (user?.id) {
@@ -520,6 +632,7 @@ export const TopBar = ({
             </>
           )}
         </div>
+      </div>
       </div>
     </header>
   );

@@ -115,7 +115,7 @@ export const HomeShelves = ({
           </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
           {recently_added.map((album) => {
             const isThisAlbum = currentTrack && currentTrack.album_id === album.id;
             const isThisPlaying = isThisAlbum && isPlaying;
@@ -129,9 +129,9 @@ export const HomeShelves = ({
                     onContextMenu(e, 'album', album);
                   }
                 }}
-                className="group bg-surface-elevated hover:bg-surface-hover p-3 rounded-lg transition duration-200 cursor-pointer flex flex-col justify-between"
+                className="group bg-transparent p-0 transition duration-200 cursor-pointer flex flex-col justify-between"
               >
-                <div className="relative aspect-square mb-3 rounded-md overflow-hidden bg-surface-elevated2 shadow-md">
+                <div className="relative aspect-square mb-2.5 rounded-lg overflow-hidden bg-surface-elevated2 shadow-md">
                   <img
                     src={album.cover_url}
                     alt={album.title}
@@ -197,7 +197,7 @@ export const HomeShelves = ({
           </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
           {popular_artists.map((artist) => (
             <div
               key={artist.id}
@@ -208,9 +208,9 @@ export const HomeShelves = ({
                   onContextMenu(e, 'artist', artist);
                 }
               }}
-              className="group bg-surface-elevated hover:bg-surface-hover p-3 rounded-lg transition duration-200 cursor-pointer text-center flex flex-col items-center justify-between"
+              className="group bg-transparent p-0 transition duration-200 cursor-pointer text-center flex flex-col items-center"
             >
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden bg-surface-elevated2 group-hover:scale-105 transition duration-300 flex items-center justify-center mb-3 shadow-lg border border-border-subtle">
+              <div className="w-full aspect-square rounded-full overflow-hidden bg-surface-elevated2 group-hover:scale-105 transition duration-300 flex items-center justify-center mb-2.5 shadow-lg">
                 <img
                   src={artist.image_url || `/api/artists/${artist.id}/image`}
                   alt={artist.name}
@@ -225,9 +225,6 @@ export const HomeShelves = ({
                 <h3 className="font-semibold text-xs sm:text-sm text-content-primary truncate group-hover:text-brand-400 transition">
                   {artist.name}
                 </h3>
-                <p className="text-[11px] text-content-secondary mt-0.5">
-                  Artist • {artist.track_count} songs
-                </p>
               </div>
             </div>
           ))}
@@ -251,7 +248,7 @@ export const HomeShelves = ({
           </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
           {featured_albums.map((album) => {
             const isThisAlbum = currentTrack && currentTrack.album_id === album.id;
             const isThisPlaying = isThisAlbum && isPlaying;
@@ -265,9 +262,9 @@ export const HomeShelves = ({
                     onContextMenu(e, 'album', album);
                   }
                 }}
-                className="group bg-surface-elevated hover:bg-surface-hover p-3 rounded-lg transition duration-200 cursor-pointer flex flex-col justify-between"
+                className="group bg-transparent p-0 transition duration-200 cursor-pointer flex flex-col justify-between"
               >
-                <div className="relative aspect-square mb-3 rounded-md overflow-hidden bg-surface-elevated2 shadow-md">
+                <div className="relative aspect-square mb-2.5 rounded-lg overflow-hidden bg-surface-elevated2 shadow-md">
                   <img
                     src={album.cover_url}
                     alt={album.title}

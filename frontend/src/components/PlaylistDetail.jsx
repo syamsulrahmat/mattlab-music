@@ -3,7 +3,7 @@ import {
   Play, Pause, Trash2, Clock, Music, Shuffle, 
   Search, X, Pencil, ArrowUpDown, Calendar, 
   Square, Check, AlertTriangle, RefreshCw, ExternalLink, UserCheck, Lock,
-  Type, Mic2, Disc3, ChevronDown, ChevronUp, ListOrdered, ListPlus, Layers
+  Type, Mic2, Disc3, ChevronDown, ChevronUp, ListOrdered, ListPlus, Layers, MoreVertical
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { PlaylistCover } from './PlaylistCover';
@@ -744,8 +744,20 @@ export const PlaylistDetail = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isDragEnabled, playlistId, isShuffle, playTrack, onPlaylistUpdated]);
 
-  // Track selection handling (single, Ctrl/Cmd toggle, Shift range)
+  // Track selection handling (single-click play on mobile, selectable/double-click on desktop)
   const handleRowClick = (e, track, idx) => {
+    // On mobile devices, single tap triggers playback directly, or toggles pause if already playing
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      if (!track.isSyncPending) {
+        if (currentTrack?.id === track.id) {
+          togglePlay();
+        } else {
+          handleTrackPlay(track);
+        }
+      }
+      return;
+    }
+
     if (e.shiftKey && lastSelectedTrackIdx !== null) {
       const start = Math.min(lastSelectedTrackIdx, idx);
       const end = Math.max(lastSelectedTrackIdx, idx);
@@ -986,9 +998,34 @@ export const PlaylistDetail = ({
       }}
       className={`pb-16 select-none relative w-full ${playlist?.spotify_id && draggedTrackIdx !== null ? 'cursor-not-allowed' : ''}`}
     >
+      {/* Mobile Sticky Floating Filter Bar */}
+      <div className="md:hidden sticky top-0 z-30 px-4 py-2.5 bg-[#121212]/85 backdrop-blur-xl border-b border-white/5 transition-all">
+        <div className="relative w-full bg-white/10 rounded-lg overflow-hidden shadow-sm">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Filter playlist..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-transparent text-white text-xs pl-10 pr-9 py-2 outline-none placeholder:text-neutral-400 border-0 focus:ring-0 focus:outline-none"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setFocusedTrackIdx(-1);
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white p-0.5"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* 4. Full-bleed Header Banner taking all the area without back button */}
       <div 
-        className="bg-gradient-to-b from-emerald-950/45 via-surface-panel/75 to-surface-island px-6 sm:px-8 pt-8 sm:pt-10 pb-8 sm:pb-10 w-full border-b border-border-subtle"
+        className="bg-gradient-to-b from-emerald-950/45 via-surface-panel/75 to-surface-island px-6 sm:px-8 pt-4 sm:pt-10 pb-8 sm:pb-10 w-full border-b border-border-subtle"
       >
         <div className="flex flex-col md:flex-row gap-6 md:gap-7 items-start md:items-end">
           <div 
@@ -1084,61 +1121,58 @@ export const PlaylistDetail = ({
         <span>Spotify Chart • Order Locked</span>
       </div>
 
-      {/* 3. Action & Filter Bar (scrolls naturally with the page) */}
-      <div className="px-6 sm:px-8 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        {/* Left: Play/Pause in green circle, shuffle, edit, take ownership */}
-        <div className="flex items-center gap-3 flex-wrap">
+      {/* 3. Action & Filter Bar (scrolls naturally with the page, all buttons horizontally aligned) */}
+      <div className="px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between gap-3 overflow-x-auto no-scrollbar">
+        {/* Left: Play/Pause in green circle, shuffle, 3-dots options */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <button
             onClick={handlePlayAll}
             disabled={isCurrentPlayingInPlaylist ? false : (tracks.length === 0 && allTracks.length === 0)}
-            className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-brand-500 hover:bg-brand-400 hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-xl transition disabled:opacity-40 shrink-0"
+            className="w-12 h-12 sm:w-14 sm:h-14 min-w-[3rem] min-h-[3rem] sm:min-w-[3.5rem] sm:min-h-[3.5rem] rounded-full aspect-square bg-brand-500 hover:bg-brand-400 hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-xl transition disabled:opacity-40 shrink-0"
             title="Play Playlist"
           >
             {isCurrentPlayingInPlaylist && isPlaying ? (
-              <Pause size={24} className="fill-black" />
+              <Pause size={22} className="fill-black" />
             ) : (
-              <Play size={24} className="fill-black ml-1" />
+              <Play size={22} className="fill-black ml-0.5 sm:ml-1" />
             )}
           </button>
 
           <button
             onClick={handleToggleShuffle}
             disabled={allTracks.length === 0}
-            className={`relative p-3 rounded-full hover:scale-105 active:scale-95 transition flex items-center justify-center disabled:opacity-40 ${
+            className={`relative p-2.5 sm:p-3 rounded-full hover:scale-105 active:scale-95 transition flex items-center justify-center disabled:opacity-40 shrink-0 ${
               isShuffle ? 'text-brand-500 hover:text-brand-400' : 'text-content-secondary hover:text-content-primary'
             }`}
             title={isShuffle ? 'Disable Shuffle' : 'Shuffle playlist queue'}
           >
-            <Shuffle size={22} />
+            <Shuffle size={20} className="sm:w-[22px] sm:h-[22px]" />
             {isShuffle && (
               <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-brand-500" />
             )}
           </button>
 
+          {/* Playlist Options 3-Dots Button */}
           <button
-            onClick={() => setIsEditingDetails(true)}
-            className="p-2.5 rounded-full text-content-secondary hover:text-content-primary hover:bg-white/5 transition"
-            title="Edit playlist name & description"
+            onClick={(e) => {
+              if (onContextMenu) {
+                onContextMenu(e, 'playlist', {
+                  ...playlist,
+                  onDelete: () => setIsConfirmDeleteOpen(true),
+                });
+              }
+            }}
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-content-secondary hover:text-white hover:bg-white/10 active:scale-90 transition shrink-0"
+            title="Playlist options"
           >
-            <Pencil size={18} />
+            <MoreVertical size={18} className="sm:w-5 sm:h-5" />
           </button>
-
-          {playlist?.spotify_id && !playlist?.is_collection && (
-            <button
-              onClick={() => onPromptTakeOwnership?.(playlist)}
-              className="px-3.5 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-xs font-semibold text-content-secondary hover:text-content-primary transition flex items-center gap-1.5 border border-white/5"
-              title="Unlink from Spotify and take full local ownership"
-            >
-              <UserCheck size={14} className="text-brand-400" />
-              <span>Take Ownership</span>
-            </button>
-          )}
         </div>
 
-        {/* Right: In-playlist search, icon sort dropdown, sync now icon, open in spotify icon, delete */}
-        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-          {/* In-playlist search */}
-          <div className="relative flex-1 sm:w-52">
+        {/* Right: In-playlist search, icon sort dropdown, merge button, sync now icon, open in spotify icon */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* In-playlist search (Desktop only - mobile has it at top of header banner) */}
+          <div className="hidden md:block relative flex-1 sm:w-52">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-muted" />
             <input
               ref={filterInputRef}
@@ -1316,39 +1350,30 @@ export const PlaylistDetail = ({
             <ListPlus size={16} className="text-brand-500" />
           </button>
 
-          {/* Sync Now icon button (if playlist is synced with Spotify) */}
+          {/* Sync Now icon button (if playlist is synced with Spotify, desktop only) */}
           {playlist?.spotify_id && (
             <button
               onClick={handleSyncNow}
               disabled={isSyncingNow}
-              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-content-secondary hover:text-brand-500 transition flex items-center justify-center disabled:opacity-50 shrink-0"
+              className="hidden md:flex w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-content-secondary hover:text-brand-500 transition items-center justify-center disabled:opacity-50 shrink-0"
               title={isSyncingNow ? 'Syncing...' : 'Sync Now with Spotify'}
             >
               <RefreshCw size={15} className={isSyncingNow ? 'animate-spin text-brand-500' : ''} />
             </button>
           )}
 
-          {/* Open in Spotify icon button (if playlist has spotify_url) */}
+          {/* Open in Spotify icon button (desktop only, hidden on mobile) */}
           {playlist?.spotify_url && (
             <a
               href={playlist.spotify_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-content-secondary hover:text-brand-500 transition flex items-center justify-center shrink-0"
+              className="hidden md:flex w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-content-secondary hover:text-brand-500 transition items-center justify-center shrink-0"
               title="Open on Spotify"
             >
               <SpotifyIcon size={16} />
             </a>
           )}
-
-          {/* Delete playlist icon button */}
-          <button
-            onClick={() => setIsConfirmDeleteOpen(true)}
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-content-muted hover:text-red-400 transition flex items-center justify-center shrink-0"
-            title="Delete playlist"
-          >
-            <Trash2 size={16} />
-          </button>
         </div>
       </div>
 
@@ -1380,7 +1405,7 @@ export const PlaylistDetail = ({
         </div>
       ) : (
         <div className="px-6 sm:px-8">
-          <div className="bg-surface-panel/70 rounded-lg p-2 border border-border-subtle">
+          <div>
             {/* Sticky Tracklist Column Header Row */}
             <div 
               onDragOver={(e) => {
@@ -1399,7 +1424,7 @@ export const PlaylistDetail = ({
                   e.dataTransfer.dropEffect = 'move';
                 }
               }}
-              className="sticky top-0 z-30 bg-surface-island/95 backdrop-blur-md rounded-lg mb-1 border-b border-border-medium shadow-md"
+              className="hidden md:block sticky top-0 z-30 bg-surface-island/95 backdrop-blur-md rounded-lg mb-1 border-b border-border-medium shadow-md"
             >
             <div className="grid grid-cols-[36px_1fr_50px] md:grid-cols-[40px_3fr_2fr_60px] lg:grid-cols-[40px_4fr_3fr_2fr_60px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-content-secondary items-center select-none">
               {/* # Column */}
@@ -1654,7 +1679,7 @@ export const PlaylistDetail = ({
                       }
                       handleDrop(e, idx);
                     }}
-                    className={`grid grid-cols-[36px_1fr_50px] md:grid-cols-[40px_3fr_2fr_60px] lg:grid-cols-[40px_4fr_3fr_2fr_60px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center select-none border-t-2 ${
+                    className={`grid grid-cols-[1fr_auto] md:grid-cols-[40px_3fr_2fr_60px] lg:grid-cols-[40px_4fr_3fr_2fr_60px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center select-none border-t-2 ${
                       draggedTrackIdx !== null ? '[&_*]:pointer-events-none' : ''
                     } ${
                       isSpotify
@@ -1676,8 +1701,8 @@ export const PlaylistDetail = ({
                         : 'border-transparent hover:bg-surface-elevated text-content-primary'
                     }`}
                   >
-                    {/* Column 1: Index / Play-Pause / Live Download Spinner */}
-                    <div className="flex items-center justify-center w-8 h-8">
+                    {/* Column 1: Index / Play-Pause / Live Download Spinner (hidden on mobile) */}
+                    <div className="hidden md:flex items-center justify-center w-8 h-8">
                       {track.isSyncPending ? (
                         track.syncStatus === 'downloading' ? (
                           <div className="flex items-center justify-center w-7 h-7" title={`Downloading: ${Math.round(track.liveProgress || 0)}%`}>
@@ -1797,15 +1822,21 @@ export const PlaylistDetail = ({
                         )}
 
                         <p className="text-xs text-content-secondary truncate mt-0.5">
+                          {/* Desktop clickable artist link; mobile non-clickable to prevent accidental navigation */}
                           <span
                             data-no-drag="true"
                             onClick={(e) => {
+                              // On mobile (< 768px), allow row selection/playback instead of jumping to artist
+                              if (window.innerWidth < 768) return;
                               if (track.isSyncPending) return;
                               e.stopPropagation();
                               if (onSelectArtist) onSelectArtist(track.artist_id);
                             }}
-                            className={track.isSyncPending ? '' : 'hover:underline hover:text-content-primary cursor-pointer'}
+                            className={track.isSyncPending ? '' : 'hidden md:inline md:hover:underline md:hover:text-content-primary md:cursor-pointer'}
                           >
+                            {track.artist_name}
+                          </span>
+                          <span className="md:hidden text-content-secondary">
                             {track.artist_name}
                           </span>
                           <span className="md:hidden text-content-muted"> • {track.album_title}</span>
@@ -1833,10 +1864,34 @@ export const PlaylistDetail = ({
                       {track.isSyncPending ? (track.syncStatus === 'downloading' ? 'Downloading...' : 'Queued') : formatAddedAt(track.added_at)}
                     </span>
 
-                    {/* Column 5: Duration */}
-                    <span className="text-right text-xs font-mono text-content-secondary">
-                      {formatDuration(track.duration_seconds)}
-                    </span>
+                    {/* Column 5: Duration & Mobile 3-Dots */}
+                    <div className="flex items-center justify-end gap-1">
+                      <span className="hidden md:inline text-right text-xs font-mono text-content-secondary">
+                        {formatDuration(track.duration_seconds)}
+                      </span>
+                      <button
+                        type="button"
+                        data-no-drag="true"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onContextMenu && !track.isSyncPending) {
+                            onContextMenu(e, 'track', {
+                              ...track,
+                              selectedTracks: [track],
+                              track_ids: [track.id],
+                              playlist_id: playlistId,
+                              deleteLabel: 'Remove from this playlist',
+                              onDelete: () => handleRemoveTrack(e, track.id),
+                              onRemoveFromPlaylist: () => handleRemoveTrack(e, track.id),
+                            });
+                          }
+                        }}
+                        className="md:hidden w-7 h-7 rounded-full flex items-center justify-center text-content-secondary hover:text-white active:scale-90 transition shrink-0 -mr-1"
+                        title="Options"
+                      >
+                        <MoreVertical size={16} />
+                      </button>
+                    </div>
                   </div>
                 );
               })}

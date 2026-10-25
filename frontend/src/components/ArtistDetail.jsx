@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Play, Pause, Clock, CheckCircle2, Heart, Plus, Disc3, Shuffle } from 'lucide-react';
+import { Play, Pause, Clock, CheckCircle2, Heart, Plus, Disc3, Shuffle, MoreVertical } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { shuffleArray, shuffledQueueStartingWith } from '../utils/shuffle';
 
@@ -108,6 +108,16 @@ export const ArtistDetail = ({
   };
 
   const handleRowClick = (e, track, idx) => {
+    // On mobile devices, single tap triggers playback directly, or toggles pause if already playing
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      if (currentTrack?.id === track.id) {
+        togglePlay();
+      } else {
+        handleTrackPlay(track);
+      }
+      return;
+    }
+
     if (e.shiftKey && lastSelectedTrackIdx !== null) {
       const start = Math.min(lastSelectedTrackIdx, idx);
       const end = Math.max(lastSelectedTrackIdx, idx);
@@ -285,11 +295,11 @@ export const ArtistDetail = ({
 
       {/* Action Bar */}
       <div className="px-6 sm:px-8 py-3.5 border-b border-border-subtle flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <button
             onClick={handlePlayAll}
             disabled={tracks.length === 0}
-            className="w-14 h-14 rounded-full bg-brand-500 hover:bg-brand-400 hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-2xl transition disabled:opacity-40"
+            className="w-14 h-14 min-w-[3.5rem] min-h-[3.5rem] rounded-full aspect-square bg-brand-500 hover:bg-brand-400 hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-2xl transition disabled:opacity-40 shrink-0"
             title={isCurrentArtistPlaying && isPlaying ? "Pause" : `Play all songs by ${artist.name}`}
           >
             {isCurrentArtistPlaying && isPlaying ? (
@@ -302,12 +312,25 @@ export const ArtistDetail = ({
           <button
             onClick={handleToggleShuffle}
             disabled={tracks.length === 0}
-            className={`p-3 rounded-full hover:bg-white/10 transition disabled:opacity-40 ${
+            className={`p-3 rounded-full hover:bg-white/10 transition disabled:opacity-40 shrink-0 ${
               isShuffle ? 'text-brand-500' : 'text-content-secondary hover:text-white'
             }`}
             title={isShuffle ? "Disable shuffle" : "Enable shuffle"}
           >
             <Shuffle size={20} />
+          </button>
+
+          {/* Artist Options 3-Dots Button */}
+          <button
+            onClick={(e) => {
+              if (onContextMenu) {
+                onContextMenu(e, 'artist', artist);
+              }
+            }}
+            className="w-10 h-10 rounded-full flex items-center justify-center text-content-secondary hover:text-white hover:bg-white/10 active:scale-90 transition shrink-0"
+            title="Artist options"
+          >
+            <MoreVertical size={20} />
           </button>
         </div>
       </div>
@@ -315,13 +338,13 @@ export const ArtistDetail = ({
       {/* Popular Tracks Section */}
       <div className="px-6 sm:px-8 mt-6 mb-12">
         <h2 className="text-xl font-bold text-content-primary mb-4 tracking-tight">Popular Songs</h2>
-        <div className="bg-surface-panel/70 rounded-lg p-2 border border-border-subtle">
-          <div className="sticky top-0 z-20 bg-surface-island/95 backdrop-blur-md rounded-lg mb-1 border-b border-border-medium shadow-md">
-            <div className="grid grid-cols-[36px_1fr_36px_50px] md:grid-cols-[40px_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-content-secondary items-center tracking-wider select-none">
+        <div>
+          <div className="hidden md:block sticky top-0 z-20 bg-surface-island/95 backdrop-blur-md rounded-lg mb-1 border-b border-border-medium shadow-md">
+            <div className="grid grid-cols-[40px_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-content-secondary items-center tracking-wider select-none">
               <span className="text-center">#</span>
               <span>Title</span>
               <span className="hidden md:block">Album</span>
-              <span />
+              <span className="hidden md:block" />
               <span className="text-right flex items-center justify-end">
                 <Clock size={14} />
               </span>
@@ -378,14 +401,14 @@ export const ArtistDetail = ({
                     e.dataTransfer.setData('text/plain', trackIds.join(','));
                     e.dataTransfer.effectAllowed = 'copy';
                   }}
-                  className={`grid grid-cols-[36px_1fr_36px_50px] md:grid-cols-[40px_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center cursor-default select-none ${
+                  className={`grid grid-cols-[1fr_auto] md:grid-cols-[40px_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center cursor-default select-none ${
                     isSelected
                       ? 'bg-surface-hover ring-1 ring-white/20 text-content-primary'
                       : 'hover:bg-surface-elevated text-content-primary'
                   }`}
                 >
-                  {/* Column 1: Index / Play-Pause / Animated Equalizer / Loading Spinner */}
-                  <div className="flex items-center justify-center w-8 h-8">
+                  {/* Column 1: Index / Play-Pause / Animated Equalizer / Loading Spinner (hidden on mobile) */}
+                  <div className="hidden md:flex items-center justify-center w-8 h-8">
                     {isThisBuffering ? (
                       /* Spinner stays visible even on hover until song actually plays */
                       <div
@@ -472,8 +495,8 @@ export const ArtistDetail = ({
                     </span>
                   </div>
 
-                  {/* Column 4: Heart & Add to playlist */}
-                  <div className="flex items-center justify-center gap-1">
+                  {/* Column 4: Heart & Add to playlist (hidden on mobile) */}
+                  <div className="hidden md:flex items-center justify-center gap-1">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -500,10 +523,29 @@ export const ArtistDetail = ({
                     )}
                   </div>
 
-                  {/* Column 5: Duration */}
-                  <span className="text-right text-xs font-mono text-content-secondary">
-                    {formatDuration(track.duration_seconds)}
-                  </span>
+                  {/* Column 5: Duration & Mobile 3-Dots */}
+                  <div className="flex items-center justify-end gap-1">
+                    <span className="hidden md:inline text-right text-xs font-mono text-content-secondary">
+                      {formatDuration(track.duration_seconds)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onContextMenu) {
+                          onContextMenu(e, 'track', {
+                            ...track,
+                            artist_id: artist.id,
+                            artist_name: artist.name,
+                          });
+                        }
+                      }}
+                      className="md:hidden w-7 h-7 rounded-full flex items-center justify-center text-content-secondary hover:text-white active:scale-90 transition shrink-0 -mr-1"
+                      title="Track Options"
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+                  </div>
                 </div>
               );
             })}

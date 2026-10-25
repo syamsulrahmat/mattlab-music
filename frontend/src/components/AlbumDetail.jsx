@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Play, Pause, Clock, Heart, Plus, Check, Shuffle } from 'lucide-react';
+import { Play, Pause, Clock, Heart, Plus, Check, Shuffle, MoreVertical } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { shuffleArray, shuffledQueueStartingWith } from '../utils/shuffle';
 
@@ -128,6 +128,16 @@ export const AlbumDetail = ({
   };
 
   const handleRowClick = (e, track, idx) => {
+    // On mobile devices, single tap triggers playback directly, or toggles pause if already playing
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      if (currentTrack?.id === track.id) {
+        togglePlay();
+      } else {
+        handleTrackPlay(track);
+      }
+      return;
+    }
+
     if (e.shiftKey && lastSelectedTrackIdx !== null) {
       const start = Math.min(lastSelectedTrackIdx, idx);
       const end = Math.max(lastSelectedTrackIdx, idx);
@@ -306,10 +316,10 @@ export const AlbumDetail = ({
 
       {/* Action Bar (scrolls naturally with page) */}
       <div className="px-6 sm:px-8 py-5 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <button
             onClick={handlePlayAll}
-            className="w-14 h-14 rounded-full bg-brand-500 hover:bg-brand-400 hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-2xl transition"
+            className="w-14 h-14 min-w-[3.5rem] min-h-[3.5rem] rounded-full aspect-square bg-brand-500 hover:bg-brand-400 hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-2xl transition shrink-0"
             title={isCurrentAlbumPlaying && isPlaying ? "Pause" : "Play Album"}
           >
             {isCurrentAlbumPlaying && isPlaying ? (
@@ -321,7 +331,7 @@ export const AlbumDetail = ({
 
           <button
             onClick={handleToggleShuffle}
-            className={`p-3 rounded-full hover:bg-white/10 transition ${
+            className={`p-3 rounded-full hover:bg-white/10 transition shrink-0 ${
               isShuffle ? 'text-brand-500' : 'text-content-secondary hover:text-content-primary'
             }`}
             title={isShuffle ? "Disable shuffle" : "Enable shuffle"}
@@ -332,7 +342,7 @@ export const AlbumDetail = ({
           <button
             onClick={handleAddToLibrary}
             disabled={isAddingToLibrary}
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-surface-elevated2 hover:bg-surface-hover text-content-primary text-xs font-bold transition border border-border-medium active:scale-95"
+            className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full bg-surface-elevated2 hover:bg-surface-hover text-content-primary text-xs font-bold transition border border-border-medium active:scale-95 shrink-0"
             title="Add album to library as playlist"
           >
             {addedToLibrary ? (
@@ -347,15 +357,28 @@ export const AlbumDetail = ({
               </>
             )}
           </button>
+
+          {/* Album Options 3-Dots Button */}
+          <button
+            onClick={(e) => {
+              if (onContextMenu) {
+                onContextMenu(e, 'album', album);
+              }
+            }}
+            className="w-10 h-10 rounded-full flex items-center justify-center text-content-secondary hover:text-white hover:bg-white/10 active:scale-90 transition shrink-0"
+            title="Album options"
+          >
+            <MoreVertical size={20} />
+          </button>
         </div>
       </div>
 
       {/* Tracklist Table */}
       <div className="px-6 sm:px-8 pb-12">
         {tracks.length > 0 && (
-          <div className="bg-surface-panel/70 rounded-lg p-2 border border-border-subtle">
-            <div className="sticky top-0 z-30 bg-surface-island/95 backdrop-blur-md rounded-lg mb-1 border-b border-border-medium shadow-md">
-              <div className="grid grid-cols-[36px_1fr_36px_36px_60px] md:grid-cols-[40px_1fr_40px_40px_70px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-content-secondary items-center tracking-wider select-none">
+          <div>
+            <div className="hidden md:block sticky top-0 z-30 bg-surface-island/95 backdrop-blur-md rounded-lg mb-1 border-b border-border-medium shadow-md">
+              <div className="grid grid-cols-[40px_1fr_40px_40px_70px] px-3 sm:px-4 py-2.5 text-xs font-semibold uppercase text-content-secondary items-center tracking-wider select-none">
                 <span className="text-center">#</span>
                 <span className="truncate pr-4">Title</span>
                 <span />
@@ -418,14 +441,14 @@ export const AlbumDetail = ({
                   e.dataTransfer.setData('text/plain', trackIds.join(','));
                   e.dataTransfer.effectAllowed = 'copy';
                 }}
-                className={`grid grid-cols-[36px_1fr_36px_36px_60px] md:grid-cols-[40px_1fr_40px_40px_70px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center cursor-default select-none ${
+                className={`grid grid-cols-[1fr_auto] md:grid-cols-[40px_1fr_40px_40px_70px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center cursor-default select-none ${
                   isSelected
                     ? 'bg-surface-hover ring-1 ring-white/20 text-content-primary'
                     : 'hover:bg-surface-elevated text-content-primary'
                 }`}
               >
-                {/* Column 1: Index / Play-Pause / Animated Equalizer / Loading Spinner */}
-                <div className="flex items-center justify-center w-8 h-8">
+                {/* Column 1: Index / Play-Pause / Animated Equalizer / Loading Spinner (hidden on mobile) */}
+                <div className="hidden md:flex items-center justify-center w-8 h-8">
                   {isThisBuffering ? (
                     /* Spinner stays visible even on hover until song actually plays */
                     <div
@@ -503,8 +526,8 @@ export const AlbumDetail = ({
                   </p>
                 </div>
 
-                {/* Column 3: Add to playlist */}
-                <div className="flex items-center justify-center">
+                {/* Column 3: Add to playlist (hidden on mobile) */}
+                <div className="hidden md:flex items-center justify-center">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -517,8 +540,8 @@ export const AlbumDetail = ({
                   </button>
                 </div>
 
-                {/* Column 4: Favorite button */}
-                <div className="flex items-center justify-center">
+                {/* Column 4: Favorite button (hidden on mobile) */}
+                <div className="hidden md:flex items-center justify-center">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -533,10 +556,30 @@ export const AlbumDetail = ({
                   </button>
                 </div>
 
-                {/* Column 5: Duration */}
-                <span className="text-right text-xs font-mono text-content-secondary">
-                  {formatDuration(track.duration_seconds)}
-                </span>
+                {/* Column 5: Duration & Mobile 3-Dots */}
+                <div className="flex items-center justify-end gap-1">
+                  <span className="hidden md:inline text-right text-xs font-mono text-content-secondary">
+                    {formatDuration(track.duration_seconds)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onContextMenu) {
+                        onContextMenu(e, 'track', {
+                          ...track,
+                          album_id: album.id,
+                          album_title: album.title,
+                          cover_url: album.cover_url,
+                        });
+                      }
+                    }}
+                    className="md:hidden w-7 h-7 rounded-full flex items-center justify-center text-content-secondary hover:text-white active:scale-90 transition shrink-0 -mr-1"
+                    title="Track Options"
+                  >
+                    <MoreVertical size={16} />
+                  </button>
+                </div>
               </div>
             );
           })}

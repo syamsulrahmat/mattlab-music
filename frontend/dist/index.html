@@ -39,6 +39,12 @@
         }
 
         window.onerror = function(msg, url, line, col, err) {
+          var strMsg = String(msg || '');
+          var strUrl = String(url || '');
+          // Ignore external browser extensions, Safari share sheet internals, and cross-origin script error noise
+          if (strMsg === 'Script error.' || (!strUrl && line === 0 && col === 0) || strUrl.indexOf('safari-extension') !== -1 || strUrl.indexOf('webkit-masked-url') !== -1) {
+            return;
+          }
           displayError('WINDOW ERROR', msg + ' (at ' + url + ':' + line + ':' + col + ')', err ? err.stack : '');
         };
         window.addEventListener('unhandledrejection', function(e) {
@@ -55,7 +61,7 @@
     <!-- Mobile Web App Support -->
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <meta name="apple-mobile-web-app-title" content="MattLab Music" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2" />
 
@@ -67,8 +73,8 @@
     <!-- Preload Core Typography (Circular Std) -->
     <link rel="preload" href="/fonts/circular/CircularStd-Book.woff" as="font" type="font/woff" crossorigin />
     <link rel="preload" href="/fonts/circular/CircularStd-Bold.woff" as="font" type="font/woff" crossorigin />
-    <script type="module" crossorigin src="/assets/index-LixWOuF5.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-sT10kQ_u.css">
+    <script type="module" crossorigin src="/assets/index-7tn1sS2X.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-ZahL6yJU.css">
   </head>
   <body class="bg-[#121212] text-white overflow-hidden select-none">
     <div id="root"></div>

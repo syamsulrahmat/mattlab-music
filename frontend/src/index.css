@@ -220,3 +220,33 @@
     animation-play-state: paused !important;
   }
 }
+
+/* ========================================================
+   MOBILE TOUCH & SAFARI SAFE-AREA OPTIMIZATIONS
+   ======================================================== */
+button, a, input, [role="button"], [data-track-id] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  overscroll-behavior-y: none;
+}
+
+.overflow-y-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Neutralize sticky hover artifacts on mobile touch screens */
+@media (hover: none) and (pointer: coarse) {
+  *:hover {
+    transition-duration: 0ms !important;
+  }
+  .group:hover .group-hover\:scale-105,
+  .group:hover .group-hover\:scale-102,
+  .hover\:scale-105:hover,
+  .hover\:scale-\[1\.02\]:hover {
+    transform: none !important;
+  }
+}
+

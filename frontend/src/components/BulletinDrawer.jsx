@@ -251,7 +251,7 @@ export const BulletinDrawer = ({ isOpen, onClose, onUnreadCountChange, onSelectU
         className="w-full sm:w-[460px] h-full bg-surface-elevated border-l border-border-medium flex flex-col shadow-2xl animate-in slide-in-from-right duration-200 text-white select-text"
       >
         {/* ── Top Header ── */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle bg-surface-island/40 shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)] border-b border-border-subtle bg-surface-island/40 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-brand-500/15 border border-brand-500/30 flex items-center justify-center text-brand-400 shadow-sm">
               <Megaphone size={16} />
@@ -289,7 +289,7 @@ export const BulletinDrawer = ({ isOpen, onClose, onUnreadCountChange, onSelectU
 
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full hover:bg-surface-hover text-content-secondary hover:text-white flex items-center justify-center transition"
+              className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white flex items-center justify-center transition shrink-0"
               title="Close (Esc)"
             >
               <X size={18} />

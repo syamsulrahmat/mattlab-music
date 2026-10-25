@@ -12,6 +12,7 @@ import { ArtistDetail } from './components/ArtistDetail';
 import { SearchView } from './components/SearchView';
 import { FavoritesView } from './components/FavoritesView';
 import { PlaylistDetail } from './components/PlaylistDetail';
+import { LibraryView } from './components/LibraryView';
 import { LyricsView } from './components/LyricsView';
 import { ContextMenu } from './components/ContextMenu';
 import { PlayerBar } from './components/PlayerBar';
@@ -95,6 +96,14 @@ const MainAppContent = () => {
   const [isResizingLeft, setIsResizingLeft] = useState(false);
   const [isResizingRight, setIsResizingRight] = useState(false);
   const resizeRef = useRef({ side: null, startX: 0, startWidth: 0 });
+  const mainContentRef = useRef(null);
+
+  // Auto-scroll main stage to top on navigation/view change
+  useEffect(() => {
+    if (mainContentRef.current) {
+      mainContentRef.current.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }
+  }, [activeTab, selectedAlbumId, selectedArtistId, selectedPlaylistId, selectedProfileUserId]);
 
   // Persist sidebar widths
   useEffect(() => {
@@ -1074,7 +1083,7 @@ const MainAppContent = () => {
   }
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-surface-base overflow-hidden select-none text-content-primary font-sans">
+    <div className="flex flex-col h-screen h-[100dvh] w-screen bg-surface-base overflow-hidden select-none text-content-primary font-sans">
       {/* 1. Top Global Navigation Bar (64px) */}
       <TopBar
         searchQuery={searchQuery}
@@ -1100,8 +1109,8 @@ const MainAppContent = () => {
         onSelectUser={handleSelectUser}
       />
 
-      {/* 2. Three Floating Islands Body (Dynamic expandable sidebars, gap: 8px, padding: 8px) */}
-      <div className="flex-1 min-h-0 flex gap-2 p-2 bg-surface-base overflow-hidden relative">
+      {/* 2. Three Floating Islands Body (Full-bleed on mobile, 3 Islands on Desktop) */}
+      <div className="flex-1 min-h-0 flex md:gap-2 p-0 md:p-2 bg-surface-base overflow-hidden relative">
         {/* Island 1: Left Panel ("Your Library") */}
         <LibrarySidebar
           width={leftSidebarWidth}
@@ -1129,8 +1138,8 @@ const MainAppContent = () => {
           className="hidden md:flex"
         />
 
-        {/* Island 2: Center Panel (Main Stage / Content Area) */}
-        <main className="flex-1 min-w-0 bg-surface-island rounded-lg overflow-y-auto flex flex-col h-full border border-border-subtle relative">
+        {/* Island 2: Center Panel (Main Stage / Content Area - Full-bleed on mobile, Seamless Background) */}
+        <main ref={mainContentRef} className={`flex-1 min-w-0 bg-surface-island rounded-none md:rounded-lg overflow-y-auto flex flex-col h-full border-0 md:border md:border-border-subtle relative ${isLyricsOpen ? 'pb-0' : 'pb-32'} md:pb-0`}>
           {/* Synchronized Lyrics Immersion Mode */}
           {isLyricsOpen ? (
             <LyricsView onClose={() => setIsLyricsOpen(false)} />
@@ -1251,6 +1260,20 @@ const MainAppContent = () => {
                 </div>
               )}
 
+              {activeTab === 'library' && (
+                <div className="w-full">
+                  <LibraryView
+                    playlists={playlists}
+                    onSelectPlaylist={handleSelectPlaylist}
+                    onSelectTab={handleSelectTab}
+                    onCreatePlaylistPrompt={handleOpenCreatePlaylist}
+                    onImportSpotifyPrompt={handleOpenImportSpotify}
+                    onContextMenu={handleOpenContextMenu}
+                    stats={stats}
+                  />
+                </div>
+              )}
+
               {activeTab === 'user-profile' && selectedProfileUserId && (
                 <div className="w-full">
                   <UserProfileView
@@ -1300,30 +1323,30 @@ const MainAppContent = () => {
         />
       </div>
 
-      {/* 3. Persistent Bottom Player Bar (80px, bg-surface-base) */}
-      <PlayerBar
-        isQueueOpen={isQueueOpen}
-        setIsQueueOpen={setIsQueueOpen}
-        isLyricsOpen={isLyricsOpen}
-        setIsLyricsOpen={handleToggleLyrics}
-        isMiniPlayerOpen={isMiniPlayerOpen}
-        setIsMiniPlayerOpen={setIsMiniPlayerOpen}
-        onSelectAlbum={handleSelectAlbum}
-        onSelectArtist={handleSelectArtist}
-        onContextMenu={handleOpenContextMenu}
-      />
+      {/* 3. Persistent Bottom Bar (Floating Frosted Glass on Mobile, Persistent Docked on Desktop) */}
+      <div className="shrink-0 z-40 fixed md:relative bottom-0 left-0 right-0 pointer-events-none md:pointer-events-auto">
+        <PlayerBar
+          isQueueOpen={isQueueOpen}
+          setIsQueueOpen={setIsQueueOpen}
+          isLyricsOpen={isLyricsOpen}
+          setIsLyricsOpen={handleToggleLyrics}
+          isMiniPlayerOpen={isMiniPlayerOpen}
+          setIsMiniPlayerOpen={setIsMiniPlayerOpen}
+          onSelectAlbum={handleSelectAlbum}
+          onSelectArtist={handleSelectArtist}
+          onContextMenu={handleOpenContextMenu}
+        />
 
-      {/* Mobile Bottom Navigation Bar */}
-      <MobileNav
-        activeTab={activeTab}
-        setActiveTab={(tab) => {
-          if (tab === 'playlists-tab') {
-            setIsMobileLibraryOpen(true);
-          } else {
-            handleSelectTab(tab);
-          }
-        }}
-      />
+        {/* Mobile Bottom Navigation Bar (Hidden when lyrics view is open) */}
+        {!isLyricsOpen && (
+          <MobileNav
+            activeTab={activeTab}
+            setActiveTab={(tab) => {
+              handleSelectTab(tab);
+            }}
+          />
+        )}
+      </div>
 
       {/* Custom Right-Click Context Menu */}
       {contextMenu.isOpen && (

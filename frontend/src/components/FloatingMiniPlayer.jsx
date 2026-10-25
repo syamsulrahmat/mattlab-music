@@ -270,6 +270,8 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
 
   if (!currentTrack && !pipWindow) return null;
   if (!isOpen && !pipWindow) return null;
+  // Never show in-page floating miniplayer mode on mobile devices (< 768px)
+  if (!pipWindow && typeof window !== 'undefined' && window.innerWidth < 768) return null;
 
   // 1. Small 2-Line Lyrics Mode (Current sentence + Upcoming sentence) with Music Controls
   const renderSmallLyricsContent = (isPiP = false) => {

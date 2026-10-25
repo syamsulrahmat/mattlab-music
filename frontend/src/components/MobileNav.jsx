@@ -5,13 +5,12 @@ export const MobileNav = ({ activeTab, setActiveTab }) => {
   const tabs = [
     { id: 'home', label: 'Home', icon: Home },
     { id: 'search', label: 'Search', icon: Search },
-    { id: 'albums', label: 'Albums', icon: Disc3 },
     { id: 'favorites', label: 'Liked', icon: Heart },
-    { id: 'playlists-tab', label: 'Library', icon: ListMusic },
+    { id: 'library', label: 'Library', icon: ListMusic },
   ];
 
   return (
-    <nav className="md:hidden bg-surface-base border-t border-border-subtle px-2 py-1 flex items-center justify-around z-40 select-none pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]">
+    <nav className="pointer-events-auto md:hidden bg-[#121212] px-3 pt-2 flex items-center justify-around z-40 select-none pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.id;
@@ -19,12 +18,12 @@ export const MobileNav = ({ activeTab, setActiveTab }) => {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-lg transition ${
-              isActive ? 'text-brand-500' : 'text-content-secondary hover:text-content-primary'
+            className={`flex flex-col items-center justify-center py-1 px-4 rounded-lg transition active:scale-95 ${
+              isActive ? 'text-brand-500 font-bold' : 'text-neutral-400 hover:text-white'
             }`}
           >
-            <Icon size={20} className={isActive ? 'stroke-[2.5]' : ''} />
-            <span className="text-[10px] font-semibold mt-1">{tab.label}</span>
+            <Icon size={22} className={isActive ? 'stroke-[2.5]' : ''} />
+            <span className="text-[10px] font-semibold mt-1 tracking-tight">{tab.label}</span>
           </button>
         );
       })}

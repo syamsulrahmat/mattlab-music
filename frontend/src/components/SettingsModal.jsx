@@ -801,7 +801,7 @@ export const SettingsModal = ({
 
             <button
               onClick={() => setActiveTab('shortcuts')}
-              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-left shrink-0 md:shrink md:w-full ${
+              className={`hidden md:flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-left shrink-0 md:shrink md:w-full ${
                 activeTab === 'shortcuts'
                   ? 'bg-brand-500 text-black shadow-md font-bold'
                   : 'text-content-secondary hover:text-content-primary hover:bg-white/5'
