@@ -10,7 +10,7 @@ export const AudioMetricsHUD = () => {
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef({ startX: 0, startY: 0, initialX: 20, initialY: 80 });
 
-  const handleMouseDown = (e) => {
+  const handlePointerDown = (e) => {
     setIsDragging(true);
     dragRef.current = {
       startX: e.clientX,
@@ -18,29 +18,38 @@ export const AudioMetricsHUD = () => {
       initialX: position.x,
       initialY: position.y,
     };
+    if (e.target.setPointerCapture) {
+      try {
+        e.target.setPointerCapture(e.pointerId);
+      } catch {}
+    }
   };
 
   useEffect(() => {
-    const handleMouseMove = (e) => {
+    const handlePointerMove = (e) => {
       if (!isDragging) return;
       const deltaX = e.clientX - dragRef.current.startX;
       const deltaY = e.clientY - dragRef.current.startY;
-      const nextX = Math.max(10, Math.min(window.innerWidth - 260, dragRef.current.initialX + deltaX));
-      const nextY = Math.max(10, Math.min(window.innerHeight - 200, dragRef.current.initialY + deltaY));
+      const maxX = Math.max(10, window.innerWidth - 270);
+      const maxY = Math.max(10, window.innerHeight - 200);
+      const nextX = Math.max(10, Math.min(maxX, dragRef.current.initialX + deltaX));
+      const nextY = Math.max(10, Math.min(maxY, dragRef.current.initialY + deltaY));
       setPosition({ x: nextX, y: nextY });
     };
 
-    const handleMouseUp = () => {
+    const handlePointerUp = () => {
       setIsDragging(false);
     };
 
     if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('pointermove', handlePointerMove);
+      window.addEventListener('pointerup', handlePointerUp);
+      window.addEventListener('pointercancel', handlePointerUp);
     }
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
     };
   }, [isDragging]);
 
@@ -58,11 +67,11 @@ export const AudioMetricsHUD = () => {
       data-dev-file="src/components/AudioMetricsHUD.jsx"
       data-dev-desc="Floating audio diagnostic HUD with live buffer telemetry and decoder stats"
       style={{ top: `${position.y}px`, left: `${position.x}px` }}
-      className="fixed z-50 w-64 bg-black/90 backdrop-blur-md border border-white/20 text-white rounded-xl shadow-2xl p-3 text-xs font-mono select-none"
+      className="fixed z-50 w-64 max-w-[calc(100vw-2rem)] bg-black/90 backdrop-blur-md border border-white/20 text-white rounded-xl shadow-2xl p-3 text-xs font-mono select-none"
     >
       {/* Header / Drag Bar */}
       <div
-        onMouseDown={handleMouseDown}
+        onPointerDown={handlePointerDown}
         className="flex items-center justify-between pb-2 mb-2 border-b border-white/10 cursor-move"
       >
         <div className="flex items-center gap-1.5 text-brand-400 font-bold">

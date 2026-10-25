@@ -231,6 +231,8 @@ button, a, input, [role="button"], [data-track-id] {
 }
 
 html, body {
+  max-width: 100vw;
+  overflow-x: hidden;
   overscroll-behavior-y: none;
   -webkit-user-select: none;
   user-select: none;
@@ -245,11 +247,20 @@ html, body {
   *:hover {
     transition-duration: 0ms !important;
   }
-  .group:hover .group-hover\:scale-105,
-  .group:hover .group-hover\:scale-102,
   .hover\:scale-105:hover,
   .hover\:scale-\[1\.02\]:hover {
     transform: none !important;
   }
+}
+
+/* Safe-area insets for iOS Safari & PWA standalone status bar */
+.safe-top-pt {
+  padding-top: env(safe-area-inset-top, 0px) !important;
+  padding-top: -webkit-env(safe-area-inset-top, 0px) !important;
+}
+
+.safe-top-spacer {
+  height: env(safe-area-inset-top, 0px) !important;
+  height: -webkit-env(safe-area-inset-top, 0px) !important;
 }
 

@@ -233,22 +233,22 @@ export const UserProfileView = ({
       {/* ── Live Activity Card ("Now Playing / Last Played") ── */}
       {now_playing ? (
         <div className="bg-surface-island border border-border-medium rounded-2xl p-5 sm:p-6 shadow-md relative overflow-hidden">
-          <div className="flex items-center justify-between mb-3.5">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3.5 min-w-0">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
               {now_playing.is_active ? (
                 <>
-                  <span className="relative flex h-3 w-3">
+                  <span className="relative flex h-3 w-3 shrink-0">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                     <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
                   </span>
-                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5 truncate">
                     <span>Listening Right Now</span>
                   </span>
                 </>
               ) : (
                 <>
-                  <Clock size={14} className="text-content-muted" />
-                  <span className="text-xs font-semibold text-content-secondary">
+                  <Clock size={14} className="text-content-muted shrink-0" />
+                  <span className="text-xs font-semibold text-content-secondary truncate">
                     Last Played {formatRelativeTime(now_playing.played_at)}
                   </span>
                 </>
@@ -263,14 +263,14 @@ export const UserProfileView = ({
                   playTrack(now_playing, [now_playing], 0);
                 }
               }}
-              className="flex items-center gap-2 bg-brand-500 hover:bg-brand-400 text-black px-4 py-1.5 rounded-full text-xs font-bold shadow-md transition active:scale-95"
+              className="flex items-center gap-2 bg-brand-500 hover:bg-brand-400 text-black px-4 py-1.5 rounded-full text-xs font-bold shadow-md transition active:scale-95 shrink-0"
             >
               {isNowPlayingThisTrack ? <Pause size={14} /> : <Play size={14} className="ml-0.5" />}
               <span>{isNowPlayingThisTrack ? 'Pause' : 'Listen Along'}</span>
             </button>
           </div>
 
-          <div className="flex items-center gap-4 bg-surface-elevated/70 border border-border-subtle p-3 rounded-xl">
+          <div className="flex items-center gap-4 bg-surface-elevated/70 border border-border-subtle p-3 rounded-xl min-w-0 max-w-full overflow-hidden">
             <img
               src={now_playing.cover_url || '/api/covers/0'}
               alt=""

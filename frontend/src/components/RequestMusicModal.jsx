@@ -302,44 +302,45 @@ export const RequestMusicModal = ({
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 cursor-pointer"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 cursor-pointer overflow-x-hidden"
       onClick={onClose}
     >
       <div 
-        className="w-full max-w-2xl bg-surface-panel border border-border-medium rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden cursor-default"
+        className="w-full max-w-2xl bg-surface-panel border border-border-medium rounded-2xl shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[90vh] overflow-hidden cursor-default min-w-0"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="p-4 sm:p-5 border-b border-border-subtle flex items-center justify-between bg-surface-island">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-brand-500/10 flex items-center justify-center text-brand-500">
-              <DownloadCloud size={20} />
+        <div className="p-3.5 sm:p-5 border-b border-border-subtle flex items-center justify-between bg-surface-island shrink-0 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-brand-500/10 flex items-center justify-center text-brand-500 shrink-0">
+              <DownloadCloud size={18} className="sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-content-primary tracking-tight flex items-center gap-2">
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-lg font-bold text-content-primary tracking-tight flex items-center gap-1.5 flex-wrap">
                 <span>Request & Download Music</span>
-                <span className="text-[10px] font-semibold text-brand-500 bg-brand-500/10 px-2 py-0.5 rounded-full border border-brand-500/20">
-                  Torrent + Direct HQ
+                <span className="text-[9px] sm:text-[10px] font-semibold text-brand-500 bg-brand-500/10 px-2 py-0.5 rounded-full border border-brand-500/20 shrink-0">
+                  Torrent + HQ
                 </span>
               </h2>
-              <p className="text-xs text-content-secondary">
+              <p className="text-[11px] sm:text-xs text-content-secondary truncate">
                 Search albums or paste Spotify tracks & playlists to grab via torrent or 320k direct stream
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full hover:bg-white/10 text-content-secondary hover:text-content-primary flex items-center justify-center transition"
+            className="w-8 h-8 rounded-full hover:bg-white/10 text-content-secondary hover:text-content-primary flex items-center justify-center transition shrink-0"
+            title="Close modal (Esc)"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* Tab Switcher: Search vs Live Torrent Activity */}
-        <div className="px-4 pt-3 flex items-center gap-2 border-b border-border-subtle bg-surface-island">
+        <div className="px-3 sm:px-4 pt-3 flex items-center gap-2 border-b border-border-subtle bg-surface-island shrink-0">
           <button
             onClick={() => setActiveTab('search')}
-            className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 ${
+            className={`pb-2.5 px-2.5 sm:px-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 ${
               activeTab === 'search'
                 ? 'border-brand-500 text-content-primary'
                 : 'border-transparent text-content-secondary hover:text-content-primary'
@@ -351,7 +352,7 @@ export const RequestMusicModal = ({
 
           <button
             onClick={() => setActiveTab('activity')}
-            className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 ${
+            className={`pb-2.5 px-2.5 sm:px-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 ${
               activeTab === 'activity'
                 ? 'border-brand-500 text-content-primary'
                 : 'border-transparent text-content-secondary hover:text-content-primary'
@@ -368,17 +369,17 @@ export const RequestMusicModal = ({
         </div>
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-3.5 sm:p-5 space-y-4 min-w-0">
           {activeTab === 'search' ? (
             <>
               {/* Search / URL Input Capsule */}
-              <div className="space-y-2">
+              <div className="space-y-2 min-w-0">
                 <form 
                   onSubmit={(e) => {
                     e.preventDefault();
                     handleResolve();
                   }}
-                  className="relative flex items-center"
+                  className="relative flex items-center min-w-0"
                 >
                   <div className="absolute left-3.5 text-content-secondary pointer-events-none">
                     {query.includes('spotify.com') ? (
@@ -423,28 +424,28 @@ export const RequestMusicModal = ({
                   </div>
                 </form>
 
-                {/* Quality Preferences Selector */}
-                <div className="flex items-center justify-between text-[11px] text-content-secondary px-1">
-                  <span>Quality Preference:</span>
-                  <div className="flex items-center gap-1.5">
+                {/* Quality Preferences Selector (Responsive wrap for mobile) */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-[11px] text-content-secondary px-1">
+                  <span className="font-medium text-content-muted">Quality Preference:</span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <button
                       type="button"
                       onClick={() => setQualityProfileId(1)}
-                      className={`px-2 py-0.5 rounded-md font-medium transition ${
+                      className={`px-2.5 py-1 sm:py-0.5 rounded-md font-medium transition text-[11px] ${
                         qualityProfileId === 1
                            ? 'bg-brand-500/20 text-brand-500 font-bold border border-brand-500/30'
-                          : 'bg-white/5 text-content-muted hover:text-content-primary'
+                          : 'bg-white/5 text-content-muted hover:text-content-primary border border-transparent'
                       }`}
                     >
-                      Any Quality (FLAC or 320k)
+                      Any Quality (320k or FLAC)
                     </button>
                     <button
                       type="button"
                       onClick={() => setQualityProfileId(2)}
-                      className={`px-2 py-0.5 rounded-md font-medium transition ${
+                      className={`px-2.5 py-1 sm:py-0.5 rounded-md font-medium transition text-[11px] ${
                         qualityProfileId === 2
                           ? 'bg-brand-500/20 text-brand-500 font-bold border border-brand-500/30'
-                          : 'bg-white/5 text-content-muted hover:text-content-primary'
+                          : 'bg-white/5 text-content-muted hover:text-content-primary border border-transparent'
                       }`}
                     >
                       Lossless Only (FLAC)
@@ -496,14 +497,14 @@ export const RequestMusicModal = ({
 
                   {/* Dedicated Song Result Card */}
                   {result.song_result && (
-                    <div className="p-4 bg-gradient-to-r from-brand-500/20 via-surface-elevated2 to-surface-elevated border border-brand-500/40 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
-                      <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                    <div className="p-3.5 sm:p-4 bg-gradient-to-r from-brand-500/20 via-surface-elevated2 to-surface-elevated border border-brand-500/40 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 shadow-xl min-w-0 max-w-full overflow-hidden">
+                      <div className="flex items-center gap-3 min-w-0 flex-1 w-full">
                         <img
                           src={result.song_result.cover_url || result.items?.[0]?.cover_url || '/api/covers/0'}
                           alt=""
-                          className="w-16 h-16 rounded-xl object-cover bg-surface-elevated2 shadow-md shrink-0 border border-border-medium"
+                          className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl object-cover bg-surface-elevated2 shadow-md shrink-0 border border-border-medium"
                         />
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-brand-500 text-black">
                               Track
@@ -514,7 +515,7 @@ export const RequestMusicModal = ({
                               </span>
                             )}
                           </div>
-                          <h3 className="text-base font-bold text-white truncate mt-1">
+                          <h3 className="text-sm sm:text-base font-bold text-white truncate mt-1">
                             {result.song_result.title}
                           </h3>
                           <p className="text-xs text-content-secondary truncate mt-0.5">
@@ -523,13 +524,13 @@ export const RequestMusicModal = ({
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
+                      <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-white/10">
                         {/* Audio Preview for Track */}
                         <button
                           type="button"
                           onClick={() => handleTogglePreview(result.song_result, 'featured_song')}
                           disabled={previewLoadingKey === 'featured_song'}
-                          className={`h-9 px-3.5 rounded-full border text-xs font-semibold transition active:scale-95 flex items-center gap-1.5 ${
+                          className={`h-9 px-3.5 rounded-full border text-xs font-semibold transition active:scale-95 flex items-center justify-center gap-1.5 flex-1 sm:flex-initial ${
                             previewTrackKey === 'featured_song'
                               ? 'bg-brand-500 text-black border-brand-500 font-bold shadow-md shadow-brand-500/30 animate-pulse'
                               : 'bg-white/5 hover:bg-white/10 text-white border-white/10 hover:border-white/20'
@@ -565,7 +566,7 @@ export const RequestMusicModal = ({
                             force_direct: true
                           })}
                           disabled={downloadingIds.has(result.song_result.title)}
-                          className="bg-brand-500 hover:bg-brand-400 disabled:opacity-50 text-black font-bold text-xs h-9 px-4 rounded-full transition active:scale-95 flex items-center gap-1.5 shadow-lg shadow-brand-500/20"
+                          className="bg-brand-500 hover:bg-brand-400 disabled:opacity-50 text-black font-bold text-xs h-9 px-4 rounded-full transition active:scale-95 flex items-center justify-center gap-1.5 shadow-lg shadow-brand-500/20 flex-1 sm:flex-initial"
                         >
                           {downloadingIds.has(result.song_result.title) ? (
                             <>
@@ -575,7 +576,7 @@ export const RequestMusicModal = ({
                           ) : (
                             <>
                               <DownloadCloud size={14} />
-                              <span>Download Song (320k)</span>
+                              <span>Download (320k)</span>
                             </>
                           )}
                         </button>
@@ -584,7 +585,7 @@ export const RequestMusicModal = ({
                   )}
 
                   <div className="flex items-center justify-between text-xs text-content-secondary pt-2">
-                    <span className="font-semibold text-white">
+                    <span className="font-semibold text-white truncate mr-2">
                       {result.type === 'spotify_playlist' && (
                         <span>Playlist: {result.playlist_name} ({result.total_tracks} tracks)</span>
                       )}
@@ -599,7 +600,7 @@ export const RequestMusicModal = ({
                         <span>Results for "{result.query}"</span>
                       )}
                     </span>
-                    <span>{result.items?.length || 0} match(es)</span>
+                    <span className="shrink-0">{result.items?.length || 0} match(es)</span>
                   </div>
 
                   {result.items && result.items.length > 0 ? (
@@ -612,34 +613,36 @@ export const RequestMusicModal = ({
                         return (
                           <div
                             key={`${albumKey}-${idx}`}
-                            className="flex items-center gap-3.5 p-3 bg-surface-elevated hover:bg-surface-elevated2 border border-border-subtle rounded-xl transition"
+                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-surface-elevated hover:bg-surface-elevated2 border border-border-subtle rounded-xl transition min-w-0 max-w-full overflow-hidden"
                           >
-                            <img
-                              src={album.cover_url || '/api/covers/0'}
-                              alt=""
-                              className="w-14 h-14 rounded-lg object-cover bg-surface-hover shrink-0 shadow-sm"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-sm font-bold text-white truncate">
-                                {album.title}
-                              </h4>
-                              <p className="text-xs text-content-secondary truncate mt-0.5">
-                                {album.artist_name} {album.year ? `• ${album.year}` : ''}
-                              </p>
-                              {album.source_track && (
-                                <p className="text-[10px] text-brand-500 truncate mt-0.5">
-                                  Includes: {album.source_track}
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                              <img
+                                src={album.cover_url || '/api/covers/0'}
+                                alt=""
+                                className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg object-cover bg-surface-hover shrink-0 shadow-sm"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-sm font-bold text-white truncate">
+                                  {album.title}
+                                </h4>
+                                <p className="text-xs text-content-secondary truncate mt-0.5">
+                                  {album.artist_name} {album.year ? `• ${album.year}` : ''}
                                 </p>
-                              )}
+                                {album.source_track && (
+                                  <p className="text-[10px] text-brand-500 truncate mt-0.5 font-medium">
+                                    Includes: {album.source_track}
+                                  </p>
+                                )}
+                              </div>
                             </div>
 
-                            {/* Action Buttons */}
-                            <div className="shrink-0 flex items-center gap-2">
+                            {/* Action Buttons (Full width touch-friendly row on mobile, inline on sm+) */}
+                            <div className="shrink-0 flex items-center gap-2 justify-end flex-wrap pt-2 sm:pt-0 border-t sm:border-t-0 border-border-subtle/50">
                               <button
                                 type="button"
                                 onClick={() => handleTogglePreview(album, albumKey)}
                                 disabled={previewLoadingKey === albumKey}
-                                className={`h-8 px-2.5 rounded-full border text-xs font-medium transition active:scale-95 flex items-center gap-1.5 ${
+                                className={`h-8 sm:h-8 px-3 rounded-full border text-xs font-medium transition active:scale-95 flex items-center gap-1.5 ${
                                   previewTrackKey === albumKey
                                     ? 'bg-brand-500 text-black border-brand-500 font-bold shadow-md shadow-brand-500/30 animate-pulse'
                                     : 'bg-white/5 hover:bg-white/10 text-white/90 border-white/10 hover:border-white/20'
@@ -649,7 +652,7 @@ export const RequestMusicModal = ({
                                 {previewLoadingKey === albumKey ? (
                                   <>
                                     <Loader2 size={12} className="animate-spin text-brand-500" />
-                                    <span className="text-[11px] hidden sm:inline">Loading...</span>
+                                    <span className="text-[11px]">Loading...</span>
                                   </>
                                 ) : previewTrackKey === albumKey ? (
                                   <>
@@ -659,7 +662,7 @@ export const RequestMusicModal = ({
                                 ) : (
                                   <>
                                     <Play size={12} className="fill-current ml-0.5" />
-                                    <span className="text-[11px] hidden sm:inline">Preview</span>
+                                    <span className="text-[11px]">Preview</span>
                                   </>
                                 )}
                               </button>
@@ -728,11 +731,11 @@ export const RequestMusicModal = ({
                                       type="button"
                                       onClick={() => handleDownload({ ...album, force_direct: false })}
                                       disabled={isDownloading}
-                                      className="bg-white/5 hover:bg-white/10 disabled:opacity-50 text-white font-medium text-xs px-2.5 py-1.5 rounded-full transition border border-white/10 hidden sm:flex items-center gap-1"
+                                      className="bg-white/5 hover:bg-white/10 disabled:opacity-50 text-white font-medium text-xs px-2.5 py-1.5 rounded-full transition border border-white/10 flex items-center gap-1"
                                       title={`Request full album: ${album.title}`}
                                     >
                                       <Disc size={12} />
-                                      <span>Full Album</span>
+                                      <span className="text-[11px]">Full Album</span>
                                     </button>
                                   )}
                                 </div>
@@ -741,7 +744,7 @@ export const RequestMusicModal = ({
                                   type="button"
                                   onClick={() => handleDownload(album)}
                                   disabled={isDownloading}
-                                  className="bg-brand-500 hover:bg-brand-400 disabled:opacity-50 text-black font-bold text-xs px-3 py-1.5 rounded-full transition active:scale-95 flex items-center gap-1.5 shadow"
+                                  className="bg-brand-500 hover:bg-brand-400 disabled:opacity-50 text-black font-bold text-xs px-3.5 py-1.5 rounded-full transition active:scale-95 flex items-center gap-1.5 shadow"
                                 >
                                   {isDownloading ? (
                                     <>
@@ -787,13 +790,13 @@ export const RequestMusicModal = ({
                     return (
                       <div
                         key={item.id}
-                        className="p-3.5 bg-surface-elevated border border-border-subtle rounded-xl space-y-2"
+                        className="p-3.5 bg-surface-elevated border border-border-subtle rounded-xl space-y-2 min-w-0 max-w-full overflow-hidden"
                       >
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="font-bold text-white truncate max-w-[340px]" title={item.name}>
+                        <div className="flex items-center justify-between text-xs gap-2 min-w-0">
+                          <span className="font-bold text-white truncate min-w-0 flex-1" title={item.name}>
                             {item.name}
                           </span>
-                          <span className="text-[10px] font-mono font-semibold text-brand-500">
+                          <span className="text-[10px] font-mono font-semibold text-brand-500 shrink-0">
                             {item.progress}%
                           </span>
                         </div>

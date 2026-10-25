@@ -271,8 +271,15 @@ export const TopBar = ({
       data-dev-component="TopBar"
       data-dev-file="src/components/TopBar.jsx"
       data-dev-desc="Header bar with branding, search input, library statistics, and profile menu"
-      className="bg-black md:bg-surface-base shrink-0 z-40 select-none border-b-0 md:border-b md:border-border-subtle pt-[env(safe-area-inset-top,0px)]"
+      className="bg-black md:bg-surface-base shrink-0 z-40 select-none border-b-0 md:border-b md:border-border-subtle safe-top-pt"
+      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
     >
+      {/* Notch & Status Bar Safe Area Spacer (crisp solid background without overlay blur) */}
+      <div 
+        className="w-full bg-black shrink-0 safe-top-spacer md:hidden" 
+        style={{ height: 'env(safe-area-inset-top, 0px)' }}
+      />
+
       {/* Main TopBar Content Bar (Fixed 56px on mobile, 64px on desktop) */}
       <div className="h-14 md:h-16 px-4 md:px-5 flex items-center justify-between gap-4">
         {/* Left: MattLab Brand */}
@@ -520,6 +527,22 @@ export const TopBar = ({
                       <button
                         onClick={() => {
                           setIsUserMenuOpen(false);
+                          onRequestMusic?.();
+                        }}
+                        className="w-full text-left px-4 py-3 text-white rounded-xl active:bg-white/10 flex items-center justify-between transition text-sm font-medium"
+                      >
+                        <div className="flex items-center gap-3">
+                          <DownloadCloud size={18} className="text-brand-500" />
+                          <span>Request & Download Music</span>
+                        </div>
+                        <span className="text-[10px] font-semibold text-brand-500 bg-brand-500/10 px-2 py-0.5 rounded-full border border-brand-500/20">
+                          Torrent + HQ
+                        </span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
                           onOpenSettings?.('account');
                         }}
                         className="w-full text-left px-4 py-3 text-white rounded-xl active:bg-white/10 flex items-center gap-3 transition text-sm font-medium"
@@ -630,6 +653,22 @@ export const TopBar = ({
                       {bulletinUnreadCount}
                     </span>
                   )}
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    onRequestMusic?.();
+                  }}
+                  className="w-full text-left px-3 py-2 text-content-primary hover:bg-white/10 flex items-center justify-between transition"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <DownloadCloud size={15} className="text-brand-500" />
+                    <span>Request Music</span>
+                  </div>
+                  <span className="text-[9px] font-semibold text-brand-500 bg-brand-500/10 px-1.5 py-0.2 rounded-full border border-brand-500/20">
+                    HQ
+                  </span>
                 </button>
 
                 <button

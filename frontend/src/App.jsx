@@ -1178,7 +1178,7 @@ const MainAppContent = () => {
         />
 
         {/* Island 2: Center Panel (Main Stage / Content Area - Full-bleed on mobile, Seamless Background) */}
-        <main ref={mainContentRef} className={`flex-1 min-w-0 bg-black md:bg-surface-island rounded-none md:rounded-lg overflow-y-auto flex flex-col h-full border-0 md:border md:border-border-subtle relative ${isLyricsOpen ? 'pb-0' : 'pb-32'} md:pb-0`}>
+        <main ref={mainContentRef} className={`flex-1 min-w-0 max-w-full bg-black md:bg-surface-island rounded-none md:rounded-lg overflow-y-auto overflow-x-hidden flex flex-col h-full border-0 md:border md:border-border-subtle relative ${isLyricsOpen ? 'pb-0' : 'pb-32'} md:pb-0`}>
           {/* Synchronized Lyrics Immersion Mode */}
           {isLyricsOpen ? (
             <LyricsView onClose={() => setIsLyricsOpen(false)} />

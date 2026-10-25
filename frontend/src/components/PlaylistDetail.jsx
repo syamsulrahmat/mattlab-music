@@ -1060,7 +1060,7 @@ export const PlaylistDetail = ({
             <div className="group flex items-center gap-2.5 mt-1 mb-2">
               <h1 
                 onClick={() => setIsEditingDetails(true)}
-                className="text-3xl sm:text-4xl md:text-5xl font-black text-content-primary tracking-tight cursor-pointer hover:underline truncate"
+                className="text-3xl sm:text-4xl md:text-5xl font-black text-content-primary tracking-tight cursor-pointer hover:underline break-words line-clamp-2 md:line-clamp-none"
                 title="Click to rename"
               >
                 {playlist.name}
@@ -1621,7 +1621,7 @@ export const PlaylistDetail = ({
                       }
                       handleDrop(e, idx);
                     }}
-                    className={`grid grid-cols-[1fr_auto] md:grid-cols-[40px_3fr_2fr_60px] lg:grid-cols-[40px_4fr_3fr_2fr_60px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center select-none border-t-2 ${
+                    className={`grid grid-cols-[1fr_auto] md:grid-cols-[40px_3fr_2fr_60px] lg:grid-cols-[40px_4fr_3fr_2fr_60px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center select-none border-t-2 min-w-0 max-w-full overflow-hidden ${
                       draggedTrackIdx !== null ? '[&_*]:pointer-events-none' : ''
                     } ${
                       isSpotify

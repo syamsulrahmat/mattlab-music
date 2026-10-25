@@ -402,9 +402,9 @@ export const CommandPaletteModal = ({
         </div>
 
         {/* ── Guidance Tip: Music Search vs Command Palette ── */}
-        <div className="bg-surface-island/30 border-b border-border-subtle/50 px-4 py-1.5 flex items-center justify-between text-[11px] text-content-muted shrink-0">
-          <span>Command Palette • Users, features & system actions</span>
-          <span>
+        <div className="bg-surface-island/30 border-b border-border-subtle/50 px-4 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] text-content-muted shrink-0 min-w-0 max-w-full overflow-hidden">
+          <span className="truncate">Command Palette • Users, features & system actions</span>
+          <span className="shrink-0">
             Looking for songs? Press <kbd className="bg-surface-island px-1.5 py-0.2 rounded font-mono text-brand-400 font-bold border border-border-medium">S</kbd> for Music Search
           </span>
         </div>

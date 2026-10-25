@@ -276,12 +276,12 @@ export const ArtistDetail = ({
             />
           </div>
 
-          <div className="flex flex-col justify-end min-w-0">
+          <div className="flex-1 flex flex-col justify-end min-w-0">
             <div className="flex items-center gap-1.5 text-xs uppercase font-bold tracking-wider text-brand-500 mb-1">
               <CheckCircle2 size={16} className="fill-brand-500 text-black" />
               <span>Verified Artist</span>
             </div>
-            <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-content-primary mt-1 mb-3 tracking-tight truncate">
+            <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-content-primary mt-1 mb-3 tracking-tight break-words line-clamp-2 md:line-clamp-none">
               {artist.name}
             </h1>
             <div className="flex items-center gap-2 text-xs sm:text-sm text-content-secondary font-medium flex-wrap">
@@ -401,7 +401,7 @@ export const ArtistDetail = ({
                     e.dataTransfer.setData('text/plain', trackIds.join(','));
                     e.dataTransfer.effectAllowed = 'copy';
                   }}
-                  className={`grid grid-cols-[1fr_auto] md:grid-cols-[40px_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center cursor-default select-none ${
+                  className={`grid grid-cols-[1fr_auto] md:grid-cols-[40px_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center cursor-default select-none min-w-0 max-w-full overflow-hidden ${
                     isSelected
                       ? 'bg-surface-hover ring-1 ring-white/20 text-content-primary'
                       : 'hover:bg-surface-elevated text-content-primary'

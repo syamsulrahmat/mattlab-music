@@ -292,11 +292,11 @@ export const AlbumDetail = ({
             alt={album.title}
             className="w-44 h-44 sm:w-52 sm:h-52 rounded-xl shadow-2xl object-cover bg-surface-elevated shrink-0 border border-border-medium"
           />
-          <div className="flex flex-col justify-end min-w-0">
+          <div className="flex-1 flex flex-col justify-end min-w-0">
             <span className="text-xs uppercase font-bold tracking-widest text-content-secondary">
               Album
             </span>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-content-primary mt-1 mb-3 tracking-tight truncate">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-content-primary mt-1 mb-3 tracking-tight break-words line-clamp-2 md:line-clamp-none">
               {album.title}
             </h1>
             <div className="flex items-center gap-2 text-xs sm:text-sm text-content-secondary font-medium flex-wrap">
@@ -441,7 +441,7 @@ export const AlbumDetail = ({
                   e.dataTransfer.setData('text/plain', trackIds.join(','));
                   e.dataTransfer.effectAllowed = 'copy';
                 }}
-                className={`grid grid-cols-[1fr_auto] md:grid-cols-[40px_1fr_40px_40px_70px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center cursor-default select-none ${
+                className={`grid grid-cols-[1fr_auto] md:grid-cols-[40px_1fr_40px_40px_70px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center cursor-default select-none min-w-0 max-w-full overflow-hidden ${
                   isSelected
                     ? 'bg-surface-hover ring-1 ring-white/20 text-content-primary'
                     : 'hover:bg-surface-elevated text-content-primary'

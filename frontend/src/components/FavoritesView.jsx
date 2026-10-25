@@ -864,7 +864,7 @@ export const FavoritesView = ({
                     e.dataTransfer.setData('application/json', JSON.stringify(payload));
                     e.dataTransfer.setData('text/plain', trackIds.join(','));
                   }}
-                  className={`grid grid-cols-[1fr_auto] md:grid-cols-[40px_3fr_2fr_36px_60px] lg:grid-cols-[40px_4fr_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center cursor-default select-none ${
+                  className={`grid grid-cols-[1fr_auto] md:grid-cols-[40px_3fr_2fr_36px_60px] lg:grid-cols-[40px_4fr_3fr_2fr_36px_60px] px-3 sm:px-4 py-2.5 rounded-lg group transition items-center cursor-default select-none min-w-0 max-w-full overflow-hidden ${
                     isFocused
                       ? 'bg-surface-hover ring-1 ring-brand-500/60 shadow-md text-content-primary'
                       : isSelected

@@ -451,7 +451,7 @@ export const SearchView = ({
                           handleQuickDownload(track);
                         }
                       }}
-                      className="flex items-center justify-between p-3 rounded-lg group cursor-pointer bg-surface-elevated hover:bg-surface-hover transition select-none"
+                      className="flex items-center justify-between p-3 rounded-lg group cursor-pointer bg-surface-elevated hover:bg-surface-hover transition select-none min-w-0 max-w-full overflow-hidden"
                     >
                       <div className="flex items-center gap-3 truncate min-w-0 flex-1 mr-3">
                         <img
@@ -565,7 +565,7 @@ export const SearchView = ({
                         e.dataTransfer.setData('text/plain', String(track.id));
                         e.dataTransfer.effectAllowed = 'copy';
                       }}
-                      className={`flex items-center justify-between p-3 rounded-lg group cursor-pointer active:cursor-grabbing transition select-none ${
+                      className={`flex items-center justify-between p-3 rounded-lg group cursor-pointer active:cursor-grabbing transition select-none min-w-0 max-w-full overflow-hidden ${
                         isCurrentTrack
                           ? 'bg-surface-elevated2 text-brand-500'
                           : selectedTrackId === track.id

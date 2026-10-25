@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MattLab Music - Lesson 2: JavaScript Interactivity</title>
+
+  <style>
+    /* 1. Page Background */
+    body {
+      background-color: #121212;
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      gap: 20px;
+    }
+
+    /* 2. The Music Card */
+    .music-card {
+      background-color: #181818;
+      width: 220px;
+      padding: 16px;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      position: relative;
+      border: 1px solid transparent;
+    }
+
+    .music-card:hover {
+      background-color: #282828;
+    }
+
+    /* Green highlight border when music is actively playing */
+    .music-card.is-playing {
+      border-color: rgba(30, 215, 96, 0.4);
+      box-shadow: 0 0 20px rgba(30, 215, 96, 0.2);
+    }
+
+    /* 3. Cover Art & Button */
+    .cover-wrapper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      margin-bottom: 12px;
+    }
+
+    .cover-wrapper img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 6px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    }
+
+    .play-btn {
+      position: absolute;
+      right: 10px;
+      bottom: 10px;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background-color: #1ed760;
+      border: none;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+      
+      /* Hidden until hover, OR kept visible if currently playing */
+      opacity: 0;
+      transform: translateY(8px);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .music-card:hover .play-btn,
+    .music-card.is-playing .play-btn {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .play-btn:hover {
+      transform: scale(1.08) !important;
+      background-color: #1fdf64;
+    }
+
+    /* 4. Typography & Status */
+    .card-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin: 0 0 4px 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-artist {
+      font-size: 14px;
+      color: #b3b3b3;
+      margin: 0;
+    }
+
+    .status-badge {
+      margin-top: 10px;
+      font-size: 12px;
+      padding: 4px 8px;
+      background: #242424;
+      border-radius: 4px;
+      color: #888;
+      text-align: center;
+      transition: color 0.2s;
+    }
+
+    .music-card.is-playing .status-badge {
+      color: #1ed760;
+      background: rgba(30, 215, 96, 0.1);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ======================== HTML SKELETON ======================== -->
+  <div class="music-card" id="myCard">
+    <div class="cover-wrapper">
+      <img 
+        src="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=400&q=80" 
+        alt="Album Artwork"
+      />
+      <button class="play-btn" id="playBtn" title="Play">
+        <!-- SVG Play Icon (Default) -->
+        <svg id="playIcon" width="20" height="20" viewBox="0 0 24 24" fill="black">
+          <polygon points="5 3 19 12 5 21 5 3"></polygon>
+        </svg>
+      </button>
+    </div>
+
+    <h3 class="card-title">Electronic Chill</h3>
+    <p class="card-artist">MattLab Royalty-Free Beat</p>
+    <div class="status-badge" id="statusBadge">⏸ Paused</div>
+  </div>
+
+  <!-- ======================== JAVASCRIPT LOGIC ======================== -->
+  <script>
+    // Step 1: Select the HTML elements we want to interact with
+    const playBtn = document.getElementById('playBtn');
+    const playIcon = document.getElementById('playIcon');
+    const card = document.getElementById('myCard');
+    const statusBadge = document.getElementById('statusBadge');
+
+    // Step 2: Create a real browser Audio engine with a free sample stream
+    const audio = new Audio('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3');
+
+    // Step 3: Keep track of state (is music currently playing?)
+    let isPlaying = false;
+
+    // SVG icons for Play (triangle) and Pause (two bars)
+    const PLAY_SVG = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
+    const PAUSE_SVG = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
+
+    // Step 4: The click handler function
+    function togglePlay(event) {
+      // Stop the click from bubbling up to other elements
+      event.stopPropagation();
+
+      if (isPlaying) {
+        // Pause playback
+        audio.pause();
+        isPlaying = false;
+        
+        // Update visual UI
+        playIcon.innerHTML = PLAY_SVG;
+        card.classList.remove('is-playing');
+        statusBadge.textContent = '⏸ Paused';
+      } else {
+        // Start playback
+        audio.play();
+        isPlaying = true;
+        
+        // Update visual UI
+        playIcon.innerHTML = PAUSE_SVG;
+        card.classList.add('is-playing');
+        statusBadge.textContent = '▶ Now Playing...';
+      }
+    }
+
+    // Step 5: Attach the click listener to both the button and the whole card
+    playBtn.addEventListener('click', togglePlay);
+    card.addEventListener('click', togglePlay);
+
+    // Step 6: What if the song reaches the end on its own?
+    audio.addEventListener('ended', function() {
+      isPlaying = false;
+      playIcon.innerHTML = PLAY_SVG;
+      card.classList.remove('is-playing');
+      statusBadge.textContent = '⏸ Finished';
+    });
+  </script>
+</body>
+</html>

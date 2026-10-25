@@ -75,8 +75,8 @@ export const TracklistFilterBar = ({
   // MOBILE VERSION (Sticky Floating Top Bar)
   // ----------------------------------------------------
   return (
-    <div className={`md:hidden sticky top-0 z-30 px-4 py-2.5 bg-black md:bg-surface-base border-none transition-all flex items-center gap-2.5 ${className}`}>
-      <div className="relative flex-1 flex items-center">
+    <div className={`md:hidden sticky top-0 z-30 px-4 py-2.5 bg-black md:bg-surface-base border-none transition-all flex items-center gap-2.5 min-w-0 max-w-full overflow-hidden ${className}`}>
+      <div className="relative flex-1 min-w-0 flex items-center">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-content-secondary pointer-events-none" size={20} />
         <input
           ref={inputRef}

@@ -1279,7 +1279,7 @@ export const SettingsModal = ({
                           {category.items.map((item, idx) => (
                             <div
                               key={idx}
-                              className="flex items-center justify-between p-3 rounded-xl bg-surface-panel hover:bg-surface-elevated border border-border-subtle transition group"
+                              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-xl bg-surface-panel hover:bg-surface-elevated border border-border-subtle transition group min-w-0 max-w-full overflow-hidden"
                             >
                               <div className="pr-4 min-w-0">
                                 <div className="text-xs font-semibold text-white group-hover:text-brand-300 transition">
