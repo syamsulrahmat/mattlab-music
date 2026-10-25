@@ -290,10 +290,10 @@ export const LyricsView = ({ onClose }) => {
       data-dev-component="LyricsView"
       data-dev-file="src/components/LyricsView.jsx"
       data-dev-desc="Full-screen synchronized lyrics immersion canvas with auto-scrolling and karaoke vocal removal"
-      className="h-full flex flex-col bg-gradient-to-b from-surface-elevated to-surface-island overflow-hidden select-none relative"
+      className="h-full flex flex-col bg-black overflow-hidden select-none relative"
     >
       {/* Top Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle bg-surface-island/50 backdrop-blur-md shrink-0">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-black/90 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-3.5 truncate">
           <img
             src={currentTrack.cover_url || '/api/covers/0'}
@@ -528,7 +528,7 @@ export const LyricsView = ({ onClose }) => {
       )}
 
       {/* Mobile Streamlined Spotify-Style Scrubber & Play Bar */}
-      <div className="md:hidden shrink-0 px-4 pt-5 pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] bg-gradient-to-t from-surface-island via-surface-island/95 to-transparent border-none z-20 flex flex-col gap-6">
+      <div className="md:hidden shrink-0 px-4 pt-5 pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] bg-gradient-to-t from-black via-black/95 to-transparent border-none z-20 flex flex-col gap-6">
         <TimelineScrubber
           currentTime={currentTime}
           duration={duration}
@@ -541,7 +541,7 @@ export const LyricsView = ({ onClose }) => {
           <button
             type="button"
             onClick={togglePlay}
-            className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center shadow-lg active:scale-95 transition"
+            className="w-16 h-16 rounded-full bg-white text-black flex items-center justify-center shadow-[0_8px_25px_rgba(255,255,255,0.25)] hover:scale-105 active:scale-95 transition"
             title={isPlaying ? 'Pause' : 'Play'}
           >
             {isPlaying ? (

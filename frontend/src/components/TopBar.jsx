@@ -217,10 +217,10 @@ export const TopBar = ({
       data-dev-component="TopBar"
       data-dev-file="src/components/TopBar.jsx"
       data-dev-desc="Header bar with branding, search input, library statistics, and profile menu"
-      className="bg-[#121212] md:bg-surface-base shrink-0 z-40 select-none border-b-0 md:border-b md:border-border-subtle"
+      className="bg-black md:bg-surface-base shrink-0 z-40 select-none border-b-0 md:border-b md:border-border-subtle"
     >
       {/* Notch & Status Bar Safe Area Spacer (crisp solid background without overlay blur) */}
-      <div className="h-[env(safe-area-inset-top,0px)] w-full bg-[#121212]" />
+      <div className="h-[env(safe-area-inset-top,0px)] w-full bg-black" />
 
       {/* Main TopBar Content Bar (Fixed 56px on mobile, 64px on desktop) */}
       <div className="h-14 md:h-16 px-4 md:px-5 flex items-center justify-between gap-4">

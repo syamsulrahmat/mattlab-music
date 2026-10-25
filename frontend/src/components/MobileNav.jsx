@@ -10,7 +10,7 @@ export const MobileNav = ({ activeTab, setActiveTab }) => {
   ];
 
   return (
-    <nav className="pointer-events-auto md:hidden bg-[#121212] px-3 pt-2 flex items-center justify-around z-40 select-none pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
+    <nav className="pointer-events-auto md:hidden bg-black border-t border-white/5 px-3 pt-2 flex items-center justify-around z-40 select-none pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.id;

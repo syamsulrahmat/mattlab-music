@@ -999,15 +999,15 @@ export const PlaylistDetail = ({
       className={`pb-16 select-none relative w-full ${playlist?.spotify_id && draggedTrackIdx !== null ? 'cursor-not-allowed' : ''}`}
     >
       {/* Mobile Sticky Floating Filter Bar */}
-      <div className="md:hidden sticky top-0 z-30 px-4 py-2.5 bg-[#121212]/85 backdrop-blur-xl border-b border-white/5 transition-all">
-        <div className="relative w-full bg-white/10 rounded-lg overflow-hidden shadow-sm">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+      <div className="md:hidden sticky top-0 z-30 px-4 py-2.5 bg-surface-base/90 backdrop-blur-xl border-none transition-all">
+        <div className="relative w-full bg-surface-elevated/40 rounded-lg overflow-hidden shadow-sm">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-content-muted pointer-events-none" />
           <input
             type="text"
             placeholder="Filter playlist..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-transparent text-white text-xs pl-10 pr-9 py-2 outline-none placeholder:text-neutral-400 border-0 focus:ring-0 focus:outline-none"
+            className="w-full bg-transparent text-content-primary text-xs pl-10 pr-9 py-2 outline-none placeholder:text-content-muted border-0 focus:ring-0 focus:outline-none"
           />
           {searchQuery && (
             <button
@@ -1015,7 +1015,7 @@ export const PlaylistDetail = ({
                 setSearchQuery('');
                 setFocusedTrackIdx(-1);
               }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white p-0.5"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-content-muted hover:text-content-primary p-0.5"
             >
               <X size={14} />
             </button>
@@ -1025,7 +1025,7 @@ export const PlaylistDetail = ({
 
       {/* 4. Full-bleed Header Banner taking all the area without back button */}
       <div 
-        className="bg-gradient-to-b from-emerald-950/45 via-surface-panel/75 to-surface-island px-6 sm:px-8 pt-4 sm:pt-10 pb-8 sm:pb-10 w-full border-b border-border-subtle"
+        className="bg-gradient-to-b from-emerald-950/45 via-surface-panel/75 to-surface-base md:to-surface-island px-6 sm:px-8 pt-4 sm:pt-10 pb-8 sm:pb-10 w-full border-b-0 md:border-b md:border-border-subtle"
       >
         <div className="flex flex-col md:flex-row gap-6 md:gap-7 items-start md:items-end">
           <div 
@@ -1404,7 +1404,7 @@ export const PlaylistDetail = ({
           </button>
         </div>
       ) : (
-        <div className="px-6 sm:px-8">
+        <div className="px-2 sm:px-8">
           <div>
             {/* Sticky Tracklist Column Header Row */}
             <div 

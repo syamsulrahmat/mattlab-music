@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Play, Pause, Trash2, ListMusic, Compass } from 'lucide-react';
 import { usePlayer, resolveCoverUrl } from '../context/PlayerContext';
@@ -19,18 +19,73 @@ export const MobileQueueSheet = ({
     reorderQueue,
   } = usePlayer();
 
+  // Touch swipe-down to dismiss gesture
+  const touchStartY = useRef(0);
+  const touchCurrentY = useRef(0);
+  const touchStartX = useRef(0);
+  const hasDragged = useRef(false);
+  const listScrollRef = useRef(null);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setDragOffset(0);
+      setIsDragging(false);
+      hasDragged.current = false;
+    }
+  }, [isOpen]);
+
+  const handleTouchStart = (e) => {
+    touchStartY.current = e.touches[0].clientY;
+    touchStartX.current = e.touches[0].clientX;
+    touchCurrentY.current = e.touches[0].clientY;
+    hasDragged.current = false;
+    setIsDragging(true);
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isDragging) return;
+    touchCurrentY.current = e.touches[0].clientY;
+    const diffY = touchCurrentY.current - touchStartY.current;
+    const diffX = Math.abs(e.touches[0].clientX - touchStartX.current);
+
+    // If starting inside scrollable list, only drag if at the top (scrollTop <= 0) and pulling downwards
+    if (listScrollRef.current && listScrollRef.current.scrollTop > 0) {
+      return;
+    }
+
+    if (diffY > 8 && diffY > diffX) {
+      hasDragged.current = true;
+      setDragOffset(diffY);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    if (dragOffset > 80) {
+      onClose();
+    } else {
+      setDragOffset(0);
+    }
+    setTimeout(() => {
+      hasDragged.current = false;
+    }, 150);
+  };
+
   if (!isOpen) return null;
 
   const upcomingTracks = queue ? queue.slice(queueIndex + 1) : [];
 
   const handlePlayUpcoming = (track, upcomingIdx) => {
-    // New index in queue is queueIndex + 1 + upcomingIdx
+    if (hasDragged.current) return;
     playTrack(track);
   };
 
   const handleRemoveTrack = (upcomingIdx, e) => {
     e.stopPropagation();
-    if (!queue || !reorderQueue) return;
+    if (hasDragged.current || !queue || !reorderQueue) return;
     const actualIdx = queueIndex + 1 + upcomingIdx;
     const newQueue = [...queue.slice(0, actualIdx), ...queue.slice(actualIdx + 1)];
     reorderQueue(newQueue);
@@ -51,16 +106,24 @@ export const MobileQueueSheet = ({
       onClick={onClose}
     >
       <div
-        className="w-full max-h-[85dvh] bg-surface-elevated border-t border-border-medium rounded-t-3xl flex flex-col overflow-hidden text-white shadow-2xl animate-in slide-in-from-bottom-8 duration-200"
+        style={{
+          transform: `translateY(${dragOffset}px)`,
+        }}
+        className="w-full max-h-[85dvh] bg-surface-base border-none rounded-t-3xl flex flex-col overflow-hidden text-content-primary shadow-2xl transition-transform duration-150 ease-out animate-in slide-in-from-bottom-8 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ── Top Header ── */}
-        <div className="pt-3 px-4 pb-3 border-b border-border-subtle/50 flex flex-col items-center shrink-0">
+        {/* ── Top Header / Swipe Down Anchor ── */}
+        <div 
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          className="pt-3 px-4 pb-3 border-none flex flex-col items-center shrink-0 cursor-grab active:cursor-grabbing select-none"
+        >
           <div className="w-10 h-1 rounded-full bg-white/20 mb-3" />
           <div className="w-full flex items-center justify-between">
             <div className="flex items-center gap-2">
               <ListMusic size={18} className="text-brand-400" />
-              <h3 className="font-bold text-base text-white">Play Queue</h3>
+              <h3 className="font-bold text-base text-content-primary">Play Queue</h3>
               {upcomingTracks.length > 0 && (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-brand-500/15 text-brand-400 border border-brand-500/30">
                   {upcomingTracks.length} next
@@ -81,7 +144,7 @@ export const MobileQueueSheet = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="w-8 h-8 rounded-full bg-surface-island flex items-center justify-center text-content-secondary hover:text-white transition active:scale-95"
+                className="w-8 h-8 rounded-full bg-surface-elevated flex items-center justify-center text-content-secondary hover:text-content-primary transition active:scale-95"
               >
                 <X size={16} />
               </button>
@@ -90,14 +153,26 @@ export const MobileQueueSheet = ({
         </div>
 
         {/* ── Content List ── */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 pb-[max(2.5rem,calc(env(safe-area-inset-bottom,0px)+2rem))]">
+        <div 
+          ref={listScrollRef}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onClickCapture={(e) => {
+            if (hasDragged.current || dragOffset > 5) {
+              e.stopPropagation();
+              e.preventDefault();
+            }
+          }}
+          className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 pb-[max(2.5rem,calc(env(safe-area-inset-bottom,0px)+2rem))]"
+        >
           {/* Currently Playing Card */}
           {currentTrack ? (
             <div>
               <span className="text-[10px] font-mono uppercase tracking-wider text-content-muted block mb-2 px-1">
                 Now Playing
               </span>
-              <div className="bg-surface-island/80 border border-brand-500/30 rounded-2xl p-3 flex items-center gap-3 shadow-md">
+              <div className="bg-surface-elevated/40 border-none rounded-2xl p-3 flex items-center gap-3 shadow-md">
                 <img
                   src={resolveCoverUrl(currentTrack)}
                   alt=""
@@ -133,9 +208,9 @@ export const MobileQueueSheet = ({
             </span>
 
             {upcomingTracks.length === 0 ? (
-              <div className="bg-surface-island/40 border border-dashed border-border-medium rounded-2xl p-6 text-center text-content-secondary">
+              <div className="bg-surface-elevated/20 border-none rounded-2xl p-6 text-center text-content-secondary">
                 <Compass size={24} className="mx-auto mb-2 text-content-muted" />
-                <p className="text-xs font-semibold text-white">No upcoming tracks</p>
+                <p className="text-xs font-semibold text-content-primary">No upcoming tracks</p>
                 <p className="text-[11px] text-content-muted mt-0.5">
                   Tracks you add to the queue or songs from playlists will appear here.
                 </p>
@@ -146,7 +221,7 @@ export const MobileQueueSheet = ({
                   <div
                     key={`${track.id}-${idx}`}
                     onClick={() => handlePlayUpcoming(track, idx)}
-                    className="p-2.5 rounded-xl bg-surface-island/40 hover:bg-surface-island border border-border-subtle/50 flex items-center justify-between gap-3 active:scale-[0.99] transition cursor-pointer"
+                    className="p-2.5 rounded-xl bg-surface-elevated/30 hover:bg-surface-elevated/50 border-none flex items-center justify-between gap-3 active:scale-[0.99] transition cursor-pointer"
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <span className="text-xs font-mono text-content-muted w-4 text-center shrink-0">
@@ -158,7 +233,7 @@ export const MobileQueueSheet = ({
                         className="w-10 h-10 rounded-lg object-cover shrink-0 bg-surface-elevated"
                       />
                       <div className="min-w-0 flex-1">
-                        <h5 className="text-xs font-bold text-white truncate">
+                        <h5 className="text-xs font-bold text-content-primary truncate">
                           {track.title}
                         </h5>
                         <p className="text-[11px] text-content-secondary truncate mt-0.5">

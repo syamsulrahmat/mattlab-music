@@ -864,7 +864,7 @@ export const ContextMenu = ({
           style={{
             transform: `translateY(${dragOffset}px)`,
           }}
-          className="w-full max-h-[80vh] bg-surface-panel/95 backdrop-blur-2xl rounded-t-3xl border-t border-white/10 shadow-2xl flex flex-col overflow-hidden pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] transition-transform duration-150 ease-out animate-in slide-in-from-bottom-full duration-300"
+          className="w-full max-h-[80vh] bg-surface-base backdrop-blur-2xl rounded-t-3xl border-t border-border-subtle shadow-2xl flex flex-col overflow-hidden pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] transition-transform duration-150 ease-out animate-in slide-in-from-bottom-full duration-300"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Pull Handle & Header Area (Swipe Down Anchor) */}
