@@ -37,6 +37,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
     activeLyricIndex,
     currentLyricLine,
     upcomingLyricLine,
+    fetchTrackLyrics,
     isFavorite,
     toggleFavorite,
   } = usePlayer();
@@ -448,12 +449,28 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
         >
           {/* Line 1: Current Sentence */}
           <p
-            onClick={() => currentLineObj && seek(currentLineObj.time)}
+            onClick={() => {
+              if (currentLineObj) {
+                seek(currentLineObj.time);
+              } else if (currentTrack?.id && (lyricsState?.notFound || currentSentence === 'No lyrics available')) {
+                fetchTrackLyrics(currentTrack.id, true);
+              }
+            }}
             style={{ fontSize: `${currentLyricFontSize}px` }}
             className={`${LYRICS_CONFIG.typography.activeWeightClass} truncate leading-tight cursor-pointer transition-all duration-150 ${
-              currentLineObj ? `${LYRICS_CONFIG.colors.activeClass} drop-shadow-sm hover:underline` : 'text-content-primary/80'
+              currentLineObj
+                ? `${LYRICS_CONFIG.colors.activeClass} drop-shadow-sm hover:underline`
+                : (lyricsState?.notFound || currentSentence === 'No lyrics available')
+                ? 'text-content-muted hover:text-brand-400 hover:underline'
+                : 'text-content-primary/80'
             }`}
-            title={currentLineObj ? `Current lyric: "${currentSentence}" (Click to rewind)` : currentSentence}
+            title={
+              currentLineObj
+                ? `Current lyric: "${currentSentence}" (Click to rewind)`
+                : (lyricsState?.notFound || currentSentence === 'No lyrics available')
+                ? 'No lyrics found. Click to recheck server.'
+                : currentSentence
+            }
           >
             {currentSentence}
           </p>
@@ -676,6 +693,15 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
               <p className="text-[10px] text-content-subtle max-w-[200px]">
                 {currentTrack ? `"${currentTrack.title}"` : 'Play a song to view lyrics'}
               </p>
+              {currentTrack?.id && (
+                <button
+                  type="button"
+                  onClick={() => fetchTrackLyrics(currentTrack.id, true)}
+                  className="mt-1 text-[11px] font-semibold text-brand-400 hover:text-brand-300 hover:underline px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 transition cursor-pointer"
+                >
+                  Check server again
+                </button>
+              )}
             </div>
           )}
         </div>

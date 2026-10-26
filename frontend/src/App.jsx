@@ -314,6 +314,7 @@ const MainAppContent = () => {
     togglePiP,
     toastMessage,
     showToast,
+    fetchTrackLyrics,
   } = usePlayer();
   const { isDevUnlocked, isFlagsModalOpen, setIsFlagsModalOpen, toggleComponentInspector } = useDevFlags();
 
@@ -1427,6 +1428,11 @@ const MainAppContent = () => {
         isOpen={Boolean(lyricsTrackToEdit)}
         track={lyricsTrackToEdit}
         onClose={() => setLyricsTrackToEdit(null)}
+        onLyricsSaved={(savedData, trackId) => {
+          if (currentTrack?.id === trackId) {
+            fetchTrackLyrics(trackId, true);
+          }
+        }}
       />
 
       {/* Create Playlist Modal (Integrated In-App UI) */}

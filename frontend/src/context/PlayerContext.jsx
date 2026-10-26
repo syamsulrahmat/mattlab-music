@@ -171,30 +171,40 @@ export const PlayerProvider = ({ children }) => {
     }
 
     const cacheKey = `lyrics_cache_${trackId}`;
+    let hasLoadedFromCache = false;
+
     if (!force) {
       try {
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
           const data = JSON.parse(cached);
-          const parsedLines = data.syncedLyrics ? parseLrc(data.syncedLyrics) : [];
-          setLyricsState({
-            trackId,
-            syncedLyrics: data.syncedLyrics || null,
-            plainLyrics: data.plainLyrics || data.lyrics || null,
-            parsedLines,
-            isLoading: false,
-            notFound: !data.syncedLyrics && !data.plainLyrics && !data.lyrics,
-          });
-          return;
+          const hasLyrics = Boolean(data.syncedLyrics || data.plainLyrics || data.lyrics);
+          if (hasLyrics) {
+            const parsedLines = data.syncedLyrics ? parseLrc(data.syncedLyrics) : [];
+            setLyricsState({
+              trackId,
+              syncedLyrics: data.syncedLyrics || null,
+              plainLyrics: data.plainLyrics || data.lyrics || null,
+              parsedLines,
+              isLoading: false,
+              notFound: false,
+            });
+            return;
+          }
+          // If cached as notFound/empty, don't return! Treat as soft cache and re-query the backend in background
+          hasLoadedFromCache = true;
         }
       } catch (_) {}
     }
 
-    setLyricsState((prev) => ({ ...prev, trackId, isLoading: true }));
+    if (!hasLoadedFromCache) {
+      setLyricsState((prev) => ({ ...prev, trackId, isLoading: true }));
+    }
+
     try {
       const res = await fetch(`/api/lyrics/${trackId}`);
       const data = await res.json();
-      if (data && !data.error) {
+      if (data && !data.error && (data.syncedLyrics || data.plainLyrics || data.lyrics)) {
         try {
           localStorage.setItem(cacheKey, JSON.stringify(data));
         } catch (_) {}
@@ -205,7 +215,7 @@ export const PlayerProvider = ({ children }) => {
           plainLyrics: data.plainLyrics || data.lyrics || null,
           parsedLines,
           isLoading: false,
-          notFound: !data.syncedLyrics && !data.plainLyrics && !data.lyrics,
+          notFound: false,
         });
       } else {
         setLyricsState({ trackId, syncedLyrics: null, plainLyrics: null, parsedLines: [], isLoading: false, notFound: true });
