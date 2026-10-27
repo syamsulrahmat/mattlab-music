@@ -31,6 +31,7 @@ export const PlayerBar = ({
   const {
     currentTrack,
     isPlaying,
+    hasStartedPlayback,
     currentTime,
     duration,
     bufferedTime,
@@ -189,8 +190,15 @@ export const PlayerBar = ({
       className="relative md:bg-surface-base md:border-t md:border-border-subtle z-40 select-none shrink-0"
     >
       {/* ================= MOBILE FLOATING MINI PLAYER (< md) ================= */}
-      {currentTrack && !isLyricsOpen && (
-        <div className="md:hidden px-3.5 pb-2 pointer-events-auto max-w-lg mx-auto w-full">
+      {/* Fully floating card with smooth slide-up entrance from underneath bottom navigation */}
+      <div 
+        className={`md:hidden pointer-events-auto max-w-lg mx-auto w-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          currentTrack && hasStartedPlayback && !isLyricsOpen
+            ? 'translate-y-0 opacity-100 pointer-events-auto'
+            : 'translate-y-12 opacity-0 pointer-events-none'
+        }`}
+      >
+        <div className="px-3 pb-0">
           <div 
             onPointerDown={handleMobilePointerDown}
             onPointerMove={handleMobilePointerMove}
@@ -288,7 +296,7 @@ export const PlayerBar = ({
             </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* ================= DESKTOP FULL PLAYER (>= md) ~80px ================= */}
       <div className="hidden md:flex h-20 px-4 lg:px-6 items-center justify-between">

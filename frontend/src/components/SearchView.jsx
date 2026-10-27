@@ -185,7 +185,7 @@ export const SearchView = ({
       data-dev-component="SearchView"
       data-dev-file="src/components/SearchView.jsx"
       data-dev-desc="Comprehensive search results stage displaying top result, matching songs, albums, and artists"
-      className="pb-12 max-w-6xl"
+      className="pb-12 max-w-6xl min-w-0 max-w-full overflow-hidden"
     >
       {/* Search Input Box: always present on mobile viewports since TopBar search is hidden */}
       <div className="relative max-w-xl mb-6 sm:hidden">
@@ -278,57 +278,57 @@ export const SearchView = ({
                       playTrack(topResult, results.tracks || [topResult], { isSearchPlay: true });
                     }
                   }}
-                  className="relative overflow-hidden bg-gradient-to-r from-surface-elevated via-surface-elevated/80 to-surface-panel border border-border-subtle hover:border-brand-500/40 p-5 rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-xl group flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5"
+                  className="relative overflow-hidden bg-gradient-to-r from-surface-elevated via-surface-elevated/80 to-surface-panel border border-border-subtle hover:border-brand-500/40 p-4 sm:p-5 rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-xl group flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-5 min-w-0 max-w-full"
                 >
-                  <div className="flex items-center gap-5 min-w-0 flex-1">
+                  <div className="flex items-center gap-3.5 sm:gap-5 min-w-0 max-w-full flex-1">
                     <div className="relative shrink-0">
                       <img
                         src={topResult.cover_url || '/api/covers/0'}
                         alt={topResult.title}
-                        className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover shadow-2xl bg-surface-elevated2 border-2 border-white/10 group-hover:scale-105 group-hover:border-brand-500/50 transition duration-300"
+                        className="w-16 h-16 sm:w-24 sm:h-24 rounded-2xl object-cover shadow-2xl bg-surface-elevated2 border-2 border-white/10 group-hover:scale-105 group-hover:border-brand-500/50 transition duration-300"
                       />
                       {(topResult.in_library || topResult.id) && (
                         <div className="absolute inset-0 rounded-2xl bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           {currentTrack?.id === topResult.id && isPlaying ? (
-                            <Pause size={28} className="text-white fill-white" />
+                            <Pause size={24} className="text-white fill-white" />
                           ) : (
-                            <Play size={28} className="text-white fill-white ml-0.5" />
+                            <Play size={24} className="text-white fill-white ml-0.5" />
                           )}
                         </div>
                       )}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                        <span className="inline-block text-[11px] font-bold uppercase tracking-wider text-brand-400 bg-brand-500/10 px-2.5 py-0.5 rounded-full border border-brand-500/20">
+                    <div className="min-w-0 flex-1 overflow-hidden">
+                      <div className="flex items-center gap-1.5 sm:gap-2 mb-1 flex-wrap min-w-0 max-w-full">
+                        <span className="inline-block text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-brand-400 bg-brand-500/10 px-2 sm:px-2.5 py-0.5 rounded-full border border-brand-500/20 shrink-0">
                           Song
                         </span>
                         {topResult.is_trending && (
-                          <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1">
-                            <TrendingUp size={12} />
-                            <span>Trending Global Hit</span>
+                          <span className="text-[10px] sm:text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 sm:px-2.5 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1 shrink-0">
+                            <TrendingUp size={11} />
+                            <span>Trending Hit</span>
                           </span>
                         )}
                         {topResult.in_library ? (
-                          <span className="text-[11px] font-semibold text-white/70 bg-white/10 px-2.5 py-0.5 rounded-full">
+                          <span className="text-[10px] sm:text-[11px] font-semibold text-white/70 bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full shrink-0">
                             In Library
                           </span>
                         ) : (
-                          <span className="text-[11px] font-semibold text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
-                            Available in 320k MP3
+                          <span className="text-[10px] sm:text-[11px] font-semibold text-amber-400 bg-amber-500/10 px-2 sm:px-2.5 py-0.5 rounded-full border border-amber-500/20 shrink-0">
+                            320k MP3
                           </span>
                         )}
                       </div>
-                      <h2 className="text-2xl sm:text-3xl font-extrabold text-white truncate group-hover:text-brand-400 transition">
+                      <h2 className="text-xl sm:text-3xl font-extrabold text-white truncate group-hover:text-brand-400 transition min-w-0 max-w-full">
                         {topResult.title}
                       </h2>
-                      <p className="text-xs sm:text-sm text-content-secondary mt-1 truncate">
+                      <p className="text-xs sm:text-sm text-content-secondary mt-0.5 sm:mt-1 truncate min-w-0 max-w-full">
                         <span className="font-semibold text-white/90">{topResult.artist_name}</span>
                         {topResult.album_title ? ` • ${topResult.album_title}` : ''}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
+                  <div className="flex items-center gap-3 self-end sm:self-center shrink-0 max-w-full">
                     {topResult.in_library || topResult.id ? (
                       <button
                         onClick={(e) => {
@@ -339,13 +339,13 @@ export const SearchView = ({
                             playTrack(topResult, results.tracks || [topResult], { isSearchPlay: true });
                           }
                         }}
-                        className="w-12 h-12 rounded-full bg-brand-500 hover:bg-brand-400 text-black flex items-center justify-center shadow-lg transition active:scale-95 group-hover:scale-105"
+                        className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-brand-500 hover:bg-brand-400 text-black flex items-center justify-center shadow-lg transition active:scale-95 group-hover:scale-105"
                         title="Play Track"
                       >
                         {currentTrack?.id === topResult.id && isPlaying ? (
-                          <Pause size={22} className="fill-black" />
+                          <Pause size={20} className="fill-black" />
                         ) : (
-                          <Play size={22} className="fill-black ml-0.5" />
+                          <Play size={20} className="fill-black ml-0.5" />
                         )}
                       </button>
                     ) : (
@@ -354,19 +354,19 @@ export const SearchView = ({
                         disabled={downloadingIds.has(
                           topResult.spotify_id || `${topResult.artist_name}-${topResult.title}`
                         )}
-                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-500 hover:bg-brand-400 disabled:opacity-50 text-black text-xs font-bold rounded-full transition duration-200 shadow-lg active:scale-95"
+                        className="inline-flex items-center gap-1.5 sm:gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-brand-500 hover:bg-brand-400 disabled:opacity-50 text-black text-xs font-bold rounded-full transition duration-200 shadow-lg active:scale-95 max-w-full truncate"
                       >
                         {downloadingIds.has(
                           topResult.spotify_id || `${topResult.artist_name}-${topResult.title}`
                         ) ? (
                           <>
-                            <Loader2 size={15} className="animate-spin" />
-                            <span>Dispatching Download...</span>
+                            <Loader2 size={14} className="animate-spin shrink-0" />
+                            <span className="truncate">Dispatching...</span>
                           </>
                         ) : (
                           <>
-                            <DownloadCloud size={15} />
-                            <span>Download Song (320k)</span>
+                            <DownloadCloud size={14} className="shrink-0" />
+                            <span className="truncate">Download (320k)</span>
                           </>
                         )}
                       </button>
@@ -376,9 +376,9 @@ export const SearchView = ({
               ) : (
                 <div
                   onClick={() => onSelectArtist && onSelectArtist(topResult.id)}
-                  className="relative overflow-hidden bg-gradient-to-r from-surface-elevated via-surface-elevated/80 to-surface-panel border border-border-subtle hover:border-brand-500/40 p-5 rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-xl group flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5"
+                  className="relative overflow-hidden bg-gradient-to-r from-surface-elevated via-surface-elevated/80 to-surface-panel border border-border-subtle hover:border-brand-500/40 p-4 sm:p-5 rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-xl group flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-5 min-w-0 max-w-full"
                 >
-                  <div className="flex items-center gap-5 min-w-0 flex-1">
+                  <div className="flex items-center gap-3.5 sm:gap-5 min-w-0 max-w-full flex-1">
                     <div className="relative shrink-0">
                       <img
                         src={topResult.image_url || `/api/artists/${topResult.id}/image`}
@@ -387,20 +387,20 @@ export const SearchView = ({
                           e.target.onerror = null;
                           e.target.src = '/api/covers/0';
                         }}
-                        className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover shadow-2xl bg-surface-elevated2 border-2 border-white/10 group-hover:scale-105 group-hover:border-brand-500/50 transition duration-300"
+                        className="w-16 h-16 sm:w-24 sm:h-24 rounded-full object-cover shadow-2xl bg-surface-elevated2 border-2 border-white/10 group-hover:scale-105 group-hover:border-brand-500/50 transition duration-300"
                       />
                       <div className="absolute inset-0 rounded-full bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <Play size={24} className="text-white fill-white ml-0.5" />
+                        <Play size={20} className="text-white fill-white ml-0.5" />
                       </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <span className="inline-block text-[11px] font-bold uppercase tracking-wider text-brand-400 bg-brand-500/10 px-2.5 py-0.5 rounded-full mb-1 border border-brand-500/20">
+                    <div className="min-w-0 flex-1 overflow-hidden">
+                      <span className="inline-block text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-brand-400 bg-brand-500/10 px-2 sm:px-2.5 py-0.5 rounded-full mb-1 border border-brand-500/20 shrink-0">
                         Artist
                       </span>
-                      <h2 className="text-2xl sm:text-3xl font-extrabold text-white truncate group-hover:text-brand-400 transition">
+                      <h2 className="text-xl sm:text-3xl font-extrabold text-white truncate group-hover:text-brand-400 transition min-w-0 max-w-full">
                         {topResult.name}
                       </h2>
-                      <p className="text-xs sm:text-sm text-content-secondary mt-1 flex items-center gap-2">
+                      <p className="text-xs sm:text-sm text-content-secondary mt-0.5 sm:mt-1 flex items-center gap-2 truncate min-w-0 max-w-full">
                         <span>{topResult.track_count || results.tracks?.length || 0} songs</span>
                         <span>•</span>
                         <span>{topResult.album_count || results.albums?.length || 0} albums</span>
@@ -413,7 +413,7 @@ export const SearchView = ({
                         e.stopPropagation();
                         if (onSelectArtist) onSelectArtist(topResult.id);
                       }}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-brand-500 hover:text-black text-white text-xs font-bold rounded-full transition duration-200 group/btn shadow-md"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 sm:px-4 sm:py-2 bg-white/10 hover:bg-brand-500 hover:text-black text-white text-xs font-bold rounded-full transition duration-200 group/btn shadow-md"
                     >
                       <span>View Artist</span>
                       <ChevronRight size={14} className="group-hover/btn:translate-x-0.5 transition-transform" />

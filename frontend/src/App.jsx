@@ -105,10 +105,18 @@ const MainAppContent = () => {
     }
   }, [activeTab, selectedAlbumId, selectedArtistId, selectedPlaylistId, selectedProfileUserId]);
 
-  // When Search tab is selected or active, automatically focus the search input so user can immediately type
+  // When Search tab is selected or active, automatically scroll to top and focus the search input
   useEffect(() => {
     if (activeTab === 'search') {
+      const scrollToTop = () => {
+        if (mainContentRef.current) {
+          mainContentRef.current.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        }
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      };
+
       const focusSearchInput = () => {
+        scrollToTop();
         const mobileInput = document.getElementById('mobile-search-input');
         const desktopInput = document.getElementById('global-search-input');
         if (mobileInput && window.innerWidth < 640) {
@@ -121,7 +129,8 @@ const MainAppContent = () => {
         }
       };
 
-      // Try immediate and next animation frame / tick
+      // Ensure immediate and tick-based scroll to top + focus
+      scrollToTop();
       focusSearchInput();
       const t1 = setTimeout(focusSearchInput, 50);
       const t2 = setTimeout(focusSearchInput, 150);
@@ -315,6 +324,7 @@ const MainAppContent = () => {
     toastMessage,
     showToast,
     fetchTrackLyrics,
+    hasStartedPlayback,
   } = usePlayer();
   const { isDevUnlocked, isFlagsModalOpen, setIsFlagsModalOpen, toggleComponentInspector } = useDevFlags();
 
@@ -1185,7 +1195,7 @@ const MainAppContent = () => {
         />
 
         {/* Island 2: Center Panel (Main Stage / Content Area - Full-bleed on mobile, Seamless Background) */}
-        <main ref={mainContentRef} className={`flex-1 min-w-0 max-w-full bg-black md:bg-surface-island rounded-none md:rounded-lg overflow-y-auto overflow-x-hidden flex flex-col h-full border-0 md:border md:border-border-subtle relative ${isLyricsOpen ? 'pb-0' : 'pb-32'} md:pb-0`}>
+        <main ref={mainContentRef} className={`flex-1 min-w-0 max-w-full bg-black md:bg-surface-island rounded-none md:rounded-lg overflow-y-auto overflow-x-hidden flex flex-col h-full border-0 md:border md:border-border-subtle relative ${isLyricsOpen ? 'pb-0' : (hasStartedPlayback && currentTrack ? 'pb-36' : 'pb-20')} md:pb-0`}>
           {/* Synchronized Lyrics Immersion Mode */}
           {isLyricsOpen ? (
             <LyricsView onClose={() => setIsLyricsOpen(false)} />

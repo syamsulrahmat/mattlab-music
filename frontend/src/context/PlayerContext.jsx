@@ -102,6 +102,7 @@ export const PlayerProvider = ({ children }) => {
 
   const [currentTrack, setCurrentTrack] = useState(() => savedState?.track || null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [hasStartedPlayback, setHasStartedPlayback] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => savedState?.currentTime || 0);
   const [duration, setDuration] = useState(() => savedState?.duration || 0);
@@ -1142,6 +1143,7 @@ export const PlayerProvider = ({ children }) => {
   }, [currentTime, duration]);
 
   const playTrack = async (track, newQueue = null, options = {}) => {
+    setHasStartedPlayback(true);
     // Cancel any in-flight crossfade and reset standby audio
     if (crossfadeTimerRef.current) {
       cancelAnimationFrame(crossfadeTimerRef.current);
@@ -1299,6 +1301,10 @@ export const PlayerProvider = ({ children }) => {
 
     // Determine playback state directly from the authoritative audio element
     const isCurrentlyPlaying = !audio.paused;
+
+    if (!isCurrentlyPlaying) {
+      setHasStartedPlayback(true);
+    }
 
     if (isCurrentlyPlaying) {
       audio.pause();
@@ -2272,6 +2278,7 @@ export const PlayerProvider = ({ children }) => {
       value={{
         currentTrack,
         isPlaying,
+        hasStartedPlayback,
         isBuffering,
         currentTime,
         duration,

@@ -10,7 +10,7 @@ export const MobileNav = ({ activeTab, setActiveTab }) => {
   ];
 
   return (
-    <nav className="pointer-events-auto md:hidden bg-black border-t border-white/5 px-3 pt-2 flex items-center justify-around z-40 select-none pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
+    <nav className="pointer-events-auto md:hidden bg-black border-t border-white/5 px-3 pt-1 flex items-center justify-around z-40 select-none pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.id;
@@ -20,6 +20,13 @@ export const MobileNav = ({ activeTab, setActiveTab }) => {
             onClick={() => {
               setActiveTab(tab.id);
               if (tab.id === 'search') {
+                // Ensure page always scrolls to top on Search
+                const mainEl = document.querySelector('main');
+                if (mainEl) {
+                  mainEl.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+                }
+                window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+
                 const searchEl = document.getElementById('mobile-search-input') || document.getElementById('global-search-input');
                 if (searchEl) {
                   searchEl.focus();

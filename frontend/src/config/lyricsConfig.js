@@ -37,14 +37,14 @@ export const LYRICS_CONFIG = {
     // Background highlight pill behind active line in full/scrolling modes
     activeBgClass: DESIGN_TOKENS.brand.bgSubtle, // e.g. bg-brand-500/15
     
-    // Upcoming lyric line color & opacity
-    upcomingClass: 'text-white/50',
+    // Upcoming lyric line color & opacity (brighter so user can read ahead)
+    upcomingClass: 'text-white/60',
     
-    // Past sung lyric line color & opacity
-    pastClass: 'text-white/60',
+    // Past sung lyric line color & opacity (dimmer since already sung)
+    pastClass: 'text-white/35',
 
     // Inactive / idle lyrics
-    idleClass: 'text-white/30',
+    idleClass: 'text-white/60',
 
     // Dynamic Canvas accessors (Video PiP canvas reads the active CSS token)
     get canvasActiveColor() {
@@ -55,8 +55,8 @@ export const LYRICS_CONFIG = {
 
   // ─── 3. ANIMATIONS & TRANSITIONS ─────────────────────────────────────
   animation: {
-    // Active line scale pop factor (1.0 = flat/no scale, 1.03 = subtle, 1.06 = punchy)
-    activeScale: 1.03,
+    // Active line scale pop factor (1.0 = flat/no scale layout shift, ensures smooth wrapping transitions)
+    activeScale: 1.0,
     
     // Color/opacity fade transition between lyric lines (in milliseconds)
     transitionDurationMs: 250,

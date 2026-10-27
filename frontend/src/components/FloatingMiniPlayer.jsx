@@ -475,45 +475,49 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
             isMinimalLayout ? 'px-6' : ''
           }`}
         >
-          {/* Line 1: Current Sentence */}
-          <p
-            onClick={() => {
-              if (currentLineObj) {
-                seek(currentLineObj.time);
-              } else if (currentTrack?.id && (lyricsState?.notFound || currentSentence === 'No lyrics available')) {
-                fetchTrackLyrics(currentTrack.id, true);
+          {/* Line 1: Current Sentence with stable height reservation */}
+          <div className="min-h-[1.4em] flex items-center justify-center overflow-hidden">
+            <p
+              onClick={() => {
+                if (currentLineObj) {
+                  seek(currentLineObj.time);
+                } else if (currentTrack?.id && (lyricsState?.notFound || currentSentence === 'No lyrics available')) {
+                  fetchTrackLyrics(currentTrack.id, true);
+                }
+              }}
+              style={{ fontSize: `${currentLyricFontSize}px` }}
+              className={`${LYRICS_CONFIG.typography.activeWeightClass} truncate leading-normal cursor-pointer transition-[color,opacity] duration-200 ${
+                currentLineObj
+                  ? `${LYRICS_CONFIG.colors.activeClass} drop-shadow-sm hover:underline opacity-100`
+                  : (lyricsState?.notFound || currentSentence === 'No lyrics available')
+                  ? 'text-content-muted hover:text-brand-400 hover:underline opacity-70'
+                  : 'text-content-primary/80 opacity-90'
+              }`}
+              title={
+                currentLineObj
+                  ? `Current lyric: "${currentSentence}" (Click to rewind)`
+                  : (lyricsState?.notFound || currentSentence === 'No lyrics available')
+                  ? 'No lyrics found. Click to recheck server.'
+                  : currentSentence
               }
-            }}
-            style={{ fontSize: `${currentLyricFontSize}px` }}
-            className={`${LYRICS_CONFIG.typography.activeWeightClass} truncate leading-tight cursor-pointer transition-all duration-150 ${
-              currentLineObj
-                ? `${LYRICS_CONFIG.colors.activeClass} drop-shadow-sm hover:underline`
-                : (lyricsState?.notFound || currentSentence === 'No lyrics available')
-                ? 'text-content-muted hover:text-brand-400 hover:underline'
-                : 'text-content-primary/80'
-            }`}
-            title={
-              currentLineObj
-                ? `Current lyric: "${currentSentence}" (Click to rewind)`
-                : (lyricsState?.notFound || currentSentence === 'No lyrics available')
-                ? 'No lyrics found. Click to recheck server.'
-                : currentSentence
-            }
-          >
-            {currentSentence}
-          </p>
+            >
+              {currentSentence}
+            </p>
+          </div>
 
-          {/* Line 2: Upcoming Sentence */}
-          <p
-            onClick={() => nextLineObj && seek(nextLineObj.time)}
-            style={{ fontSize: `${upcomingLyricFontSize}px` }}
-            className={`${LYRICS_CONFIG.typography.upcomingWeightClass} ${LYRICS_CONFIG.colors.upcomingClass} truncate leading-tight transition-all duration-150 ${
-              nextLineObj ? 'hover:text-content-primary cursor-pointer hover:underline' : ''
-            }`}
-            title={nextLineObj ? `Next lyric: "${upcomingSentence}" (Click to seek)` : upcomingSentence}
-          >
-            {upcomingSentence || '♪'}
-          </p>
+          {/* Line 2: Upcoming Sentence with stable height reservation */}
+          <div className="min-h-[1.3em] flex items-center justify-center overflow-hidden">
+            <p
+              onClick={() => nextLineObj && seek(nextLineObj.time)}
+              style={{ fontSize: `${upcomingLyricFontSize}px` }}
+              className={`${LYRICS_CONFIG.typography.upcomingWeightClass} ${LYRICS_CONFIG.colors.upcomingClass} truncate leading-normal transition-[color,opacity] duration-200 ${
+                nextLineObj ? 'hover:text-content-primary cursor-pointer hover:underline opacity-70' : 'opacity-40'
+              }`}
+              title={nextLineObj ? `Next lyric: "${upcomingSentence}" (Click to seek)` : upcomingSentence}
+            >
+              {upcomingSentence || '♪'}
+            </p>
+          </div>
         </div>
 
         {/* Bottom row: Scrubber (hidden in minimal) + Controls (centered in minimal) */}
@@ -699,8 +703,8 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                     isActive
                       ? `${LYRICS_CONFIG.colors.activeClass} ${LYRICS_CONFIG.typography.activeWeightClass} ${LYRICS_CONFIG.colors.activeBgClass} scale-[1.03] shadow-sm`
                       : isPast
-                      ? `${LYRICS_CONFIG.colors.pastClass} ${LYRICS_CONFIG.typography.pastWeightClass} hover:text-content-primary`
-                      : `${LYRICS_CONFIG.colors.idleClass} ${LYRICS_CONFIG.typography.upcomingWeightClass} hover:text-content-primary/70`
+                      ? `${LYRICS_CONFIG.colors.pastClass} ${LYRICS_CONFIG.typography.pastWeightClass} opacity-60 hover:opacity-90`
+                      : `${LYRICS_CONFIG.colors.upcomingClass} ${LYRICS_CONFIG.typography.upcomingWeightClass} opacity-80 hover:opacity-100`
                   }`}
                 >
                   {line.text}

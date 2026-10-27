@@ -431,23 +431,23 @@ export const LyricsView = ({ onClose }) => {
                   key={`${line.time}-${idx}`}
                   ref={(el) => (lineRefs.current[idx] = el)}
                   onClick={() => seek(line.time)}
-                  className={`transition-all duration-300 cursor-pointer leading-relaxed ${
+                  className={`transition-[color,opacity] duration-300 cursor-pointer leading-relaxed text-xl sm:text-2xl md:text-3xl ${
                     isActive
-                      ? `${LYRICS_CONFIG.colors.activeClass} ${LYRICS_CONFIG.typography.activeWeightClass} text-2xl sm:text-3xl md:text-4xl scale-105 origin-left drop-shadow-md`
+                      ? `${LYRICS_CONFIG.colors.activeClass} ${LYRICS_CONFIG.typography.activeWeightClass} drop-shadow-md opacity-100`
                       : isPast
-                      ? `${LYRICS_CONFIG.colors.pastClass} ${LYRICS_CONFIG.typography.pastWeightClass} text-lg sm:text-xl md:text-2xl hover:text-content-primary`
-                      : `${LYRICS_CONFIG.colors.idleClass} ${LYRICS_CONFIG.typography.upcomingWeightClass} text-lg sm:text-xl md:text-2xl hover:text-content-primary/70`
+                      ? `${LYRICS_CONFIG.colors.pastClass} ${LYRICS_CONFIG.typography.pastWeightClass} opacity-35 hover:opacity-75`
+                      : `${LYRICS_CONFIG.colors.upcomingClass} ${LYRICS_CONFIG.typography.upcomingWeightClass} opacity-60 hover:opacity-90`
                   }`}
                 >
-                  <p>{displayText}</p>
+                  <p className="transition-opacity duration-300">{displayText}</p>
                   {romanizationMode === 'both' && hasRom && (
                     <p
-                      className={`text-sm sm:text-base md:text-lg font-normal tracking-wide mt-1 transition-all duration-300 ${
+                      className={`text-sm sm:text-base md:text-lg font-normal tracking-wide mt-1 transition-opacity duration-300 ${
                         isActive
-                          ? 'text-brand-300/90 font-medium'
+                          ? 'text-brand-300/90 font-medium opacity-100'
                           : isPast
-                          ? 'text-content-subtle/80'
-                          : 'text-content-muted/70'
+                          ? 'text-content-muted/70 opacity-35'
+                          : 'text-content-subtle/80 opacity-60'
                       }`}
                     >
                       {line.romanized}
