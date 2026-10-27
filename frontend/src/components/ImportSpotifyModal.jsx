@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { X, Download, RefreshCw, AlertCircle, Sparkles, Check, Layers, ListPlus } from 'lucide-react';
+import { X, Download, RefreshCw, AlertCircle, Sparkles, Check, Layers, ListPlus, Lock } from 'lucide-react';
 import { SpotifyIcon } from './SpotifyIcon';
 
 export const ImportSpotifyModal = ({ 
@@ -16,6 +16,7 @@ export const ImportSpotifyModal = ({
   const [autoSync, setAutoSync] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [errorCode, setErrorCode] = useState('');
   const inputRef = useRef(null);
 
   const onCloseRef = useRef(onClose);
@@ -40,6 +41,7 @@ export const ImportSpotifyModal = ({
       setAutoSync(true);
       setIsSubmitting(false);
       setError('');
+      setErrorCode('');
       setTimeout(() => inputRef.current?.focus(), 60);
 
       // Fetch user's playlists for destination dropdown (handling { items: [...] })
@@ -104,6 +106,7 @@ export const ImportSpotifyModal = ({
 
     setIsSubmitting(true);
     setError('');
+    setErrorCode('');
 
     const targetPlaylistId = destination.startsWith('playlist:')
       ? parseInt(destination.replace('playlist:', ''), 10)
@@ -122,7 +125,19 @@ export const ImportSpotifyModal = ({
       });
       onClose();
     } catch (err) {
-      setError(err.message || 'Failed to import Spotify item(s). Make sure the links are public.');
+      if (err.code === 'SPOTIFY_PRIVATE') {
+        setErrorCode('SPOTIFY_PRIVATE');
+        setError('Playlist is Private. Spotify blocks external access to private playlists. Temporarily switch it to Public to import your tracks.');
+      } else if (err.code === 'SPOTIFY_EMPTY') {
+        setErrorCode('SPOTIFY_EMPTY');
+        setError('This Spotify playlist has no tracks to import.');
+      } else if (err.code === 'SPOTIFY_NOT_FOUND') {
+        setErrorCode('SPOTIFY_NOT_FOUND');
+        setError('Spotify playlist not found or has been deleted.');
+      } else {
+        setErrorCode('');
+        setError(err.message || 'Failed to import Spotify item(s). Make sure the links are public.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -187,9 +202,30 @@ export const ImportSpotifyModal = ({
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-start gap-2">
-            <AlertCircle size={15} className="shrink-0 mt-0.5" />
-            <span>{error}</span>
+          <div className={`mb-4 p-3.5 rounded-xl border flex items-start gap-3 transition-all ${
+            errorCode === 'SPOTIFY_PRIVATE'
+              ? 'bg-amber-500/10 border-amber-500/25 text-amber-200'
+              : 'bg-red-500/10 border-red-500/20 text-red-400'
+          } text-xs`}>
+            {errorCode === 'SPOTIFY_PRIVATE' ? (
+              <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30">
+                <Lock size={13} />
+              </div>
+            ) : (
+              <AlertCircle size={16} className="shrink-0 mt-0.5" />
+            )}
+            <div className="flex-1 leading-relaxed">
+              {errorCode === 'SPOTIFY_PRIVATE' ? (
+                <>
+                  <div className="font-bold text-amber-300 text-xs mb-0.5">Playlist is Private</div>
+                  <p className="text-[11px] text-amber-200/90">
+                    Spotify blocks external access to private playlists. Temporarily switch it to <strong className="text-white">Public</strong> to import your tracks.
+                  </p>
+                </>
+              ) : (
+                <span>{error}</span>
+              )}
+            </div>
           </div>
         )}
 

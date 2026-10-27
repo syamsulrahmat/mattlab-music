@@ -1113,6 +1113,21 @@ export const PlaylistDetail = ({
                   </button>
                 </>
               )}
+              {playlist?.sync_status?.startsWith('paused_') && (
+                <>
+                  <span>•</span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 text-xs font-semibold">
+                    <Lock size={12} />
+                    <span>
+                      {playlist.sync_status === 'paused_private'
+                        ? 'Sync Paused (Private on Spotify)'
+                        : playlist.sync_status === 'paused_empty'
+                        ? 'Sync Paused (Empty on Spotify)'
+                        : 'Sync Paused (Unavailable)'}
+                    </span>
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>

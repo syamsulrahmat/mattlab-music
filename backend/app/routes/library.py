@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Query, Request, Depends
 from pydantic import BaseModel
 from app.database import get_db
-from app.auth import get_current_user_optional
+from app.auth import get_current_user_optional, get_current_user
 from app.popularity import backfill_library_popularity_background
 
 logger = logging.getLogger("library_routes")
@@ -492,6 +492,24 @@ async def get_album_detail(album_id: int):
         "cover_url": album_cover_url,
         "tracks": tracks,
     }
+
+@router.get("/recommendations/{track_id}")
+async def get_track_recommendations(
+    track_id: int,
+    limit: int = Query(20, ge=1, le=50),
+    exclude: Optional[str] = Query(None, description="Comma-separated track IDs to exclude"),
+    current_user: Dict = Depends(get_current_user),
+):
+    """Return recommended tracks of the same genre, niche, or playlist co-occurrence."""
+    from app.recommendations import get_recommended_tracks
+    exclude_ids = []
+    if exclude:
+        try:
+            exclude_ids = [int(x.strip()) for x in exclude.split(",") if x.strip().isdigit()]
+        except Exception:
+            pass
+
+    return get_recommended_tracks(track_id, limit=limit, exclude_ids=exclude_ids)
 
 @router.get("/tracks")
 async def list_tracks(

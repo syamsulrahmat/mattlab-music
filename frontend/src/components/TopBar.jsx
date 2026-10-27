@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Home, Search, X, RefreshCw, HardDrive, DownloadCloud, Users, LogOut, Settings, User, Bug, Megaphone } from 'lucide-react';
+import { Home, Search, X, RefreshCw, HardDrive, DownloadCloud, Users, LogOut, Settings, User, Bug, Megaphone, Minus, Square, Copy } from 'lucide-react';
 import { MattLabLogo } from './MattLabLogo';
 import { SearchFloatingModal } from './SearchFloatingModal';
 import { UserAvatar } from './UserAvatar';
@@ -35,6 +35,23 @@ export const TopBar = ({
   const [isScanning, setIsScanning] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isFloatingSearchOpen, setIsFloatingSearchOpen] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(true);
+  const isElectron = typeof window !== 'undefined' && Boolean(window.electronAPI?.isElectron);
+
+  useEffect(() => {
+    if (!isElectron) return;
+    window.electronAPI?.isMaximized?.().then((max) => {
+      setIsMaximized(Boolean(max));
+    }).catch(() => {});
+
+    const unsub = window.electronAPI?.onMaximizeStatus?.((max) => {
+      setIsMaximized(Boolean(max));
+    });
+
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
+  }, [isElectron]);
 
   // Touch swipe-down to dismiss gesture for mobile avatar user menu sheet
   const userMenuTouchStartY = useRef(0);
@@ -218,7 +235,7 @@ export const TopBar = ({
         if (currentTrack?.id === track.id) {
           togglePlay();
         } else {
-          playTrack(track, searchResults.tracks);
+          playTrack(track, searchResults.tracks, { isSearchPlay: true });
         }
       } else {
         onRequestMusic?.(`${track.artist_name} - ${track.title}`);
@@ -272,7 +289,10 @@ export const TopBar = ({
       data-dev-file="src/components/TopBar.jsx"
       data-dev-desc="Header bar with branding, search input, library statistics, and profile menu"
       className="bg-black md:bg-surface-base shrink-0 z-40 select-none border-b-0 md:border-b md:border-border-subtle safe-top-pt"
-      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+      style={{ 
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        WebkitAppRegion: isElectron ? 'drag' : undefined,
+      }}
     >
       {/* Notch & Status Bar Safe Area Spacer (crisp solid background without overlay blur) */}
       <div 
@@ -283,7 +303,10 @@ export const TopBar = ({
       {/* Main TopBar Content Bar (Fixed 56px on mobile, 64px on desktop) */}
       <div className="h-14 md:h-16 px-4 md:px-5 flex items-center justify-between gap-4">
         {/* Left: MattLab Brand */}
-        <div className="flex items-center gap-3 shrink-0">
+        <div 
+          className="flex items-center gap-3 shrink-0"
+          style={{ WebkitAppRegion: isElectron ? 'no-drag' : undefined }}
+        >
           <div 
             onClick={onGoHome}
             className="flex items-center gap-2.5 cursor-pointer group shrink-0"
@@ -301,7 +324,10 @@ export const TopBar = ({
         </div>
 
         {/* Center: Circular Home Button + Capsule Search Input (Desktop/Tablet) */}
-        <div className="hidden sm:flex flex-1 max-w-xl mx-auto items-center gap-2.5 justify-center">
+        <div 
+          className="hidden sm:flex flex-1 max-w-xl mx-auto items-center gap-2.5 justify-center"
+          style={{ WebkitAppRegion: isElectron ? 'no-drag' : undefined }}
+        >
           {/* Circular Home button */}
           <button
             onClick={onGoHome}
@@ -369,7 +395,7 @@ export const TopBar = ({
               if (currentTrack?.id === track.id) {
                 togglePlay();
               } else {
-                playTrack(track, searchResults.tracks);
+                playTrack(track, searchResults.tracks, { isSearchPlay: true });
               }
               // Do not dismiss search modal yet; wait until user dismisses
             }}
@@ -390,11 +416,11 @@ export const TopBar = ({
         </div>
       </div>
 
-      {/* Right: Bulletin & Announcements + User Profile Avatar */}
-      <div className="flex items-center gap-3 shrink-0">
-
-
-
+      {/* Right: Bulletin & Announcements + User Profile Avatar + Electron Window Controls */}
+      <div 
+        className="flex items-center gap-2.5 sm:gap-3 shrink-0"
+        style={{ WebkitAppRegion: isElectron ? 'no-drag' : undefined }}
+      >
         {/* Bulletin Button */}
         <button
           onClick={onOpenBulletin}
@@ -738,6 +764,36 @@ export const TopBar = ({
             </>
           )}
         </div>
+
+        {/* Spotify-Style Frameless Window Controls (Only visible inside Electron) */}
+        {isElectron && (
+          <div className="hidden sm:flex items-center ml-2 border-l border-white/10 pl-2">
+            {/* Minimize */}
+            <button
+              onClick={() => window.electronAPI?.minimizeWindow?.()}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-content-secondary hover:text-white hover:bg-white/10 transition active:scale-95"
+              title="Minimize"
+            >
+              <Minus size={14} />
+            </button>
+            {/* Maximize / Restore */}
+            <button
+              onClick={() => window.electronAPI?.toggleMaximizeWindow?.()}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-content-secondary hover:text-white hover:bg-white/10 transition active:scale-95"
+              title={isMaximized ? "Restore" : "Maximize"}
+            >
+              {isMaximized ? <Copy size={13} className="rotate-180" /> : <Square size={13} />}
+            </button>
+            {/* Close (Hide to Tray) */}
+            <button
+              onClick={() => window.electronAPI?.closeWindow?.()}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-content-secondary hover:text-white hover:bg-red-600 transition active:scale-95"
+              title="Close to Tray"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        )}
       </div>
       </div>
     </header>

@@ -290,16 +290,28 @@ def fetch_spotify_entity_data(url_or_id: str) -> Tuple[str, str, Dict[str, Any]]
     else:
         return (etype, eid, fetch_spotify_playlist_data(eid))
 
+class SpotifySourceUnavailableError(Exception):
+    """Raised when a Spotify playlist or entity is inaccessible."""
+    def __init__(self, reason: str, message: str):
+        super().__init__(message)
+        self.reason = reason  # 'private', 'not_found', 'empty'
+
 def fetch_spotify_playlist_data(playlist_id: str) -> Dict[str, Any]:
     """Fetch complete Spotify playlist metadata and track list.
     Primary (Tier 1): Use spotifyscraper (GraphQL Pathfinder) to paginate and fetch ALL tracks without 100-track limit.
     Fallback (Tier 2): Scrape public embed page if Pathfinder is unavailable (up to 100 tracks).
+    Raises SpotifySourceUnavailableError when private, not found, or empty.
     """
+    clean_id = extract_spotify_playlist_id(playlist_id) if ("http" in playlist_id or "spotify:" in playlist_id) else playlist_id
+    embed_url = f"https://open.spotify.com/embed/playlist/{clean_id}"
+    full_url = f"https://open.spotify.com/playlist/{clean_id}"
+
     # 1. Tier 1: Try spotifyscraper for complete pagination across all tracks (>100 tracks)
     try:
         from spotify_scraper import SpotifyClient
+        from spotify_scraper.errors import NotFoundError
         client = SpotifyClient()
-        pl = client.get_playlist(playlist_id, max_tracks=None)
+        pl = client.get_playlist(full_url, max_tracks=None)
         if pl and pl.tracks:
             tracks = []
             for idx, item in enumerate(pl.tracks):
@@ -330,37 +342,61 @@ def fetch_spotify_playlist_data(playlist_id: str) -> Dict[str, Any]:
                     cover_url = pl.images[0].url
 
                 return {
-                    "spotify_id": playlist_id,
+                    "spotify_id": clean_id,
                     "title": pl.name or "Spotify Playlist",
                     "description": getattr(pl, "description", "") or "",
                     "cover_url": cover_url,
                     "tracks": tracks,
                 }
+            else:
+                raise SpotifySourceUnavailableError("empty", "This Spotify playlist currently has no tracks.")
+    except SpotifySourceUnavailableError:
+        raise
     except Exception as e:
-        print(f"[SPOTIFY SYNC] Warning: spotifyscraper tier-1 failed ({e}), falling back to embed scraper...", flush=True)
+        err_str = str(e).lower()
+        if "unavailable" in err_str or "not found" in err_str:
+            print(f"[SPOTIFY SYNC] spotifyscraper detected playlist unavailable/not found ({e})", flush=True)
+        else:
+            print(f"[SPOTIFY SYNC] Warning: spotifyscraper tier-1 failed ({e}), falling back to embed scraper...", flush=True)
 
     # 2. Tier 2: Embed scraper fallback
-    embed_url = f"https://open.spotify.com/embed/playlist/{playlist_id}"
     req = urllib.request.Request(
         embed_url,
         headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
     )
-    with urllib.request.urlopen(req, timeout=12) as res:
-        html = res.read().decode("utf-8", errors="ignore")
+    try:
+        with urllib.request.urlopen(req, timeout=12) as res:
+            html = res.read().decode("utf-8", errors="ignore")
+    except urllib.error.HTTPError as http_err:
+        if http_err.code in (404, 410):
+            raise SpotifySourceUnavailableError("private", "This Spotify playlist is private or has been removed.")
+        raise ValueError(f"Spotify embed returned HTTP {http_err.code}")
+    except Exception as net_err:
+        raise ValueError(f"Failed to connect to Spotify: {net_err}")
 
     match = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', html)
     if not match:
-        raise ValueError("Could not parse Spotify playlist data. Make sure the playlist is public.")
+        raise SpotifySourceUnavailableError("private", "Could not parse Spotify playlist data. The playlist is private or unavailable.")
 
     try:
         data = json.loads(match.group(1))
-        entity = data.get("props", {}).get("pageProps", {}).get("state", {}).get("data", {}).get("entity", {})
+        page_props = data.get("props", {}).get("pageProps", {})
+        status_code = page_props.get("status")
+
+        # Explicit Spotify 404 or missing pageProps entity indicates private or deleted playlist
+        if status_code in (404, 500) or page_props.get("title") in ("Page not found", "Page not available"):
+            raise SpotifySourceUnavailableError("private", "This Spotify playlist is private or does not exist.")
+
+        entity = page_props.get("state", {}).get("data", {}).get("entity", {})
         if not entity:
-            raise ValueError("Spotify playlist not found or private.")
+            raise SpotifySourceUnavailableError("private", "This Spotify playlist is private or inaccessible.")
 
         title = entity.get("name", "Spotify Playlist")
         description = entity.get("description", "")
         raw_tracks = entity.get("trackList", [])
+
+        if not raw_tracks:
+            raise SpotifySourceUnavailableError("empty", "This Spotify playlist currently has no tracks.")
 
         # Best cover image
         cover_url = None
@@ -392,13 +428,18 @@ def fetch_spotify_playlist_data(playlist_id: str) -> Dict[str, Any]:
                 "position": idx,
             })
 
+        if not tracks:
+            raise SpotifySourceUnavailableError("empty", "This Spotify playlist currently has no tracks.")
+
         return {
-            "spotify_id": playlist_id,
+            "spotify_id": clean_id,
             "title": title,
             "description": description,
             "cover_url": cover_url,
             "tracks": tracks,
         }
+    except SpotifySourceUnavailableError:
+        raise
     except Exception as e:
         raise ValueError(f"Failed to extract Spotify playlist: {str(e)}")
 
@@ -969,7 +1010,35 @@ def import_spotify_playlist(
     # Single Playlist Import (Standard 1:1 chart clone or custom named)
     if is_single_playlist:
         spotify_id = extract_spotify_playlist_id(unique_urls[0])
-        playlist_data = fetch_spotify_playlist_data(spotify_id)
+        try:
+            playlist_data = fetch_spotify_playlist_data(spotify_id)
+        except SpotifySourceUnavailableError as su_err:
+            if su_err.reason == "private":
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "code": "SPOTIFY_PRIVATE",
+                        "message": "Spotify blocks external access to private playlists. Temporarily switch it to Public to import your tracks."
+                    }
+                )
+            elif su_err.reason == "empty":
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "code": "SPOTIFY_EMPTY",
+                        "message": "This Spotify playlist currently has no tracks to import."
+                    }
+                )
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "code": "SPOTIFY_NOT_FOUND",
+                        "message": "Spotify playlist not found or has been deleted."
+                    }
+                )
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Failed to fetch Spotify playlist: {str(e)}")
 
         name = (data.custom_name.strip() if data.custom_name and data.custom_name.strip() else playlist_data["title"])
         description = playlist_data.get("description", "")
@@ -1366,6 +1435,7 @@ def get_spotify_playlist_status(
         "spotify_id": pl["spotify_id"],
         "spotify_url": pl["spotify_url"],
         "auto_sync": bool(pl["auto_sync"]),
+        "sync_status": pl["sync_status"],
         "last_synced_at": pl["last_synced_at"],
         "total": total,
         "matched": matched,
@@ -1387,7 +1457,24 @@ def sync_playlist_now(
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="Playlist not found")
     try:
-        return sync_single_spotify_playlist(playlist_id)
+        res = sync_single_spotify_playlist(playlist_id)
+        # If successfully synced, restore auto_sync and clear paused status
+        with get_db() as conn:
+            conn.execute("UPDATE playlists SET auto_sync = 1, sync_status = 'synced' WHERE id = ?", (playlist_id,))
+        return res
+    except SpotifySourceUnavailableError as su_err:
+        with get_db() as conn:
+            conn.execute(
+                "UPDATE playlists SET auto_sync = 0, sync_status = ? WHERE id = ?",
+                (f"paused_{su_err.reason}", playlist_id)
+            )
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": f"SPOTIFY_{su_err.reason.upper()}",
+                "message": su_err.args[0]
+            }
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -1437,6 +1524,21 @@ def start_scheduled_spotify_watcher():
                         if new_count > 0 or removed_count > 0:
                             summary_msg = f"🎵 <b>Spotify Playlist Updated</b>: '{p_name}' synced ({new_count} added, {removed_count} removed, total {res.get('synced_tracks_total', 0)} tracks)"
                             notify_telegram(summary_msg, topic="music")
+
+                    except SpotifySourceUnavailableError as unavailable:
+                        reason = unavailable.reason
+                        status_flag = f"paused_{reason}"  # 'paused_private' or 'paused_empty'
+                        print(f"[SPOTIFY WATCHER] Disarming sync for playlist #{p_id} '{pl.get('name')}': {unavailable.reason} ({unavailable})", flush=True)
+                        with get_db() as conn:
+                            conn.execute(
+                                "UPDATE playlists SET auto_sync = 0, sync_status = ? WHERE id = ?",
+                                (status_flag, p_id)
+                            )
+                        summary_msg = (
+                            f"⏸️ <b>Spotify Sync Paused</b>: Playlist '{pl.get('name')}' is no longer publicly accessible "
+                            f"on Spotify ({reason}). Auto-sync has been automatically disarmed to save system resources."
+                        )
+                        notify_telegram(summary_msg, topic="music")
 
                     except Exception as e:
                         print(f"[SPOTIFY WATCHER] Error syncing playlist {pl.get('name')}: {e}", flush=True)

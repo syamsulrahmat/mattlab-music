@@ -40,7 +40,9 @@ import {
   FlaskConical,
   AlertTriangle,
   RotateCcw,
-  Lock
+  Lock,
+  Download,
+  Monitor
 } from 'lucide-react';
 import { MattLabLogo } from './MattLabLogo';
 import { UserAvatar } from './UserAvatar';
@@ -324,7 +326,13 @@ export const SettingsModal = ({
     togglePiP,
     isPiPActive,
     autoMiniPlayerIntroEnabled,
-    setAutoMiniPlayerIntroEnabled
+    setAutoMiniPlayerIntroEnabled,
+    miniPlayerOpacity,
+    setMiniPlayerOpacity,
+    miniPlayerIdleDim,
+    setMiniPlayerIdleDim,
+    autoplaySimilar,
+    setAutoplaySimilar,
   } = usePlayer();
   const [clearingCache, setClearingCache] = useState(false);
   const { 
@@ -1512,6 +1520,41 @@ export const SettingsModal = ({
                   </div>
                 </div>
 
+                {/* Smart Autoplay & Genre Recommendations Card */}
+                <div className="p-5 rounded-2xl bg-surface-panel border border-border-subtle space-y-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-10 h-10 rounded-xl bg-brand-500/10 text-brand-500 border border-brand-500/20 flex items-center justify-center shrink-0">
+                        <Sparkles size={20} />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                          <span>Autoplay Similar Songs</span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-400 border border-brand-500/30">
+                            Smart Radio
+                          </span>
+                        </h4>
+                        <p className="text-xs text-content-muted mt-0.5">
+                          When a search song finishes or your queue runs out, automatically recommend and queue songs of the same niche and genre.
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setAutoplaySimilar(!autoplaySimilar)}
+                      className={`w-11 h-6 rounded-full p-1 transition-colors relative shrink-0 ${
+                        autoplaySimilar ? 'bg-brand-500' : 'bg-surface-island border border-white/10'
+                      }`}
+                      title="Toggle Autoplay Similar Songs"
+                    >
+                      <div className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                        autoplaySimilar ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+                </div>
+
                 {/* Picture-in-Picture (PiP) Display Engine Card */}
                 <div className="p-5 rounded-2xl bg-surface-panel border border-border-subtle space-y-5">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border-subtle">
@@ -1679,6 +1722,85 @@ export const SettingsModal = ({
                         <span
                           className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
                             autoMiniPlayerIntroEnabled ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Desktop Miniplayer Transparency & Ghosting */}
+                  <div className="pt-4 border-t border-border-subtle space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <h5 className="text-xs font-bold text-white flex items-center gap-2">
+                          <span>In-Page MiniPlayer Transparency</span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-brand-500/15 text-brand-400 border border-brand-500/25">
+                            {miniPlayerOpacity ?? 85}% Opacity
+                          </span>
+                        </h5>
+                        <p className="text-[11px] text-content-muted mt-0.5">
+                          Applies frosted glassmorphism so behind-page content blurs and shines through cleanly.
+                        </p>
+                      </div>
+
+                      {/* Preset Opacity Pills */}
+                      <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                        {[
+                          { val: 50, label: '50% Glass' },
+                          { val: 85, label: '85% Balanced' },
+                          { val: 100, label: '100% Solid' },
+                        ].map((preset) => (
+                          <button
+                            key={preset.val}
+                            type="button"
+                            onClick={() => setMiniPlayerOpacity(preset.val)}
+                            className={`px-2 py-0.5 text-[10px] font-semibold rounded-md border transition ${
+                              (miniPlayerOpacity ?? 85) === preset.val
+                                ? 'bg-brand-500 text-black border-brand-500 font-bold'
+                                : 'bg-white/5 hover:bg-white/10 text-content-secondary hover:text-white border-border-subtle'
+                            }`}
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-mono text-content-muted">30%</span>
+                        <input
+                          type="range"
+                          min="30"
+                          max="100"
+                          step="5"
+                          value={miniPlayerOpacity ?? 85}
+                          onChange={(e) => setMiniPlayerOpacity(parseInt(e.target.value, 10))}
+                          className="w-full accent-brand-500 bg-surface-elevated h-1.5 rounded-lg appearance-none cursor-pointer"
+                        />
+                        <span className="text-[10px] font-mono text-content-muted">100%</span>
+                      </div>
+                    </div>
+
+                    {/* Idle Dimming / Ghosting Toggle */}
+                    <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <span className="text-xs font-semibold text-white">Idle Dimming (Ghost Mode)</span>
+                        <p className="text-[11px] text-content-muted mt-0.5">
+                          Subtly fades the floating player down when idle for 3 seconds; returns to full clarity on hover or drag.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setMiniPlayerIdleDim(!miniPlayerIdleDim)}
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          miniPlayerIdleDim ? 'bg-brand-500' : 'bg-surface-elevated'
+                        }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                            miniPlayerIdleDim ? 'translate-x-5' : 'translate-x-0'
                           }`}
                         />
                       </button>
@@ -2343,6 +2465,34 @@ export const SettingsModal = ({
                       </p>
                     </div>
                   </div>
+                </div>
+
+                {/* Desktop Native App Banner */}
+                <div className="p-5 rounded-2xl bg-gradient-to-r from-blue-900/30 via-surface-island to-brand-500/10 border border-blue-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center border border-blue-500/30 shrink-0">
+                      <Monitor size={24} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-white">MattLab Music Desktop App</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                          Windows Portable
+                        </span>
+                      </div>
+                      <p className="text-xs text-content-secondary mt-0.5">
+                        Features OS-level transparent acrylic miniplayer, persistent background listening, and global media keys.
+                      </p>
+                    </div>
+                  </div>
+                  <a
+                    href="/downloads/MattLab-Music-Windows-Portable.zip"
+                    download="MattLab-Music-Windows-Portable.zip"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-500/20 transition shrink-0 active:scale-95"
+                  >
+                    <Download size={15} />
+                    <span>Download App (110MB)</span>
+                  </a>
                 </div>
 
                 {/* Library Statistics Grid */}

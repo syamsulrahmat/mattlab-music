@@ -112,7 +112,7 @@ export const SearchView = ({
         const found = results.tracks.find((t) => t.id === selectedTrackId);
         if (found) {
           e.preventDefault();
-          playTrack(found, results.tracks);
+          playTrack(found, results.tracks, { isSearchPlay: true });
         }
       }
     };
@@ -275,7 +275,7 @@ export const SearchView = ({
                 <div
                   onClick={() => {
                     if (topResult.in_library || topResult.id) {
-                      playTrack(topResult, results.tracks || [topResult]);
+                      playTrack(topResult, results.tracks || [topResult], { isSearchPlay: true });
                     }
                   }}
                   className="relative overflow-hidden bg-gradient-to-r from-surface-elevated via-surface-elevated/80 to-surface-panel border border-border-subtle hover:border-brand-500/40 p-5 rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-xl group flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5"
@@ -336,7 +336,7 @@ export const SearchView = ({
                           if (currentTrack?.id === topResult.id) {
                             togglePlay();
                           } else {
-                            playTrack(topResult, results.tracks || [topResult]);
+                            playTrack(topResult, results.tracks || [topResult], { isSearchPlay: true });
                           }
                         }}
                         className="w-12 h-12 rounded-full bg-brand-500 hover:bg-brand-400 text-black flex items-center justify-center shadow-lg transition active:scale-95 group-hover:scale-105"
@@ -446,7 +446,7 @@ export const SearchView = ({
                       key={track.spotify_id || `${track.title}-${idx}`}
                       onClick={() => {
                         if (track.in_library) {
-                          playTrack(track, results.tracks || [track]);
+                          playTrack(track, results.tracks || [track], { isSearchPlay: true });
                         } else {
                           handleQuickDownload(track);
                         }
@@ -485,7 +485,7 @@ export const SearchView = ({
                               if (isCurrentTrack) {
                                 togglePlay();
                               } else {
-                                playTrack(track, results.tracks || [track]);
+                                playTrack(track, results.tracks || [track], { isSearchPlay: true });
                               }
                             }}
                             className="p-1.5 text-brand-500 hover:scale-110 transition"
@@ -541,11 +541,11 @@ export const SearchView = ({
                           if (currentTrack?.id === track.id) {
                             togglePlay();
                           } else {
-                            playTrack(track, results.tracks);
+                            playTrack(track, results.tracks, { isSearchPlay: true });
                           }
                         }
                       }}
-                      onDoubleClick={() => playTrack(track, results.tracks)}
+                      onDoubleClick={() => playTrack(track, results.tracks, { isSearchPlay: true })}
                       onContextMenu={(e) => {
                         if (onContextMenu) {
                           e.preventDefault();
@@ -638,7 +638,7 @@ export const SearchView = ({
                             if (isCurrentTrack) {
                               togglePlay();
                             } else {
-                              playTrack(track, results.tracks);
+                              playTrack(track, results.tracks, { isSearchPlay: true });
                             }
                           }}
                           className={`p-1.5 text-brand-500 transition ${

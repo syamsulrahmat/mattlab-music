@@ -39,3 +39,10 @@ Thumbs.db
 .vscode/
 *.swp
 *.map
+
+# Desktop Electron build artifacts & binary downloads
+desktop/dist/
+desktop/node_modules/
+frontend/public/downloads/
+frontend/dist/downloads/
+

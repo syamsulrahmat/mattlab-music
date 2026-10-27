@@ -336,6 +336,30 @@ def init_db() -> None:
             except Exception:
                 pass
 
+        # Table for genre & subgenre recommendations
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS track_genres (
+                track_id INTEGER PRIMARY KEY,
+                genre TEXT,
+                subgenres TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(track_id) REFERENCES tracks(id) ON DELETE CASCADE
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_track_genres_genre ON track_genres(genre)")
+
+        # Table for Spotify Radio algorithmic recommendations cache
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS spotify_radio_cache (
+                track_id INTEGER PRIMARY KEY,
+                radio_name TEXT,
+                spotify_playlist_id TEXT,
+                recommended_tracks_json TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(track_id) REFERENCES tracks(id) ON DELETE CASCADE
+            )
+        """)
+
         # Migrations for bug_reports (seen_by_user, user_deleted)
         cursor.execute("PRAGMA table_info(bug_reports)")
         bug_cols = [c["name"] for c in cursor.fetchall()]

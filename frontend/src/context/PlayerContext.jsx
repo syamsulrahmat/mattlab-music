@@ -1159,7 +1159,18 @@ export const PlayerProvider = ({ children }) => {
     audio.volume = isMuted ? 0 : volume;
 
     if (newQueue) {
-      if (isShuffle && !options.preserveOrder && newQueue.length > 1) {
+      if (options.isSearchPlay) {
+        // Search Play: set the selected track as current and immediately append Spotify Radio recommendations!
+        setQueue([track]);
+        setQueueIndex(0);
+        if (autoplaySimilar) {
+          fetchRecommendations(track.id, [track]).then((data) => {
+            if (data?.tracks && data.tracks.length > 0) {
+              setQueue([track, ...data.tracks]);
+            }
+          }).catch(() => {});
+        }
+      } else if (isShuffle && !options.preserveOrder && newQueue.length > 1) {
         const others = newQueue.filter((t) => t.id !== track.id);
         const shuffledOthers = shuffleArray(others);
         setQueue([track, ...shuffledOthers]);
@@ -1169,6 +1180,15 @@ export const PlayerProvider = ({ children }) => {
         const idx = newQueue.findIndex((t) => t.id === track.id);
         setQueueIndex(idx !== -1 ? idx : 0);
       }
+    } else if (autoplaySimilar) {
+      // Standalone play (e.g. from recommendation card or single track)
+      setQueue([track]);
+      setQueueIndex(0);
+      fetchRecommendations(track.id, [track]).then((data) => {
+        if (data?.tracks && data.tracks.length > 0) {
+          setQueue([track, ...data.tracks]);
+        }
+      }).catch(() => {});
     }
 
     const cleanedTrack = {
@@ -1239,6 +1259,11 @@ export const PlayerProvider = ({ children }) => {
           })
           .catch(() => {});
       }
+    }
+
+    // Proactively fetch genre/niche recommendations for current track
+    if (track?.id && autoplaySimilar) {
+      fetchRecommendations(track.id, activeQueue);
     }
   };
 
@@ -1383,6 +1408,22 @@ export const PlayerProvider = ({ children }) => {
         setQueueIndex(0);
         playTrack(queue[0]);
       }
+    } else if (autoplaySimilar && currentTrack?.id) {
+      // Smart Autoplay: Fetch & append similar niche tracks instead of stopping!
+      fetchRecommendations(currentTrack.id, queue).then((data) => {
+        const freshRecs = data?.tracks || recommendedTracks;
+        if (freshRecs && freshRecs.length > 0) {
+          const firstRec = freshRecs[0];
+          const restRecs = freshRecs.slice(1);
+          setQueue((prevQ) => [...prevQ, ...freshRecs]);
+          setQueueIndex((prevIdx) => prevIdx + 1);
+          playTrack(firstRec);
+        } else {
+          setIsPlaying(false);
+        }
+      }).catch(() => {
+        setIsPlaying(false);
+      });
     } else {
       setIsPlaying(false);
     }
@@ -1552,6 +1593,88 @@ export const PlayerProvider = ({ children }) => {
     saveUserPreference({ pipEngine: validEngine });
   }, [saveUserPreference]);
 
+  // Miniplayer Opacity & Idle Dimming States (Glassmorphism)
+  const [miniPlayerOpacity, setMiniPlayerOpacityState] = useState(() => {
+    try {
+      const stored = localStorage.getItem('mattlab_miniplayer_opacity');
+      if (stored !== null) {
+        const val = parseInt(stored, 10);
+        if (!isNaN(val) && val >= 30 && val <= 100) return val;
+      }
+    } catch (_) {}
+    return 85;
+  });
+
+  const setMiniPlayerOpacity = useCallback((val) => {
+    const clamped = Math.max(30, Math.min(100, Number(val) || 85));
+    setMiniPlayerOpacityState(clamped);
+    try {
+      localStorage.setItem('mattlab_miniplayer_opacity', String(clamped));
+    } catch (_) {}
+    saveUserPreference({ miniPlayerOpacity: clamped });
+  }, [saveUserPreference]);
+
+  const [miniPlayerIdleDim, setMiniPlayerIdleDimState] = useState(() => {
+    try {
+      const stored = localStorage.getItem('mattlab_miniplayer_idle_dim');
+      return stored !== null ? stored === 'true' : true;
+    } catch (_) {
+      return true;
+    }
+  });
+
+  const setMiniPlayerIdleDim = useCallback((enabled) => {
+    setMiniPlayerIdleDimState(enabled);
+    try {
+      localStorage.setItem('mattlab_miniplayer_idle_dim', String(enabled));
+    } catch (_) {}
+    saveUserPreference({ miniPlayerIdleDim: enabled });
+  }, [saveUserPreference]);
+
+  // Autoplay Similar Tracks (Radio/Niche Recommendations)
+  const [autoplaySimilar, setAutoplaySimilarState] = useState(() => {
+    try {
+      const stored = localStorage.getItem('mattlab_autoplay_similar');
+      return stored !== null ? stored === 'true' : true;
+    } catch (_) {
+      return true;
+    }
+  });
+
+  const setAutoplaySimilar = useCallback((enabled) => {
+    setAutoplaySimilarState(enabled);
+    try {
+      localStorage.setItem('mattlab_autoplay_similar', String(enabled));
+    } catch (_) {}
+    saveUserPreference({ autoplaySimilar: enabled });
+  }, [saveUserPreference]);
+
+  const [recommendedTracks, setRecommendedTracks] = useState([]);
+  const [seedGenre, setSeedGenre] = useState(null);
+  const isFetchingRecommendationsRef = useRef(false);
+
+  const fetchRecommendations = useCallback(async (trackId, currentQueue = []) => {
+    if (!trackId || isFetchingRecommendationsRef.current) return;
+    try {
+      isFetchingRecommendationsRef.current = true;
+      const excludeIds = (currentQueue || []).map((t) => t.id).filter(Boolean).slice(-25).join(',');
+      const res = await fetch(`/api/recommendations/${trackId}?limit=20${excludeIds ? `&exclude=${excludeIds}` : ''}`, {
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRecommendedTracks(data.tracks || []);
+        setSeedGenre(data.seed_genre || null);
+        return data;
+      }
+    } catch (err) {
+      console.warn('Failed to fetch recommendations:', err);
+    } finally {
+      isFetchingRecommendationsRef.current = false;
+    }
+    return null;
+  }, []);
+
   const canvasRef = useRef(null);
   const pipVideoRef = useRef(null);
   const fadeIntervalRef = useRef(null);
@@ -1719,6 +1842,67 @@ export const PlayerProvider = ({ children }) => {
     }
   }, [isCanvasPiPActive, currentTrack, currentTime, duration, currentLyricLine, upcomingLyricLine, drawPiPCanvas]);
 
+  // Sync state to native Electron floating miniplayer window if running in desktop app
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.electronAPI && typeof window.electronAPI.updateMiniPlayerTrack === 'function') {
+      let absoluteCover = '';
+      if (currentTrack) {
+        const rawCover = resolveCoverUrl(currentTrack);
+        if (rawCover) {
+          absoluteCover = rawCover.startsWith('http') ? rawCover : `${window.location.origin}${rawCover}`;
+        }
+      }
+
+      window.electronAPI.updateMiniPlayerTrack({
+        track: currentTrack ? {
+          ...currentTrack,
+          cover_url: absoluteCover
+        } : null,
+        isPlaying,
+        currentTime,
+        duration,
+        currentLyric: currentLyricLine || (lyricsState?.notFound ? 'No lyrics available' : ''),
+        upcomingLyric: upcomingLyricLine || '',
+        opacity: miniPlayerOpacity,
+      });
+    }
+  }, [currentTrack, isPlaying, currentTime, duration, currentLyricLine, upcomingLyricLine, miniPlayerOpacity, lyricsState?.notFound]);
+
+  // Keep latest callbacks in ref to ensure IPC handlers never execute stale closures
+  const actionsRef = useRef({ togglePlay, nextTrack, prevTrack });
+  useEffect(() => {
+    actionsRef.current = { togglePlay, nextTrack, prevTrack };
+  }, [togglePlay, nextTrack, prevTrack]);
+
+  // Listen for global OS media shortcuts & actions forwarded from Electron desktop shell
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.electronAPI) return;
+
+    let unsubMedia = null;
+    let unsubAction = null;
+
+    if (typeof window.electronAPI.onMediaCommand === 'function') {
+      unsubMedia = window.electronAPI.onMediaCommand((cmd) => {
+        if (cmd === 'play-pause') actionsRef.current.togglePlay();
+        else if (cmd === 'next-track') actionsRef.current.nextTrack();
+        else if (cmd === 'prev-track') actionsRef.current.prevTrack();
+      });
+    }
+
+    if (typeof window.electronAPI.onControlAction === 'function') {
+      unsubAction = window.electronAPI.onControlAction(({ action }) => {
+        if (action === 'togglePlay') actionsRef.current.togglePlay();
+        else if (action === 'next') actionsRef.current.nextTrack();
+        else if (action === 'prev') actionsRef.current.prevTrack();
+      });
+    }
+
+    return () => {
+      if (typeof unsubMedia === 'function') unsubMedia();
+      if (typeof unsubAction === 'function') unsubAction();
+    };
+  }, []);
+
   // Close PiP when main window unloads
   useEffect(() => {
     const handleBeforeUnload = () => {
@@ -1746,6 +1930,32 @@ export const PlayerProvider = ({ children }) => {
   }, [pipWindow]);
 
   const togglePiP = async () => {
+    // 0. If running inside native Electron desktop app, delegate to native semi-transparent floating window!
+    if (typeof window !== 'undefined' && window.electronAPI && typeof window.electronAPI.toggleFloatingMiniPlayer === 'function') {
+      let absoluteCover = '';
+      if (currentTrack) {
+        const rawCover = resolveCoverUrl(currentTrack);
+        if (rawCover) {
+          absoluteCover = rawCover.startsWith('http') ? rawCover : `${window.location.origin}${rawCover}`;
+        }
+      }
+
+      const activeState = {
+        track: currentTrack ? {
+          ...currentTrack,
+          cover_url: absoluteCover,
+        } : null,
+        isPlaying,
+        currentTime,
+        duration,
+        currentLyric: currentLyricLine || (lyricsState?.notFound ? 'No lyrics available' : ''),
+        upcomingLyric: upcomingLyricLine || '',
+        opacity: miniPlayerOpacity,
+      };
+      window.electronAPI.toggleFloatingMiniPlayer(activeState);
+      return;
+    }
+
     // 1. If native Video Canvas PiP is open, exit it immediately and RETURN
     const pipElem = typeof document !== 'undefined' && 'pictureInPictureElement' in document ? document.pictureInPictureElement : null;
     if (pipElem || isCanvasPiPActive) {
@@ -2109,6 +2319,15 @@ export const PlayerProvider = ({ children }) => {
         setPipEngine,
         autoMiniPlayerIntroEnabled,
         setAutoMiniPlayerIntroEnabled,
+        miniPlayerOpacity,
+        setMiniPlayerOpacity,
+        miniPlayerIdleDim,
+        setMiniPlayerIdleDim,
+        autoplaySimilar,
+        setAutoplaySimilar,
+        recommendedTracks,
+        seedGenre,
+        fetchRecommendations,
         isPiPActive: Boolean(pipWindow) || isCanvasPiPActive || isMiniPlayerOpen,
         togglePiP,
         lyricsState,

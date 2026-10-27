@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   Play, Pause, SkipBack, SkipForward, X, Maximize2, Minimize2, 
@@ -38,6 +38,8 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
     currentLyricLine,
     upcomingLyricLine,
     fetchTrackLyrics,
+    miniPlayerOpacity,
+    miniPlayerIdleDim,
     isFavorite,
     toggleFavorite,
   } = usePlayer();
@@ -89,8 +91,34 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
   });
 
   const [isDragging, setIsDragging] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isIdle, setIsIdle] = useState(false);
+  const idleTimerRef = useRef(null);
   const dragRef = useRef({ startX: 0, startY: 0, posX: 0, posY: 0 });
   const containerRef = useRef(null);
+
+  // Activity tracker for smooth idle ghosting/dimming
+  const handleActivity = useCallback(() => {
+    setIsIdle(false);
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    if (miniPlayerIdleDim) {
+      idleTimerRef.current = setTimeout(() => {
+        setIsIdle(true);
+      }, 3000);
+    }
+  }, [miniPlayerIdleDim]);
+
+  useEffect(() => {
+    if (!miniPlayerIdleDim) {
+      setIsIdle(false);
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      return;
+    }
+    handleActivity();
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, [miniPlayerIdleDim, handleActivity]);
 
   // Full lyrics scrolling refs & state
   const lyricsContainerRef = useRef(null);
@@ -316,7 +344,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
     return (
       <div
         ref={smallLyricsRef}
-        className={`relative w-full h-full flex flex-col justify-between bg-surface-island text-content-primary font-sans select-none box-border overflow-hidden ${containerPadding}`}
+        className={`relative w-full h-full flex flex-col justify-between ${isPiP ? 'bg-surface-island' : 'bg-surface-island/40'} text-content-primary font-sans select-none box-border overflow-hidden ${containerPadding}`}
       >
         {/* Absolute buttons in minimal layout to avoid wasting vertical space */}
         {isMinimalLayout && (
@@ -566,7 +594,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
     return (
       <div
         ref={fullLyricsRef}
-        className="w-full h-full flex flex-col justify-between bg-surface-island text-content-primary font-sans select-none box-border overflow-hidden"
+        className={`w-full h-full flex flex-col justify-between ${isPiP ? 'bg-surface-island' : 'bg-surface-island/40'} text-content-primary font-sans select-none box-border overflow-hidden`}
       >
         {/* Header Bar */}
         <div className="flex items-center justify-between px-3.5 py-2.5 bg-surface-panel/80 backdrop-blur-md border-b border-white/5 shrink-0">
@@ -972,6 +1000,13 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
     );
   };
 
+  // Calculate active opacity for the in-page floating mini player
+  const effectiveOpacity = isDragging || isHovered
+    ? Math.min(1, (miniPlayerOpacity / 100) + 0.15)
+    : isIdle && miniPlayerIdleDim
+    ? Math.max(0.25, (miniPlayerOpacity / 100) * 0.6)
+    : (miniPlayerOpacity / 100);
+
   return (
     <>
       {/* 1. Document PiP Portal (Persistent OS desktop window across tabs & apps) */}
@@ -985,12 +1020,22 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
           data-dev-desc="Draggable floating picture-in-picture player with interactive controls and background visualizer"
           ref={containerRef}
           onPointerDown={handlePointerDown}
+          onPointerEnter={() => {
+            setIsHovered(true);
+            handleActivity();
+          }}
+          onPointerLeave={() => {
+            setIsHovered(false);
+            handleActivity();
+          }}
+          onPointerMove={handleActivity}
           style={{
             left: `${position.x}px`,
             top: `${position.y}px`,
+            opacity: effectiveOpacity,
             touchAction: 'none',
           }}
-          className={`fixed z-50 transition-shadow select-none shadow-2xl rounded-2xl border border-white/10 bg-surface-island/95 backdrop-blur-xl group cursor-move ${
+          className={`fixed z-50 transition-[opacity,box-shadow,transform] duration-300 ease-out select-none shadow-2xl rounded-2xl border border-white/10 bg-surface-island/40 backdrop-blur-xl group cursor-move ${
             isDragging ? 'shadow-green-500/20 scale-[1.01]' : ''
           }`}
         >

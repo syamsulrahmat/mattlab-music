@@ -946,7 +946,13 @@ const MainAppContent = () => {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || 'Failed to import Spotify playlist');
+      const detail = err.detail;
+      if (detail && typeof detail === 'object') {
+        const customErr = new Error(detail.message || 'Failed to import Spotify playlist');
+        customErr.code = detail.code;
+        throw customErr;
+      }
+      throw new Error(detail || 'Failed to import Spotify playlist');
     }
     const data = await res.json();
     await fetchPlaylists();
