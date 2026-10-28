@@ -26,6 +26,7 @@ from mutagen.easyid3 import EasyID3
 from mutagen.id3 import ID3, APIC
 from PIL import Image
 import io
+import re
 
 from app.database import get_db
 from app.scanner import MUSIC_DIR, COVERS_DIR, get_album_hash, save_cover_image
@@ -120,17 +121,34 @@ def resolve_canonical_metadata(artist: str, title: str, album: Optional[str] = N
 
 # ── YouTube Multi-Candidate Duration Matching ───────────────────────────────
 
+CENSORED_REGEX_PATTERNS = [
+    r'\bclean\b',
+    r'\bradio\s+edit\b',
+    r'\bcensored\b',
+    r'\bedited\s+version\b',
+    r'\bclean\s+version\b',
+    r'\bkidz\s+bop\b',
+]
+
+def is_censored_video_title(title: str) -> bool:
+    """Returns True if the video title indicates a clean, censored, or radio edit version."""
+    for pattern in CENSORED_REGEX_PATTERNS:
+        if re.search(pattern, title, re.IGNORECASE):
+            return True
+    return False
+
 def search_and_verify_candidates(artist: str, title: str, canonical_dur: float) -> Optional[Dict[str, Any]]:
     """
     Searches YouTube for candidate releases and picks the best match whose
     duration is within ±6 seconds of the canonical duration.
-    Prioritizes official Topic channels and rejects previews/teasers/sketches.
+    Prioritizes explicit studio releases, official Topic channels, and rejects clean/radio edits.
     """
     clean_artist = artist.split(",")[0].split("/")[0].strip()
     queries = [
-        f"ytsearch6:{clean_artist} - Topic {title}",
-        f"ytsearch6:{clean_artist} {title} official audio",
-        f"ytsearch6:{clean_artist} {title} audio",
+        f"ytsearch8:{clean_artist} {title} explicit",
+        f"ytsearch8:{clean_artist} - Topic {title}",
+        f"ytsearch8:{clean_artist} {title} official audio",
+        f"ytsearch8:{clean_artist} {title} audio",
     ]
 
     ydl_opts = {
@@ -164,6 +182,10 @@ def search_and_verify_candidates(artist: str, title: str, canonical_dur: float) 
                     if not v_id or not v_dur:
                         continue
 
+                    # Disqualify clean, censored, or radio edit versions
+                    if is_censored_video_title(v_title):
+                        continue
+
                     # Skip obvious non-music or banned content
                     v_title_lower = v_title.lower()
                     if any(k in v_title_lower for k in banned_keywords):
@@ -181,16 +203,19 @@ def search_and_verify_candidates(artist: str, title: str, canonical_dur: float) 
                     if delta > max_allowed_delta:
                         continue
 
-                    # Scoring
+                    # Scoring: heavily reward explicit studio album tracks
                     score = 100.0 - (delta * 3.0)
+                    if "explicit" in v_title_lower or "dirty" in v_title_lower:
+                        score += 45.0
                     if "- Topic" in v_uploader or "Topic" in v_uploader:
                         score += 35.0
                     if "official audio" in v_title_lower:
-                        score += 20.0
+                        score += 25.0
                     if "official video" in v_title_lower:
+                        # Music videos are frequently radio edited; give modest boost only
                         score += 5.0
                     if "lyrics" in v_title_lower:
-                        score += 8.0
+                        score += 15.0
 
                     candidates.append({
                         "id": v_id,
@@ -202,8 +227,8 @@ def search_and_verify_candidates(artist: str, title: str, canonical_dur: float) 
                         "score": score,
                     })
 
-            # If we found high-quality candidates on the topic search, we can stop
-            if any(c["score"] >= 120 for c in candidates):
+            # If we found high-quality explicit or topic candidates, stop search early
+            if any(c["score"] >= 140 for c in candidates):
                 break
 
         except Exception as e:

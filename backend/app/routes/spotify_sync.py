@@ -70,14 +70,16 @@ def clean_search_term(text: str) -> str:
     return re.sub(r'\s+', ' ', t).strip()
 
 def build_search_queries(artist: str, title: str, playlist_name: str = "") -> List[str]:
-    """Generate resilient, ranked search queries for yt-dlp."""
+    """Generate resilient, ranked search queries for yt-dlp prioritizing explicit studio audio."""
     clean_art = clean_search_term(artist)
     clean_tit = clean_search_term(title)
     clean_pl = clean_search_term(playlist_name)
 
     candidates = []
-    # 1. Clean Artist + Clean Title (primary)
+    # 1. Clean Artist + Clean Title explicit (highest priority for uncensored audio)
     if clean_art and clean_tit:
+        candidates.append(f"{clean_art} {clean_tit} explicit")
+        candidates.append(f"{clean_art} - Topic {clean_tit}")
         candidates.append(f"{clean_art} {clean_tit}")
     # 2. Clean Title + Playlist keyword (e.g. Naruto)
     if clean_pl and clean_tit:

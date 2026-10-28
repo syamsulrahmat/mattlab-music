@@ -198,104 +198,106 @@ export const PlayerBar = ({
             : 'translate-y-12 opacity-0 pointer-events-none'
         }`}
       >
-        <div className="px-3 pb-0">
-          <div 
-            onPointerDown={handleMobilePointerDown}
-            onPointerMove={handleMobilePointerMove}
-            onPointerUp={handleMobilePointerUp}
-            onPointerCancel={handleMobilePointerCancel}
-            onClick={handleMobileCardClick}
-            style={{
-              transform: `translate3d(${mobileDragOffset.x}px, ${mobileDragOffset.y}px, 0)`,
-              transition: isMobileDragging ? 'none' : 'transform 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28)',
-              touchAction: 'none',
-            }}
-            className={`relative flex items-center justify-between h-16 px-3.5 rounded-2xl bg-neutral-900/95 backdrop-blur-xl border border-white/10 shadow-[0_8px_24px_rgba(0,0,0,0.65)] cursor-grab active:cursor-grabbing select-none overflow-hidden ${
-              isMobileDragging ? 'shadow-[0_14px_32px_rgba(0,0,0,0.85)] scale-[1.02]' : 'active:scale-[0.99]'
-            }`}
-          >
-            {/* Left: Thumbnail & Track info */}
+        {currentTrack && (
+          <div className="px-3 pb-0">
             <div 
-              className="flex items-center gap-3 min-w-0 flex-1 pointer-events-none"
-              onContextMenu={(e) => {
-                if (onContextMenu) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onContextMenu(e, 'track', currentTrack);
-                }
+              onPointerDown={handleMobilePointerDown}
+              onPointerMove={handleMobilePointerMove}
+              onPointerUp={handleMobilePointerUp}
+              onPointerCancel={handleMobilePointerCancel}
+              onClick={handleMobileCardClick}
+              style={{
+                transform: `translate3d(${mobileDragOffset.x}px, ${mobileDragOffset.y}px, 0)`,
+                transition: isMobileDragging ? 'none' : 'transform 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28)',
+                touchAction: 'none',
               }}
+              className={`relative flex items-center justify-between h-16 px-3.5 rounded-2xl bg-neutral-900/95 backdrop-blur-xl border border-white/10 shadow-[0_8px_24px_rgba(0,0,0,0.65)] cursor-grab active:cursor-grabbing select-none overflow-hidden ${
+                isMobileDragging ? 'shadow-[0_14px_32px_rgba(0,0,0,0.85)] scale-[1.02]' : 'active:scale-[0.99]'
+              }`}
             >
-              <img
-                src={resolveCoverUrl(currentTrack)}
-                alt=""
-                className="w-11 h-11 rounded-lg object-cover bg-surface-elevated shrink-0 shadow-sm select-none pointer-events-none"
-                draggable={false}
-              />
-              <div className="min-w-0 flex-1 pr-1">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <h4 className="text-xs sm:text-sm font-bold text-white truncate leading-tight">
-                    {currentTrack.title}
-                  </h4>
-                  {audioQuality === 'data_saver' ? (
-                    <span className="text-[9px] font-bold px-1 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0">
-                      LQ
-                    </span>
-                  ) : (
-                    <span className="text-[9px] font-bold px-1 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30 shrink-0">
-                      {currentTrack.file_format?.toLowerCase() === 'flac' ? 'FLAC' : 'HQ'}
-                    </span>
-                  )}
-                  {isTrackPreloaded && isTrackPreloaded(currentTrack.id) && (
-                    <span 
-                      className="w-1.5 h-1.5 rounded-full bg-brand-500 shrink-0" 
-                      title="Preloaded & offline ready"
-                    />
-                  )}
+              {/* Left: Thumbnail & Track info */}
+              <div 
+                className="flex items-center gap-3 min-w-0 flex-1 pointer-events-none"
+                onContextMenu={(e) => {
+                  if (onContextMenu) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onContextMenu(e, 'track', currentTrack);
+                  }
+                }}
+              >
+                <img
+                  src={resolveCoverUrl(currentTrack)}
+                  alt=""
+                  className="w-11 h-11 rounded-lg object-cover bg-surface-elevated shrink-0 shadow-sm select-none pointer-events-none"
+                  draggable={false}
+                />
+                <div className="min-w-0 flex-1 pr-1">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <h4 className="text-xs sm:text-sm font-bold text-white truncate leading-tight">
+                      {currentTrack.title}
+                    </h4>
+                    {audioQuality === 'data_saver' ? (
+                      <span className="text-[9px] font-bold px-1 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0">
+                        LQ
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-bold px-1 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30 shrink-0">
+                        {currentTrack.file_format?.toLowerCase() === 'flac' ? 'FLAC' : 'HQ'}
+                      </span>
+                    )}
+                    {isTrackPreloaded && isTrackPreloaded(currentTrack.id) && (
+                      <span 
+                        className="w-1.5 h-1.5 rounded-full bg-brand-500 shrink-0" 
+                        title="Preloaded & offline ready"
+                      />
+                    )}
+                  </div>
+                  <p className="text-xs text-neutral-400 truncate mt-0.5 leading-tight">
+                    {currentTrack.artist_name}
+                  </p>
                 </div>
-                <p className="text-xs text-neutral-400 truncate mt-0.5 leading-tight">
-                  {currentTrack.artist_name}
-                </p>
+              </div>
+
+              {/* Right: Quick Actions */}
+              <div 
+                className="flex items-center gap-2 shrink-0 z-10" 
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleFavorite(currentTrack.id)}
+                  className={`p-2.5 transition active:scale-90 ${isFav ? 'text-brand-500' : 'text-neutral-400 hover:text-white'}`}
+                  title={isFav ? 'Remove from Liked' : 'Save to Liked'}
+                >
+                  <Heart size={20} className={isFav ? 'fill-brand-500' : ''} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={togglePlay}
+                  className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-md active:scale-95 transition"
+                  title={isPlaying ? 'Pause' : 'Play'}
+                >
+                  {isPlaying ? (
+                    <Pause size={18} className="fill-black" />
+                  ) : (
+                    <Play size={18} className="fill-black ml-0.5" />
+                  )}
+                </button>
+              </div>
+
+              {/* Bottom Scrubber Progress Bar */}
+              <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-white/10 pointer-events-none">
+                <div 
+                  className="h-full bg-brand-500 transition-all duration-150"
+                  style={{ width: `${progressPercent}%` }}
+                />
               </div>
             </div>
-
-            {/* Right: Quick Actions */}
-            <div 
-              className="flex items-center gap-2 shrink-0 z-10" 
-              onClick={(e) => e.stopPropagation()}
-              onPointerDown={(e) => e.stopPropagation()}
-            >
-              <button
-                type="button"
-                onClick={() => toggleFavorite(currentTrack.id)}
-                className={`p-2.5 transition active:scale-90 ${isFav ? 'text-brand-500' : 'text-neutral-400 hover:text-white'}`}
-                title={isFav ? 'Remove from Liked' : 'Save to Liked'}
-              >
-                <Heart size={20} className={isFav ? 'fill-brand-500' : ''} />
-              </button>
-
-              <button
-                type="button"
-                onClick={togglePlay}
-                className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-md active:scale-95 transition"
-                title={isPlaying ? 'Pause' : 'Play'}
-              >
-                {isPlaying ? (
-                  <Pause size={18} className="fill-black" />
-                ) : (
-                  <Play size={18} className="fill-black ml-0.5" />
-                )}
-              </button>
-            </div>
-
-            {/* Bottom Scrubber Progress Bar */}
-            <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-white/10 pointer-events-none">
-              <div 
-                className="h-full bg-brand-500 transition-all duration-150"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* ================= DESKTOP FULL PLAYER (>= md) ~80px ================= */}
