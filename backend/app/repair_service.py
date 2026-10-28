@@ -130,11 +130,50 @@ CENSORED_REGEX_PATTERNS = [
     r'\bkidz\s+bop\b',
 ]
 
+COVER_REGEX_PATTERNS = [
+    r'\bcover\b',
+    r'\btribute\b',
+    r'\bremake\b',
+    r'\bacoustic\s+cover\b',
+    r'\bpiano\s+cover\b',
+    r'\bguitar\s+cover\b',
+    r'\bdrum\s+cover\b',
+    r'\bvocal\s+cover\b',
+    r'\bkaraoke\b',
+    r'\binstrumental\b',
+    r'\bparody\b',
+    r'\bcovered\s+by\b',
+]
+
 def is_censored_video_title(title: str) -> bool:
     """Returns True if the video title indicates a clean, censored, or radio edit version."""
     for pattern in CENSORED_REGEX_PATTERNS:
         if re.search(pattern, title, re.IGNORECASE):
             return True
+    return False
+
+def is_cover_or_unwanted(video_title: str, uploader: str, target_artist: str, target_title: str) -> bool:
+    """
+    Returns True if the video is a cover, tribute, karaoke, or third-party remake,
+    ensuring we always keep the authentic original recording.
+    """
+    vt_lower = video_title.lower()
+    t_lower = target_title.lower()
+
+    # Safely strip target title text if it inherently contains the word cover (e.g. 'Cover Me')
+    title_context = vt_lower
+    if t_lower in title_context:
+        title_context = title_context.replace(t_lower, " ")
+
+    for pattern in COVER_REGEX_PATTERNS:
+        if re.search(pattern, title_context, re.IGNORECASE):
+            return True
+
+    # Check uploader name
+    up_lower = uploader.lower()
+    if any(k in up_lower for k in ["cover", "tribute", "karaoke", "instrumental"]):
+        return True
+
     return False
 
 def search_and_verify_candidates(artist: str, title: str, canonical_dur: float) -> Optional[Dict[str, Any]]:
@@ -186,6 +225,10 @@ def search_and_verify_candidates(artist: str, title: str, canonical_dur: float) 
                     if is_censored_video_title(v_title):
                         continue
 
+                    # Disqualify cover versions, tributes, and remakes to always preserve the original
+                    if is_cover_or_unwanted(v_title, v_uploader, artist, title):
+                        continue
+
                     # Skip obvious non-music or banned content
                     v_title_lower = v_title.lower()
                     if any(k in v_title_lower for k in banned_keywords):
@@ -203,12 +246,15 @@ def search_and_verify_candidates(artist: str, title: str, canonical_dur: float) 
                     if delta > max_allowed_delta:
                         continue
 
-                    # Scoring: heavily reward explicit studio album tracks
+                    # Scoring: heavily reward authentic original & explicit studio album tracks
                     score = 100.0 - (delta * 3.0)
-                    if "explicit" in v_title_lower or "dirty" in v_title_lower:
-                        score += 45.0
+                    clean_art_lower = clean_artist.lower()
+                    if clean_art_lower in v_uploader.lower():
+                        score += 30.0
                     if "- Topic" in v_uploader or "Topic" in v_uploader:
                         score += 35.0
+                    if "explicit" in v_title_lower or "dirty" in v_title_lower:
+                        score += 45.0
                     if "official audio" in v_title_lower:
                         score += 25.0
                     if "official video" in v_title_lower:
