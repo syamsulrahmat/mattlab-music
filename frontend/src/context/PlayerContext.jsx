@@ -790,6 +790,25 @@ export const PlayerProvider = ({ children }) => {
             localStorage.setItem('music_pip_engine', prefs.pipEngine);
           } catch (_) {}
         }
+        if (typeof prefs.autoMiniPlayerIntroEnabled === 'boolean') {
+          setAutoMiniPlayerIntroEnabledState(prefs.autoMiniPlayerIntroEnabled);
+          try {
+            localStorage.setItem('mattlab_auto_miniplayer_intro', String(prefs.autoMiniPlayerIntroEnabled));
+          } catch (_) {}
+        }
+        if (typeof prefs.miniPlayerOpacity === 'number') {
+          const clamped = Math.max(30, Math.min(100, prefs.miniPlayerOpacity));
+          setMiniPlayerOpacityState(clamped);
+          try {
+            localStorage.setItem('mattlab_miniplayer_opacity', String(clamped));
+          } catch (_) {}
+        }
+        if (typeof prefs.miniPlayerIdleDim === 'boolean') {
+          setMiniPlayerIdleDimState(prefs.miniPlayerIdleDim);
+          try {
+            localStorage.setItem('mattlab_miniplayer_idle_dim', String(prefs.miniPlayerIdleDim));
+          } catch (_) {}
+        }
         if (prefs.audioQuality && ['original', 'data_saver'].includes(prefs.audioQuality)) {
           setAudioQualityState(prefs.audioQuality);
           try {

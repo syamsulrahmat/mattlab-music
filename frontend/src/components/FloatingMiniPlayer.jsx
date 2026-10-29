@@ -344,8 +344,21 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
     return (
       <div
         ref={smallLyricsRef}
-        className={`relative w-full h-full flex flex-col justify-between ${isPiP ? 'bg-surface-island' : 'bg-surface-island/40'} text-content-primary font-sans select-none box-border overflow-hidden ${containerPadding}`}
+        className={`relative w-full h-full flex flex-col justify-between ${
+          isPiP ? 'bg-gradient-to-b from-[#181818] to-[#121212]' : 'bg-surface-island/40'
+        } text-content-primary font-sans select-none box-border overflow-hidden ${containerPadding}`}
       >
+        {/* Ambient album glow in PiP window */}
+        {isPiP && currentTrack && (
+          <div
+            className="absolute inset-0 opacity-15 pointer-events-none blur-2xl transform scale-125"
+            style={{
+              backgroundImage: `url(${resolveCoverUrl(currentTrack)})`,
+              backgroundPosition: 'center',
+              backgroundSize: 'cover',
+            }}
+          />
+        )}
         {/* Absolute buttons in minimal layout to avoid wasting vertical space */}
         {isMinimalLayout && (
           <>
@@ -598,8 +611,21 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
     return (
       <div
         ref={fullLyricsRef}
-        className={`w-full h-full flex flex-col justify-between ${isPiP ? 'bg-surface-island' : 'bg-surface-island/40'} text-content-primary font-sans select-none box-border overflow-hidden`}
+        className={`relative w-full h-full flex flex-col justify-between ${
+          isPiP ? 'bg-gradient-to-b from-[#181818] to-[#121212]' : 'bg-surface-island/40'
+        } text-content-primary font-sans select-none box-border overflow-hidden`}
       >
+        {/* Ambient album glow in PiP window */}
+        {isPiP && currentTrack && (
+          <div
+            className="absolute inset-0 opacity-15 pointer-events-none blur-3xl transform scale-125"
+            style={{
+              backgroundImage: `url(${resolveCoverUrl(currentTrack)})`,
+              backgroundPosition: 'center',
+              backgroundSize: 'cover',
+            }}
+          />
+        )}
         {/* Header Bar */}
         <div className="flex items-center justify-between px-3.5 py-2.5 bg-surface-panel/80 backdrop-blur-md border-b border-white/5 shrink-0">
           <div 

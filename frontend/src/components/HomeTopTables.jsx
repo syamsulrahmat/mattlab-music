@@ -242,6 +242,32 @@ export const HomeTopTables = ({
                 key={`top-track-${track.id}`}
                 onClick={(e) => handleRowClick(e, track, idx)}
                 onDoubleClick={() => handleRowDoubleClick(track)}
+                draggable="true"
+                onDragStart={(e) => {
+                  if (e.target.closest('button, a, input, [data-no-drag]')) {
+                    e.preventDefault();
+                    return;
+                  }
+
+                  const isMulti = selectedTrackIds.has(track.id) && selectedTrackIds.size > 1;
+                  const orderedTracks = isMulti
+                    ? top10.filter((t) => selectedTrackIds.has(t.id))
+                    : [track];
+                  const trackIds = orderedTracks.map((t) => t.id);
+
+                  e.dataTransfer.setData('application/json', JSON.stringify({
+                    id: track.id,
+                    track_ids: trackIds,
+                    tracks: orderedTracks,
+                    title: track.title,
+                    artist_name: track.artist_name,
+                    album_id: track.album_id,
+                    album_title: track.album_title,
+                    cover_url: track.cover_url,
+                  }));
+                  e.dataTransfer.setData('text/plain', trackIds.join(','));
+                  e.dataTransfer.effectAllowed = 'copy';
+                }}
                 onContextMenu={(e) => {
                   if (onContextMenu) {
                     e.preventDefault();
@@ -267,7 +293,7 @@ export const HomeTopTables = ({
                     });
                   }
                 }}
-                className={`group grid grid-cols-[1fr_auto] md:grid-cols-[4fr_3fr_100px] items-center px-0 md:px-2 py-2.5 rounded-xl transition cursor-default select-none border ${
+                className={`group grid grid-cols-[1fr_auto] md:grid-cols-[4fr_3fr_100px] items-center px-0 md:px-2 py-2.5 rounded-xl transition cursor-grab active:cursor-grabbing select-none border ${
                   isSelected
                     ? 'border-transparent bg-surface-hover ring-1 ring-white/20 text-content-primary shadow-sm'
                     : isThisTrack
@@ -286,6 +312,7 @@ export const HomeTopTables = ({
                     />
                     {/* Desktop Play / Equalizer Overlay */}
                     <div 
+                      data-no-drag="true"
                       onClick={(e) => {
                         e.stopPropagation();
                         if (isThisTrack) {
