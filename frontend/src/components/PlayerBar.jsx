@@ -501,8 +501,18 @@ export const PlayerBar = ({
 
           <button
             onClick={toggleMute}
+            onWheel={(e) => {
+              e.preventDefault();
+              const delta = e.deltaY;
+              const step = Math.abs(delta) < 30 ? 0.02 : 0.04;
+              const change = delta < 0 ? step : -step;
+              const cur = isMuted ? 0 : volume;
+              const nextVol = Math.max(0, Math.min(1, Math.round((cur + change) * 100) / 100));
+              if (isMuted && nextVol > 0) toggleMute();
+              handleVolumeChange(nextVol);
+            }}
             className="text-content-secondary hover:text-content-primary transition"
-            title={isMuted ? 'Unmute' : 'Mute'}
+            title={isMuted ? 'Unmute' : 'Mute (or scroll to adjust)'}
           >
             {isMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
           </button>

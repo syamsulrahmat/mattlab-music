@@ -29,6 +29,8 @@ export const VolumeSlider = ({
 
   const [isHovering, setIsHovering] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isWheelScrolling, setIsWheelScrolling] = useState(false);
+  const wheelTimeoutRef = useRef(null);
 
   // Hover preview state
   const [hoverVolume, setHoverVolume] = useState(volume);
@@ -166,13 +168,62 @@ export const VolumeSlider = ({
   }, [disabled, effectiveVolume, isMuted, onUnmute, onChange]);
 
   useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+
+    const handleWheelEvent = (e) => {
+      if (disabled || !onChange) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Normalize scroll wheel step:
+      // Touchpad micro-scrolls typically < 30 delta, mouse wheels ~ 100 delta
+      const absDelta = Math.abs(e.deltaY);
+      const step = absDelta < 30 ? 0.02 : 0.04;
+      const change = e.deltaY < 0 ? step : -step;
+      const cur = isMuted ? 0 : volume;
+      const nextVol = Math.max(0, Math.min(1, Math.round((cur + change) * 100) / 100));
+
+      if (isMuted && nextVol > 0 && onUnmute) {
+        onUnmute();
+      }
+
+      onChange(nextVol);
+      setIsWheelScrolling(true);
+      setIsHovering(true);
+
+      // Align hover tooltip badge directly over the moving thumb knob
+      const rect = el.getBoundingClientRect();
+      const halfPill = 18;
+      const clampedX = Math.max(halfPill, Math.min(rect.width - halfPill, nextVol * rect.width));
+      setHoverClampedX(clampedX);
+      setHoverVolume(nextVol);
+
+      if (wheelTimeoutRef.current) {
+        clearTimeout(wheelTimeoutRef.current);
+      }
+      wheelTimeoutRef.current = setTimeout(() => {
+        setIsWheelScrolling(false);
+      }, 750);
+    };
+
+    el.addEventListener('wheel', handleWheelEvent, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', handleWheelEvent);
+      if (wheelTimeoutRef.current) clearTimeout(wheelTimeoutRef.current);
+    };
+  }, [disabled, isMuted, volume, onChange, onUnmute]);
+
+  useEffect(() => {
     return () => {
       isPointerDownRef.current = false;
       isDraggingRef.current = false;
     };
   }, []);
 
-  const displayTooltipVolume = isDragging ? effectiveVolume : hoverVolume;
+  const showTooltip = isHovering || isDragging || isWheelScrolling;
+  const isInteracting = isHovering || isDragging || isWheelScrolling;
+  const displayTooltipVolume = isDragging || isWheelScrolling ? effectiveVolume : hoverVolume;
 
   return (
     <div
@@ -200,9 +251,9 @@ export const VolumeSlider = ({
       }`}
     >
       {/* Floating Volume Tooltip Badge */}
-      {(isHovering || isDragging) && (
+      {showTooltip && (
         <div
-          className="absolute -top-7 -translate-x-1/2 bg-[#282828] text-white text-[11px] font-mono px-1.5 py-0.5 rounded shadow-lg border border-white/10 pointer-events-none select-none z-30 whitespace-nowrap"
+          className="absolute -top-7 -translate-x-1/2 bg-[#282828] text-white text-[11px] font-mono px-1.5 py-0.5 rounded shadow-lg border border-white/10 pointer-events-none select-none z-30 whitespace-nowrap animate-in fade-in zoom-in-95 duration-100"
           style={{ left: `${hoverClampedX}px` }}
         >
           {Math.round(displayTooltipVolume * 100)}%
@@ -211,22 +262,30 @@ export const VolumeSlider = ({
 
       {/* 4px Visual Track Background */}
       <div className="w-full h-1 bg-white/20 rounded-full overflow-hidden relative">
-        {/* Active Volume Fill (White on idle, Brand Green on hover/drag) */}
+        {/* Active Volume Fill (White on idle, Brand Green on hover/drag/scroll) */}
         <div
           className={`h-full rounded-full transition-colors duration-150 ${
-            isHovering || isDragging ? 'bg-brand-500' : 'bg-white'
-          }`}
+            isDragging
+              ? 'transition-none'
+              : 'transition-[width] duration-100 ease-out'
+          } ${isInteracting ? 'bg-brand-500' : 'bg-white'}`}
           style={{ width: `${progressPercent}%` }}
         />
       </div>
 
       {/* 12px Thumb Knob */}
       <div
-        className={`absolute w-3 h-3 bg-white rounded-full shadow-md -translate-x-1/2 pointer-events-none transition-transform duration-100 ease-out ${
-          isHovering || isDragging
+        className={`absolute w-3 h-3 bg-white rounded-full shadow-md -translate-x-1/2 pointer-events-none ${
+          isDragging
+            ? '!scale-115 shadow-lg transition-none'
+            : isWheelScrolling
+            ? 'transition-[left,transform] duration-100 ease-out opacity-100 scale-100'
+            : 'transition-transform duration-100 ease-out'
+        } ${
+          isInteracting
             ? 'opacity-100 scale-100'
             : 'opacity-0 scale-0'
-        } ${isDragging ? '!scale-115 shadow-lg' : ''}`}
+        }`}
         style={{ left: `${progressPercent}%` }}
       />
     </div>
