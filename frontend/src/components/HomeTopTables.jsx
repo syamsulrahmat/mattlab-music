@@ -22,6 +22,7 @@ export const HomeTopTables = ({
   const containerRef = useRef(null);
 
   const top10 = userTopTracks.slice(0, 10);
+  const hasUserHistory = top10.some((t) => t.is_user_played || (t.user_play_count && t.user_play_count > 0));
 
   // Build continuous queue with deduplicated popular tracks appended for endless playback continuity
   const getContinuityQueue = useCallback((baseTracks) => {
@@ -185,8 +186,13 @@ export const HomeTopTables = ({
             </div>
             <div>
               <h3 className="text-xl sm:text-2xl font-bold text-content-primary tracking-tight">
-                Your Top 10 Tracks
+                {hasUserHistory ? 'Your Top 10 Tracks' : 'Top Picks For You'}
               </h3>
+              {!hasUserHistory && (
+                <p className="text-xs text-content-secondary mt-0.5">
+                  Top-rated tracks in your library — your personal top 10 will take shape as you listen
+                </p>
+              )}
             </div>
           </div>
 

@@ -252,7 +252,8 @@ def add_comment(broadcast_id: int, payload: CreateCommentRequest, current_user: 
         }
 
 @router.delete("/comments/{comment_id}")
-def delete_comment(comment_id: int, current_user: Dict[str, Any] = Depends(get_current_user)):
+@router.delete("/{broadcast_id}/comments/{comment_id}")
+def delete_comment(comment_id: int, broadcast_id: Optional[int] = None, current_user: Dict[str, Any] = Depends(get_current_user)):
     """Delete a comment. Allowed for comment author or admin."""
     with get_db() as conn:
         cursor = conn.cursor()

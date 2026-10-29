@@ -14,7 +14,6 @@ export const RequestMusicModal = ({
   initialQuery = '' 
 }) => {
   const { isPlaying, fadePause, fadeResume } = usePlayer();
-  const { isAdmin } = useAuth();
   const pausedByPreviewRef = useRef(false);
 
   const [query, setQuery] = useState('');
@@ -113,7 +112,6 @@ export const RequestMusicModal = ({
 
   // Hoisted fetchActivity so handleDownload can refresh live downloads safely
   const fetchActivity = useCallback(async () => {
-    if (!isAdmin) return;
     try {
       const res = await fetch('/api/request/activity');
       if (!res.ok) return;

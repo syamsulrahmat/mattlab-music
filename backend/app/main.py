@@ -95,12 +95,6 @@ async def auth_middleware(request: Request, call_next):
             content={"detail": "Admin privileges required"},
         )
 
-    if request.url.path.startswith("/api/request") and user.get("role") != "admin":
-        return JSONResponse(
-            status_code=status.HTTP_403_FORBIDDEN,
-            content={"detail": "Admin privileges required to manage music downloads"},
-        )
-
     if request.url.path.startswith("/api/lyrics/control") and user.get("role") != "admin":
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,

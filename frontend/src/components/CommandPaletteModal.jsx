@@ -203,6 +203,16 @@ export const CommandPaletteModal = ({
         icon: Bug,
         action: () => onOpenBugReport?.(),
       },
+      {
+        id: 'nav_request',
+        type: 'command',
+        category: 'Navigation',
+        title: 'Request & Download Music',
+        subtitle: 'Search and import missing songs & albums (Lidarr + Direct HQ)',
+        shortcut: '',
+        icon: DownloadCloud,
+        action: () => onRequestMusic?.(''),
+      },
     ];
 
     // Admin commands
@@ -227,16 +237,6 @@ export const CommandPaletteModal = ({
           shortcut: '',
           icon: RefreshCw,
           action: () => onRefreshScan?.(),
-        },
-        {
-          id: 'admin_request',
-          type: 'command',
-          category: 'Administration',
-          title: 'Request Music (Lidarr & Torrents)',
-          subtitle: 'Search and import missing albums from Spotify / Deezer',
-          shortcut: '',
-          icon: DownloadCloud,
-          action: () => onRequestMusic?.(''),
         }
       );
     }

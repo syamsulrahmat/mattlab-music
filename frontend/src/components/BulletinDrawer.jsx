@@ -235,13 +235,14 @@ export const BulletinDrawer = ({ isOpen, onClose, onUnreadCountChange, onSelectU
       });
 
       if (res.ok) {
-        const newComment = await res.json();
+        const data = await res.json();
+        const newComment = data.comment || data;
         setBroadcasts((prev) =>
           prev.map((b) => {
             if (b.id === broadcastId) {
               return {
                 ...b,
-                comments: [...b.comments, newComment],
+                comments: [...(b.comments || []), newComment],
               };
             }
             return b;
@@ -673,6 +674,7 @@ export const BulletinDrawer = ({ isOpen, onClose, onUnreadCountChange, onSelectU
                     {visibleComments.length > 0 && (
                       <div className="space-y-2">
                         {visibleComments.map((c) => {
+                          if (!c || !c.user) return null;
                           const canDeleteComment = user?.id === c.user.id || isAdmin;
                           return (
                             <div

@@ -92,7 +92,7 @@ export const Footer = ({
                 </button>
               </li>
 
-              {isAdmin && onRequestMusic && (
+              {onRequestMusic && (
                 <li>
                   <button
                     onClick={onRequestMusic}

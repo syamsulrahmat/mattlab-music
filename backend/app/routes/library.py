@@ -204,9 +204,9 @@ async def get_artist_detail(artist_id: int):
     }
 
 @router.post("/tracks/{track_id}/play")
-async def record_track_play(track_id: int, current_user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)):
+async def record_track_play(track_id: int, current_user: Dict[str, Any] = Depends(get_current_user)):
     """Record playback event for user top tracks and increment library play count."""
-    user_id = current_user["id"] if current_user else 1
+    user_id = current_user["id"]
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT id FROM tracks WHERE id = ?", (track_id,))
@@ -226,7 +226,7 @@ async def record_track_play(track_id: int, current_user: Optional[Dict[str, Any]
     return {"status": "success", "track_id": track_id}
 
 @router.get("/home")
-async def get_home_shelves(current_user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)):
+async def get_home_shelves(current_user: Dict[str, Any] = Depends(get_current_user)):
     """Retrieve structured data for the Spotify Island home page."""
     # Trigger non-blocking background popularity backfill if needed
     try:
@@ -234,12 +234,12 @@ async def get_home_shelves(current_user: Optional[Dict[str, Any]] = Depends(get_
     except Exception:
         pass
 
-    user_id = current_user["id"] if current_user else 1
+    user_id = current_user["id"]
 
     with get_db() as conn:
         cursor = conn.cursor()
 
-        # 0A. User Top 10 Tracks (scored by user's personal plays)
+        # 0A. User Top 10 Tracks (scored strictly by user's personal plays)
         cursor.execute("""
             SELECT 
                 t.id, t.title, t.duration_seconds, t.file_path, t.file_format,
@@ -247,7 +247,8 @@ async def get_home_shelves(current_user: Optional[Dict[str, Any]] = Depends(get_
                 al.id AS album_id, al.title AS album_title, al.cover_path,
                 COUNT(tp.id) AS user_play_count,
                 COALESCE(t.play_count, 0) AS play_count,
-                COALESCE(t.popularity, 0) AS popularity
+                COALESCE(t.popularity, 0) AS popularity,
+                1 AS is_user_played
             FROM tracks t
             JOIN artists ar ON t.artist_id = ar.id
             JOIN albums al ON t.album_id = al.id
@@ -259,16 +260,20 @@ async def get_home_shelves(current_user: Optional[Dict[str, Any]] = Depends(get_
         user_top_tracks = [
             {
                 **dict(row),
+                "is_user_played": True,
                 "cover_url": make_cover_url(row["album_id"], row["cover_path"]),
             }
             for row in cursor.fetchall()
         ]
 
-        # Cold-start fallback if user has fewer than 10 plays:
+        # Cold-start / discovery fallback if user has fewer than 10 personal plays:
+        # Prioritize: 1) User's favorites, 2) User's playlist tracks, 3) Neutral Spotify popularity
+        # Completely EXCLUDE global play_count so other users' playback history is never leaked!
         if len(user_top_tracks) < 10:
             existing_ids = {t["id"] for t in user_top_tracks}
             placeholders = ",".join(["?"] * len(existing_ids)) if existing_ids else "0"
-            params = [user_id] + list(existing_ids) + [10 - len(user_top_tracks)]
+            needed = 10 - len(user_top_tracks)
+            params = [user_id, user_id] + list(existing_ids) + [needed]
             cursor.execute(f"""
                 SELECT 
                     t.id, t.title, t.duration_seconds, t.file_path, t.file_format,
@@ -276,20 +281,30 @@ async def get_home_shelves(current_user: Optional[Dict[str, Any]] = Depends(get_
                     al.id AS album_id, al.title AS album_title, al.cover_path,
                     0 AS user_play_count,
                     COALESCE(t.play_count, 0) AS play_count,
-                    COALESCE(t.popularity, 0) AS popularity
+                    COALESCE(t.popularity, 0) AS popularity,
+                    0 AS is_user_played
                 FROM tracks t
                 JOIN artists ar ON t.artist_id = ar.id
                 JOIN albums al ON t.album_id = al.id
                 LEFT JOIN favorites f ON f.track_id = t.id AND f.user_id = ?
+                LEFT JOIN (
+                    SELECT DISTINCT ptr.track_id 
+                    FROM playlist_tracks ptr 
+                    JOIN playlists pl ON ptr.playlist_id = pl.id 
+                    WHERE pl.user_id = ?
+                ) pt ON pt.track_id = t.id
                 WHERE t.id NOT IN ({placeholders})
-                ORDER BY (CASE WHEN f.track_id IS NOT NULL THEN 1 ELSE 0 END) DESC,
-                         COALESCE(t.play_count, 0) DESC,
-                         t.id DESC
+                ORDER BY 
+                    (CASE WHEN f.track_id IS NOT NULL THEN 1 ELSE 0 END) DESC,
+                    (CASE WHEN pt.track_id IS NOT NULL THEN 1 ELSE 0 END) DESC,
+                    COALESCE(t.popularity, 0) DESC,
+                    RANDOM()
                 LIMIT ?
             """, params)
             fallback_tracks = [
                 {
                     **dict(row),
+                    "is_user_played": False,
                     "cover_url": make_cover_url(row["album_id"], row["cover_path"]),
                 }
                 for row in cursor.fetchall()
