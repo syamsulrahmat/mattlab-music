@@ -42,6 +42,7 @@ import {
   RotateCcw,
   Lock,
   Download,
+  DownloadCloud,
   Monitor
 } from 'lucide-react';
 import { MattLabLogo } from './MattLabLogo';
