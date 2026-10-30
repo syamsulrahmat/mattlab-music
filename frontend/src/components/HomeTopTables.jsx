@@ -293,7 +293,7 @@ export const HomeTopTables = ({
                     });
                   }
                 }}
-                className={`group grid grid-cols-[1fr_auto] md:grid-cols-[4fr_3fr_100px] items-center px-0 md:px-2 py-2.5 rounded-xl transition cursor-grab active:cursor-grabbing select-none border ${
+                className={`group grid grid-cols-[1fr_auto] md:grid-cols-[4fr_3fr_100px] items-center px-0 md:px-2 py-2.5 rounded-xl transition cursor-default select-none border ${
                   isSelected
                     ? 'border-transparent bg-surface-hover ring-1 ring-white/20 text-content-primary shadow-sm'
                     : isThisTrack
