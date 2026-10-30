@@ -325,8 +325,6 @@ export const SettingsModal = ({
     setPipEngine,
     togglePiP,
     isPiPActive,
-    autoMiniPlayerIntroEnabled,
-    setAutoMiniPlayerIntroEnabled,
     miniPlayerOpacity,
     setMiniPlayerOpacity,
     miniPlayerIdleDim,
@@ -1381,26 +1379,16 @@ export const SettingsModal = ({
                 </div>
 
                 {/* Streaming Audio Quality & Data Saver Card */}
-                <div className="p-5 rounded-2xl bg-surface-panel border border-border-subtle space-y-5">
+                <div className="p-5 rounded-2xl bg-surface-panel border border-border-subtle space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border-subtle">
                     <div>
                       <h4 className="text-sm font-bold text-white flex items-center gap-2">
                         <Gauge size={16} className="text-brand-500" />
-                        <span>Streaming Audio Quality & Data Saver</span>
+                        <span>Streaming Audio Quality</span>
                       </h4>
                       <p className="text-xs text-content-muted mt-0.5">
-                        Select your preferred streaming fidelity. Switch to Data Saver to reduce bandwidth consumption by up to 90%.
+                        Select your preferred playback fidelity and bandwidth usage.
                       </p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider ${
-                        audioQuality === 'data_saver'
-                          ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                          : 'bg-brand-500/15 text-brand-400 border border-brand-500/30'
-                      }`}>
-                        {audioQuality === 'data_saver' ? 'LQ • Data Saver (128 kbps)' : 'HQ • Lossless Master / 320k'}
-                      </span>
                     </div>
                   </div>
 
@@ -1410,68 +1398,52 @@ export const SettingsModal = ({
                     <button
                       type="button"
                       onClick={() => setAudioQuality('original')}
-                      className={`p-4 rounded-xl text-left border transition flex flex-col justify-between relative group ${
+                      className={`p-3.5 rounded-xl text-left border transition flex flex-col justify-between relative group ${
                         audioQuality === 'original'
                           ? 'bg-brand-500/10 border-brand-500 text-white shadow-sm ring-1 ring-brand-500/40'
                           : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
                       }`}
                     >
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-xs text-white">HQ • Lossless Master</span>
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30">
-                              DEFAULT
-                            </span>
-                          </div>
-                          {audioQuality === 'original' && (
-                            <Check size={14} className="text-brand-500 shrink-0" />
-                          )}
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs text-white">Original (Lossless / HQ)</span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30">
+                            DEFAULT
+                          </span>
                         </div>
-                        <p className="text-[11px] text-content-muted leading-relaxed mb-3">
-                          Bit-perfect playback streaming up to 24-bit FLAC and 320 kbps MP3 files with uncompressed dynamic range. Ideal for Wi-Fi, Ethernet, and DAC / studio headphone listening.
-                        </p>
+                        {audioQuality === 'original' && (
+                          <Check size={14} className="text-brand-500 shrink-0" />
+                        )}
                       </div>
-
-                      <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border-subtle text-[10px]">
-                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">FLAC / ALAC / WAV</span>
-                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">Bit-Perfect Audio</span>
-                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">Full Dynamic Range</span>
-                      </div>
+                      <p className="text-[11px] text-content-muted leading-relaxed">
+                        Bit-perfect playback streaming up to 24-bit FLAC and 320 kbps MP3 files.
+                      </p>
                     </button>
 
                     {/* Option 2: Data Saver Quality */}
                     <button
                       type="button"
                       onClick={() => setAudioQuality('data_saver')}
-                      className={`p-4 rounded-xl text-left border transition flex flex-col justify-between relative group ${
+                      className={`p-3.5 rounded-xl text-left border transition flex flex-col justify-between relative group ${
                         audioQuality === 'data_saver'
                           ? 'bg-amber-500/10 border-amber-500 text-white shadow-sm ring-1 ring-amber-500/40'
                           : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
                       }`}
                     >
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-xs text-white">LQ • Data Saver (128 kbps)</span>
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                              85–90% SAVINGS
-                            </span>
-                          </div>
-                          {audioQuality === 'data_saver' && (
-                            <Check size={14} className="text-amber-400 shrink-0" />
-                          )}
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs text-white">Data Saver</span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                            128 KBPS
+                          </span>
                         </div>
-                        <p className="text-[11px] text-content-muted leading-relaxed mb-3">
-                          On-the-fly streaming & caching at 128 kbps MP3. Uses only ~3.5 MB per track instead of 30–50 MB. Ideal for mobile cellular data plans, roaming, and metered Wi-Fi.
-                        </p>
+                        {audioQuality === 'data_saver' && (
+                          <Check size={14} className="text-amber-400 shrink-0" />
+                        )}
                       </div>
-
-                      <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border-subtle text-[10px]">
-                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">~3.5 MB per Track</span>
-                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">Fast Buffer Fill</span>
-                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">Cellular Friendly</span>
-                      </div>
+                      <p className="text-[11px] text-content-muted leading-relaxed">
+                        Uses ~85–90% less bandwidth. Ideal for mobile data plans and metered connections.
+                      </p>
                     </button>
                   </div>
 
@@ -1555,119 +1527,16 @@ export const SettingsModal = ({
                   </div>
                 </div>
 
-                {/* Picture-in-Picture (PiP) Display Engine Card */}
-                <div className="p-5 rounded-2xl bg-surface-panel border border-border-subtle space-y-5">
+                {/* Miniplayer Display Style Card */}
+                <div className="p-5 rounded-2xl bg-surface-panel border border-border-subtle space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border-subtle">
                     <div>
                       <h4 className="text-sm font-bold text-white flex items-center gap-2">
                         <PictureInPicture2 size={16} className="text-brand-500" />
-                        <span>Picture-in-Picture (PiP) Display Engine</span>
+                        <span>Miniplayer</span>
                       </h4>
                       <p className="text-xs text-content-muted mt-0.5">
-                        Select your preferred floating player window style when multitasking across desktop apps.
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider ${
-                        pipEngine === 'interactive'
-                          ? 'bg-brand-500/15 text-brand-400 border border-brand-500/30'
-                          : 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
-                      }`}>
-                        {pipEngine === 'interactive' ? 'Document PiP (Interactive)' : 'Video PiP (16:9 Borderless)'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Dual Mode Selectable Cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {/* Option 1: Interactive Mini-Player (Main Branch Document PiP) */}
-                    <button
-                      type="button"
-                      onClick={() => setPipEngine('interactive')}
-                      className={`p-4 rounded-xl text-left border transition flex flex-col justify-between relative group ${
-                        pipEngine === 'interactive'
-                          ? 'bg-brand-500/10 border-brand-500 text-white shadow-sm ring-1 ring-brand-500/40'
-                          : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
-                      }`}
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-xs text-white">Interactive Mini-Player</span>
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30">
-                              DEFAULT
-                            </span>
-                          </div>
-                          {pipEngine === 'interactive' && (
-                            <Check size={14} className="text-brand-500 shrink-0" />
-                          )}
-                        </div>
-                        <p className="text-[11px] text-content-muted leading-relaxed mb-3">
-                          Ultra-compact HTML5 window with live synced lyrics, click-to-play buttons, track scrubber, volume control, and flexible micro-strip resizing (down to 185×65px).
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border-subtle text-[10px]">
-                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">Ultra-Compact (185×65)</span>
-                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">Clickable Controls</span>
-                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">Live Lyrics Scroll</span>
-                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">Frameless Titlebar</span>
-                      </div>
-                    </button>
-
-                    {/* Option 2: YouTube-Style Frameless (16:9 Video Canvas PiP) */}
-                    <button
-                      type="button"
-                      onClick={() => setPipEngine('video')}
-                      className={`p-4 rounded-xl text-left border transition flex flex-col justify-between relative group ${
-                        pipEngine === 'video'
-                          ? 'bg-purple-500/10 border-purple-500 text-white shadow-sm ring-1 ring-purple-500/40'
-                          : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
-                      }`}
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-xs text-white">YouTube-Style Frameless</span>
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30">
-                              16:9 CINEMATIC
-                            </span>
-                          </div>
-                          {pipEngine === 'video' && (
-                            <Check size={14} className="text-purple-400 shrink-0" />
-                          )}
-                        </div>
-                        <p className="text-[11px] text-content-muted leading-relaxed mb-3">
-                          100% borderless floating card with album cover art, ambient glow, 2-line live lyrics, and Chrome's native OS hover controls with draggable timeline scrubber.
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border-subtle text-[10px]">
-                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">16:9 Card (640×360)</span>
-                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">Zero Browser Titlebar</span>
-                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">Album Cover Glow</span>
-                        <span className="px-2 py-0.5 rounded bg-white/5 text-content-secondary border border-border-subtle">OS Hover Scrubber</span>
-                      </div>
-                    </button>
-                  </div>
-
-                  {/* Dynamic Explanation & Quick Test Action */}
-                  <div className="p-3.5 rounded-xl bg-surface-island border border-border-subtle text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-start gap-2.5">
-                      <Sparkles size={15} className="text-brand-500 shrink-0 mt-0.5" />
-                      <p className="text-content-secondary leading-relaxed">
-                        {pipEngine === 'interactive' ? (
-                          <>
-                            <strong className="text-white">Main Branch PiP: </strong>
-                            Uses Document PiP API. Allows shrinking all the way down to a tiny micro-bar while keeping full in-window interactive control.
-                          </>
-                        ) : (
-                          <>
-                            <strong className="text-white">YouTube Style PiP: </strong>
-                            Uses HTML5 Video PiP API. Composited directly by the OS with zero browser title bar, high-res cover art, and native hover scrub controls.
-                          </>
-                        )}
+                        Choose your preferred floating miniplayer style for multitasking.
                       </p>
                     </div>
 
@@ -1677,55 +1546,63 @@ export const SettingsModal = ({
                       className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white border border-border-medium transition shrink-0 flex items-center gap-1.5 self-start sm:self-auto"
                     >
                       <PictureInPicture2 size={13} />
-                      <span>{isPiPActive ? 'Close PiP' : 'Launch PiP Preview'}</span>
+                      <span>{isPiPActive ? 'Close Miniplayer' : 'Preview Miniplayer'}</span>
                     </button>
                   </div>
 
-                  {/* Once-A-Day Auto-Introduction Toggle */}
-                  <div className="pt-3.5 border-t border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                      <h5 className="text-xs font-bold text-white flex items-center gap-2">
-                        <span>Auto-introduce MiniPlayer on tab / app switch</span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand-500/15 text-brand-400 border border-brand-500/25">
-                          1× PER DAY
-                        </span>
-                      </h5>
-                      <p className="text-[11px] text-content-muted mt-0.5 leading-relaxed">
-                        Gently pops out the MiniPlayer when multitasking to another tab or desktop app during playback. Limited to once per calendar day.
+                  {/* Dual Mode Selectable Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Option 1: Interactive Miniplayer */}
+                    <button
+                      type="button"
+                      onClick={() => setPipEngine('interactive')}
+                      className={`p-3.5 rounded-xl text-left border transition flex flex-col justify-between relative group ${
+                        pipEngine === 'interactive'
+                          ? 'bg-brand-500/10 border-brand-500 text-white shadow-sm ring-1 ring-brand-500/40'
+                          : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs text-white">Interactive Miniplayer</span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30">
+                            DEFAULT
+                          </span>
+                        </div>
+                        {pipEngine === 'interactive' && (
+                          <Check size={14} className="text-brand-500 shrink-0" />
+                        )}
+                      </div>
+                      <p className="text-[11px] text-content-muted leading-relaxed">
+                        Floating window with click-to-play buttons, scrubber, volume, and live synced lyrics.
                       </p>
-                    </div>
+                    </button>
 
-                    <div className="flex items-center gap-2.5 self-end sm:self-auto">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          try {
-                            localStorage.removeItem('mattlab_miniplayer_auto_intro_date');
-                            if (showToast) {
-                              showToast('✅ Daily intro reset! Ready to trigger on next tab/app switch.', 4000);
-                            }
-                          } catch (_) {}
-                        }}
-                        className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-white/5 hover:bg-white/10 text-content-secondary hover:text-white border border-border-subtle transition"
-                        title="Reset daily intro limit to test again immediately"
-                      >
-                        Reset Daily Limit
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setAutoMiniPlayerIntroEnabled(!autoMiniPlayerIntroEnabled)}
-                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                          autoMiniPlayerIntroEnabled ? 'bg-brand-500' : 'bg-surface-elevated'
-                        }`}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                            autoMiniPlayerIntroEnabled ? 'translate-x-5' : 'translate-x-0'
-                          }`}
-                        />
-                      </button>
-                    </div>
+                    {/* Option 2: Frameless Video Miniplayer */}
+                    <button
+                      type="button"
+                      onClick={() => setPipEngine('video')}
+                      className={`p-3.5 rounded-xl text-left border transition flex flex-col justify-between relative group ${
+                        pipEngine === 'video'
+                          ? 'bg-purple-500/10 border-purple-500 text-white shadow-sm ring-1 ring-purple-500/40'
+                          : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs text-white">Frameless Video Miniplayer</span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                            YOUTUBE STYLE
+                          </span>
+                        </div>
+                        {pipEngine === 'video' && (
+                          <Check size={14} className="text-purple-400 shrink-0" />
+                        )}
+                      </div>
+                      <p className="text-[11px] text-content-muted leading-relaxed">
+                        Borderless 16:9 floating card with album artwork, ambient glow, and synced lyrics.
+                      </p>
+                    </button>
                   </div>
 
                   {/* Desktop Miniplayer Transparency & Ghosting */}

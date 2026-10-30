@@ -746,6 +746,114 @@ export const PlayerProvider = ({ children }) => {
     }
   }, [saveUserPreference, currentTrack, isKaraokeMode, getTrackStreamUrl, crossfadeToSource]);
 
+  // Document Picture-in-Picture & Canvas Video PiP & Mini Player state
+  const [pipWindow, setPipWindow] = useState(null);
+  const [isMiniPlayerOpen, setIsMiniPlayerOpen] = useState(false);
+  const [isCanvasPiPActive, setIsCanvasPiPActive] = useState(false);
+
+  // Picture-in-Picture Display Engine ('interactive' = Document PiP [default] | 'video' = YouTube-style 16:9 Video PiP)
+  const [pipEngine, setPipEngineState] = useState(() => {
+    try {
+      return localStorage.getItem('music_pip_engine') || 'interactive';
+    } catch (_) {
+      return 'interactive';
+    }
+  });
+
+  const setPipEngine = useCallback((engine) => {
+    const validEngine = engine === 'video' ? 'video' : 'interactive';
+    setPipEngineState(validEngine);
+    try {
+      localStorage.setItem('music_pip_engine', validEngine);
+    } catch (_) {}
+    saveUserPreference({ pipEngine: validEngine });
+  }, [saveUserPreference]);
+
+  // Miniplayer Opacity & Idle Dimming States (Glassmorphism)
+  const [miniPlayerOpacity, setMiniPlayerOpacityState] = useState(() => {
+    try {
+      const stored = localStorage.getItem('mattlab_miniplayer_opacity');
+      if (stored !== null) {
+        const val = parseInt(stored, 10);
+        if (!isNaN(val) && val >= 30 && val <= 100) return val;
+      }
+    } catch (_) {}
+    return 85;
+  });
+
+  const setMiniPlayerOpacity = useCallback((val) => {
+    const clamped = Math.max(30, Math.min(100, Number(val) || 85));
+    setMiniPlayerOpacityState(clamped);
+    try {
+      localStorage.setItem('mattlab_miniplayer_opacity', String(clamped));
+    } catch (_) {}
+    saveUserPreference({ miniPlayerOpacity: clamped });
+  }, [saveUserPreference]);
+
+  const [miniPlayerIdleDim, setMiniPlayerIdleDimState] = useState(() => {
+    try {
+      const stored = localStorage.getItem('mattlab_miniplayer_idle_dim');
+      return stored !== null ? stored === 'true' : true;
+    } catch (_) {
+      return true;
+    }
+  });
+
+  const setMiniPlayerIdleDim = useCallback((enabled) => {
+    setMiniPlayerIdleDimState(enabled);
+    try {
+      localStorage.setItem('mattlab_miniplayer_idle_dim', String(enabled));
+    } catch (_) {}
+    saveUserPreference({ miniPlayerIdleDim: enabled });
+  }, [saveUserPreference]);
+
+  // Auto-introduction of MiniPlayer on tab / desktop app switch (always on, once per calendar day)
+  const autoMiniPlayerIntroEnabled = true;
+
+  // Autoplay Similar Tracks (Radio/Niche Recommendations)
+  const [autoplaySimilar, setAutoplaySimilarState] = useState(() => {
+    try {
+      const stored = localStorage.getItem('mattlab_autoplay_similar');
+      return stored !== null ? stored === 'true' : true;
+    } catch (_) {
+      return true;
+    }
+  });
+
+  const setAutoplaySimilar = useCallback((enabled) => {
+    setAutoplaySimilarState(enabled);
+    try {
+      localStorage.setItem('mattlab_autoplay_similar', String(enabled));
+    } catch (_) {}
+    saveUserPreference({ autoplaySimilar: enabled });
+  }, [saveUserPreference]);
+
+  const [recommendedTracks, setRecommendedTracks] = useState([]);
+  const [seedGenre, setSeedGenre] = useState(null);
+  const isFetchingRecommendationsRef = useRef(false);
+
+  const fetchRecommendations = useCallback(async (trackId, currentQueue = []) => {
+    if (!trackId || isFetchingRecommendationsRef.current) return;
+    try {
+      isFetchingRecommendationsRef.current = true;
+      const excludeIds = (currentQueue || []).map((t) => t.id).filter(Boolean).slice(-25).join(',');
+      const res = await fetch(`/api/recommendations/${trackId}?limit=20${excludeIds ? `&exclude=${excludeIds}` : ''}`, {
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRecommendedTracks(data.tracks || []);
+        setSeedGenre(data.seed_genre || null);
+        return data;
+      }
+    } catch (err) {
+      console.warn('Failed to fetch recommendations:', err);
+    } finally {
+      isFetchingRecommendationsRef.current = false;
+    }
+    return null;
+  }, []);
+
   // Subscribe to audioPreloader events
   useEffect(() => {
     return audioPreloader.subscribe((ids) => {
@@ -759,6 +867,60 @@ export const PlayerProvider = ({ children }) => {
       audioPreloader.updateQueue(queue, queueIndex);
     }
   }, [queue, queueIndex]);
+
+  // Teardown playback state completely (e.g. on user logout)
+  const resetPlaybackState = useCallback(() => {
+    // 1. Release and cancel in-flight audio streaming
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+        audioRef.current.removeAttribute('src');
+        audioRef.current.load();
+      } catch (_) {}
+    }
+    if (standbyAudioRef.current) {
+      try {
+        standbyAudioRef.current.pause();
+        standbyAudioRef.current.src = '';
+        standbyAudioRef.current.removeAttribute('src');
+        standbyAudioRef.current.load();
+      } catch (_) {}
+    }
+
+    // 2. Close any open PiP or MiniPlayer windows
+    if (pipWindow) {
+      try { pipWindow.close(); } catch (_) {}
+      setPipWindow(null);
+    }
+    setIsCanvasPiPActive(false);
+    setIsMiniPlayerOpen(false);
+
+    if (typeof window !== 'undefined' && window.electronAPI && typeof window.electronAPI.closeFloatingMiniPlayer === 'function') {
+      try { window.electronAPI.closeFloatingMiniPlayer(); } catch (_) {}
+    }
+
+    // 3. Clear OS MediaSession metadata & action handlers
+    if ('mediaSession' in navigator) {
+      try {
+        navigator.mediaSession.playbackState = 'none';
+        navigator.mediaSession.metadata = null;
+      } catch (_) {}
+    }
+
+    // 4. Reset internal player states
+    setIsPlaying(false);
+    setIsBuffering(false);
+    setHasStartedPlayback(false);
+    setCurrentTrack(null);
+    setQueue([]);
+    setQueueIndex(0);
+    setCurrentTime(0);
+    setDuration(0);
+    setBufferedTime(0);
+    currentTimeRef.current = 0;
+    initialSeekTimeRef.current = 0;
+  }, [pipWindow]);
 
   // Synchronize favorites and preferences when authenticated user changes
   useEffect(() => {
@@ -788,12 +950,6 @@ export const PlayerProvider = ({ children }) => {
           setPipEngineState(prefs.pipEngine);
           try {
             localStorage.setItem('music_pip_engine', prefs.pipEngine);
-          } catch (_) {}
-        }
-        if (typeof prefs.autoMiniPlayerIntroEnabled === 'boolean') {
-          setAutoMiniPlayerIntroEnabledState(prefs.autoMiniPlayerIntroEnabled);
-          try {
-            localStorage.setItem('mattlab_auto_miniplayer_intro', String(prefs.autoMiniPlayerIntroEnabled));
           } catch (_) {}
         }
         if (typeof prefs.miniPlayerOpacity === 'number') {
@@ -849,10 +1005,12 @@ export const PlayerProvider = ({ children }) => {
           .catch((err) => console.error('Failed to load user favorites:', err));
       }
     } else if (!isAuthenticated) {
+      // User logged out: teardown playback and clean up audio resources immediately
       loadedUserIdRef.current = null;
       setFavoriteIds(new Set());
+      resetPlaybackState();
     }
-  }, [isAuthenticated, user?.id, user?.preferences, isMuted]);
+  }, [isAuthenticated, user?.id, user?.preferences, isMuted, resetPlaybackState]);
 
   // Initialize audio element settings
   useEffect(() => {
@@ -1595,116 +1753,6 @@ export const PlayerProvider = ({ children }) => {
     });
   };
 
-  // Document Picture-in-Picture & Canvas Video PiP & Mini Player state
-  const [pipWindow, setPipWindow] = useState(null);
-  const [isMiniPlayerOpen, setIsMiniPlayerOpen] = useState(false);
-  const [isCanvasPiPActive, setIsCanvasPiPActive] = useState(false);
-
-  // Picture-in-Picture Display Engine ('interactive' = Document PiP [default] | 'video' = YouTube-style 16:9 Video PiP)
-  const [pipEngine, setPipEngineState] = useState(() => {
-    try {
-      return localStorage.getItem('music_pip_engine') || 'interactive';
-    } catch (_) {
-      return 'interactive';
-    }
-  });
-
-  const setPipEngine = useCallback((engine) => {
-    const validEngine = engine === 'video' ? 'video' : 'interactive';
-    setPipEngineState(validEngine);
-    try {
-      localStorage.setItem('music_pip_engine', validEngine);
-    } catch (_) {}
-    saveUserPreference({ pipEngine: validEngine });
-  }, [saveUserPreference]);
-
-  // Miniplayer Opacity & Idle Dimming States (Glassmorphism)
-  const [miniPlayerOpacity, setMiniPlayerOpacityState] = useState(() => {
-    try {
-      const stored = localStorage.getItem('mattlab_miniplayer_opacity');
-      if (stored !== null) {
-        const val = parseInt(stored, 10);
-        if (!isNaN(val) && val >= 30 && val <= 100) return val;
-      }
-    } catch (_) {}
-    return 85;
-  });
-
-  const setMiniPlayerOpacity = useCallback((val) => {
-    const clamped = Math.max(30, Math.min(100, Number(val) || 85));
-    setMiniPlayerOpacityState(clamped);
-    try {
-      localStorage.setItem('mattlab_miniplayer_opacity', String(clamped));
-    } catch (_) {}
-    saveUserPreference({ miniPlayerOpacity: clamped });
-  }, [saveUserPreference]);
-
-  const [miniPlayerIdleDim, setMiniPlayerIdleDimState] = useState(() => {
-    try {
-      const stored = localStorage.getItem('mattlab_miniplayer_idle_dim');
-      return stored !== null ? stored === 'true' : true;
-    } catch (_) {
-      return true;
-    }
-  });
-
-  const setMiniPlayerIdleDim = useCallback((enabled) => {
-    setMiniPlayerIdleDimState(enabled);
-    try {
-      localStorage.setItem('mattlab_miniplayer_idle_dim', String(enabled));
-    } catch (_) {}
-    saveUserPreference({ miniPlayerIdleDim: enabled });
-  }, [saveUserPreference]);
-
-  // Autoplay Similar Tracks (Radio/Niche Recommendations)
-  const [autoplaySimilar, setAutoplaySimilarState] = useState(() => {
-    try {
-      const stored = localStorage.getItem('mattlab_autoplay_similar');
-      return stored !== null ? stored === 'true' : true;
-    } catch (_) {
-      return true;
-    }
-  });
-
-  const setAutoplaySimilar = useCallback((enabled) => {
-    setAutoplaySimilarState(enabled);
-    try {
-      localStorage.setItem('mattlab_autoplay_similar', String(enabled));
-    } catch (_) {}
-    saveUserPreference({ autoplaySimilar: enabled });
-  }, [saveUserPreference]);
-
-  const [recommendedTracks, setRecommendedTracks] = useState([]);
-  const [seedGenre, setSeedGenre] = useState(null);
-  const isFetchingRecommendationsRef = useRef(false);
-
-  const fetchRecommendations = useCallback(async (trackId, currentQueue = []) => {
-    if (!trackId || isFetchingRecommendationsRef.current) return;
-    try {
-      isFetchingRecommendationsRef.current = true;
-      const excludeIds = (currentQueue || []).map((t) => t.id).filter(Boolean).slice(-25).join(',');
-      const res = await fetch(`/api/recommendations/${trackId}?limit=20${excludeIds ? `&exclude=${excludeIds}` : ''}`, {
-        credentials: 'include',
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setRecommendedTracks(data.tracks || []);
-        setSeedGenre(data.seed_genre || null);
-        return data;
-      }
-    } catch (err) {
-      console.warn('Failed to fetch recommendations:', err);
-    } finally {
-      isFetchingRecommendationsRef.current = false;
-    }
-    return null;
-  }, []);
-
-  const canvasRef = useRef(null);
-  const pipVideoRef = useRef(null);
-  const fadeIntervalRef = useRef(null);
-  const coverImageCacheRef = useRef({});
-
   // Helper to draw media card on canvas for native OS Video PiP (16:9 aspect ratio: 640x360)
   const drawPiPCanvas = useCallback((track, time, totalDuration, lyricLine = null, upcomingLyric = null) => {
     let canvas = canvasRef.current;
@@ -2144,24 +2192,6 @@ export const PlayerProvider = ({ children }) => {
     setIsMiniPlayerOpen(true);
   };
 
-  // Auto-introduction of MiniPlayer on tab / desktop app switch (once per calendar day)
-  const [autoMiniPlayerIntroEnabled, setAutoMiniPlayerIntroEnabledState] = useState(() => {
-    try {
-      const stored = localStorage.getItem('mattlab_auto_miniplayer_intro');
-      return stored !== null ? stored === 'true' : true;
-    } catch (_) {
-      return true;
-    }
-  });
-
-  const setAutoMiniPlayerIntroEnabled = useCallback((enabled) => {
-    setAutoMiniPlayerIntroEnabledState(enabled);
-    try {
-      localStorage.setItem('mattlab_auto_miniplayer_intro', String(enabled));
-    } catch (_) {}
-    saveUserPreference({ autoMiniPlayerIntroEnabled: enabled });
-  }, [saveUserPreference]);
-
   // Once-A-Day MiniPlayer Auto-Introduction Effect
   useEffect(() => {
     if (!autoMiniPlayerIntroEnabled) return;
@@ -2344,7 +2374,6 @@ export const PlayerProvider = ({ children }) => {
         pipEngine,
         setPipEngine,
         autoMiniPlayerIntroEnabled,
-        setAutoMiniPlayerIntroEnabled,
         miniPlayerOpacity,
         setMiniPlayerOpacity,
         miniPlayerIdleDim,
@@ -2374,6 +2403,7 @@ export const PlayerProvider = ({ children }) => {
         setIsMobileNowPlayingOpen,
         toastMessage,
         showToast,
+        resetPlaybackState,
       }}
     >
       {children}
