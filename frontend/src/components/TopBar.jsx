@@ -582,7 +582,7 @@ export const TopBar = ({
                         }}
                         className="w-full text-left px-4 py-3 text-white rounded-xl active:bg-white/10 flex items-center gap-3 transition text-sm font-medium"
                       >
-                        <Settings size={18} className="text-neutral-400" />
+                        <Settings size={18} className="text-brand-500" />
                         <span>Account Settings</span>
                       </button>
 
@@ -594,7 +594,7 @@ export const TopBar = ({
                         className="w-full text-left px-4 py-3 text-white rounded-xl active:bg-white/10 flex items-center justify-between transition text-sm font-medium"
                       >
                         <div className="flex items-center gap-3">
-                          <Bug size={18} className="text-amber-400" />
+                          <Bug size={18} className="text-brand-500" />
                           <span>Issues & Notes</span>
                         </div>
                         {hasNotifications && (
@@ -726,7 +726,7 @@ export const TopBar = ({
                   }}
                   className="w-full text-left px-3 py-2 text-content-primary hover:bg-white/10 flex items-center gap-2.5 transition"
                 >
-                  <Settings size={15} className="text-content-secondary" />
+                  <Settings size={15} className="text-brand-500" />
                   <span>Account Settings</span>
                 </button>
 
@@ -738,7 +738,7 @@ export const TopBar = ({
                   className="w-full text-left px-3 py-2 text-content-primary hover:bg-white/10 flex items-center justify-between transition"
                 >
                   <div className="flex items-center gap-2.5">
-                    <Bug size={15} className="text-amber-400" />
+                    <Bug size={15} className="text-brand-500" />
                     <span>Issues & Notes</span>
                   </div>
                   {hasNotifications && (
@@ -755,7 +755,7 @@ export const TopBar = ({
                   }}
                   className="w-full text-left px-3 py-2 text-content-primary hover:bg-white/10 flex items-center gap-2.5 transition"
                 >
-                  <Settings size={15} className="text-content-secondary" />
+                  <Settings size={15} className="text-brand-500" />
                   <span>Settings</span>
                 </button>
 
