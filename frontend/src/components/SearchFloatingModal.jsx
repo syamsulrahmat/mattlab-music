@@ -63,7 +63,7 @@ export const SearchFloatingModal = ({
       const data = await res.json();
       if (res.ok) {
         if (showToast) {
-          showToast(`✅ Queued "${track.title}" via Lidarr/qBittorrent!`);
+          showToast(`✅ Queued "${track.title}" for download!`);
         }
       } else {
         if (showToast) {
@@ -162,7 +162,7 @@ export const SearchFloatingModal = ({
                 }`}
               >
                 <DownloadCloud size={14} />
-                <span>Request & Download "{query}" from Torrent/Spotify</span>
+                <span>Request & Download "{query}"</span>
               </button>
             </div>
           )}
@@ -656,13 +656,13 @@ export const SearchFloatingModal = ({
                       <DownloadCloud size={18} className="text-brand-500" />
                       <div>
                         <p className="text-xs font-bold text-white group-hover:text-brand-400 transition">
-                          Request "{results?.correctedQuery || query}" via Torrent / Spotify
+                          Request & Download "{results?.correctedQuery || query}"
                           {results?.correctedQuery && (
                             <span className="text-brand-500 text-[10px] ml-1.5 font-normal">(corrected)</span>
                           )}
                         </p>
                         <p className="text-[10px] text-content-muted">
-                          Search Lidarr & torrent indexers to download
+                          Search indexers to fetch in high fidelity
                         </p>
                       </div>
                     </div>

@@ -1163,6 +1163,7 @@ const MainAppContent = () => {
         onOpenBulletin={() => setIsBulletinOpen(true)}
         bulletinUnreadCount={bulletinUnreadCount}
         onSelectUser={handleSelectUser}
+        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
       />
 
       {/* 2. Three Floating Islands Body (Full-bleed on mobile, 3 Islands on Desktop) */}

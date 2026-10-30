@@ -2431,6 +2431,21 @@ export const SettingsModal = ({
                   <div className="p-4 rounded-xl bg-surface-panel border border-border-subtle space-y-2 sm:col-span-2">
                     <div className="font-bold text-white flex items-center justify-between">
                       <div className="flex items-center gap-2">
+                        <DownloadCloud size={15} className="text-brand-400" />
+                        <span>Music Acquisition & Library Engine</span>
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-brand-400 bg-brand-500/10 px-2.5 py-0.5 rounded-full border border-brand-500/20">
+                        Multi-Source Pipeline
+                      </span>
+                    </div>
+                    <p className="text-content-muted text-[11px] leading-relaxed">
+                      Automated high-fidelity ingestion pipeline orchestrating Lidarr catalog indexing, private BitTorrent trackers, and high-speed multi-source direct fetchers. Requested albums and playlists are automatically matched, tagged with lossless metadata, and delivered directly to the library in FLAC lossless or 320kbps MP3 fidelity.
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-surface-panel border border-border-subtle space-y-2 sm:col-span-2">
+                    <div className="font-bold text-white flex items-center justify-between">
+                      <div className="flex items-center gap-2">
                         <Sparkles size={15} className="text-emerald-400" />
                         <span>Self-Healing Library & Media Integrity</span>
                       </div>

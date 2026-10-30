@@ -99,7 +99,7 @@ export const Footer = ({
                     className="flex items-center gap-2.5 py-1 text-content-secondary hover:text-brand-400 transition group text-left cursor-pointer active:scale-[0.98]"
                   >
                     <DownloadCloud size={15} className="text-brand-400 group-hover:scale-110 transition shrink-0" />
-                    <span className="text-xs text-content-secondary group-hover:text-content-primary transition">Request Music (Lidarr)</span>
+                    <span className="text-xs text-content-secondary group-hover:text-content-primary transition">Request Music</span>
                   </button>
                 </li>
               )}

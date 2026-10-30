@@ -314,14 +314,11 @@ export const RequestMusicModal = ({
               <DownloadCloud size={18} className="sm:w-5 sm:h-5" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-sm sm:text-lg font-bold text-content-primary tracking-tight flex items-center gap-1.5 flex-wrap">
-                <span>Request & Download Music</span>
-                <span className="text-[9px] sm:text-[10px] font-semibold text-brand-500 bg-brand-500/10 px-2 py-0.5 rounded-full border border-brand-500/20 shrink-0">
-                  Torrent + HQ
-                </span>
+              <h2 className="text-sm sm:text-lg font-bold text-content-primary tracking-tight">
+                Request & Download Music
               </h2>
               <p className="text-[11px] sm:text-xs text-content-secondary truncate">
-                Search albums or paste Spotify tracks & playlists to grab via torrent or 320k direct stream
+                Search albums or paste Spotify tracks & playlists to add to the library in high-fidelity audio
               </p>
             </div>
           </div>
@@ -774,7 +771,7 @@ export const RequestMusicModal = ({
             /* Live Torrent & Lidarr Activity Tab */
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs text-content-secondary">
-                <span>Active Download Activity (Torrents & Direct HQ)</span>
+                <span>Active Download Activity</span>
                 <span className="text-[10px] text-brand-500">Auto-refreshing live</span>
               </div>
 
@@ -847,7 +844,7 @@ export const RequestMusicModal = ({
                   </div>
                   <h4 className="text-sm font-bold text-white">No Active Downloads</h4>
                   <p className="text-xs text-content-muted max-w-xs">
-                    When you request an album, qBittorrent and Lidarr download progress will appear here in real-time.
+                    When you request music, background download and import progress will appear here in real-time.
                   </p>
                 </div>
               )}

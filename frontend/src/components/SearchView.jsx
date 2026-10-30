@@ -84,7 +84,7 @@ export const SearchView = ({
       const data = await res.json();
       if (res.ok) {
         if (showToast) {
-          showToast(`✅ Queued "${track.title}" via Lidarr/qBittorrent!`);
+          showToast(`✅ Queued "${track.title}" for download!`);
         }
       } else {
         if (showToast) {
@@ -763,7 +763,7 @@ export const SearchView = ({
                     className="inline-flex items-center gap-2 bg-brand-500 hover:bg-brand-400 text-black font-bold text-xs px-5 py-2.5 rounded-full transition shadow-lg active:scale-95"
                   >
                     <DownloadCloud size={15} />
-                    <span>Request "{results.corrected_query || query}" from Torrent / Spotify</span>
+                    <span>Request & Download "{results.corrected_query || query}"</span>
                   </button>
                 </div>
               )}

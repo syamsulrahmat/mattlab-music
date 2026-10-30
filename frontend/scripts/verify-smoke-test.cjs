@@ -145,9 +145,15 @@ try {
 console.log('🔄 [Gate 3] Restarting mattlab-music container...');
 try {
   execSync('docker restart mattlab-music', { stdio: 'inherit' });
-  // Wait 3 seconds for Uvicorn
-  execSync('sleep 3');
-  const res = execSync('curl -s -o /dev/null -w "%{http_code}" http://localhost:8085').toString().trim();
+  // Retry loop up to 10 seconds for Uvicorn to finish startup migrations and serve traffic
+  let res = '';
+  for (let attempt = 1; attempt <= 10; attempt++) {
+    execSync('sleep 1');
+    try {
+      res = execSync('curl -s -o /dev/null -w "%{http_code}" http://localhost:8085').toString().trim();
+      if (res === '200') break;
+    } catch (_) {}
+  }
   if (res !== '200') {
     throw new Error(`Container returned HTTP ${res}`);
   }

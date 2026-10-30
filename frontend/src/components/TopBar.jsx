@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Home, Search, X, RefreshCw, HardDrive, DownloadCloud, Users, LogOut, Settings, User, Bug, Megaphone, Minus, Square, Copy } from 'lucide-react';
+import { Home, Search, X, RefreshCw, HardDrive, DownloadCloud, Users, LogOut, Settings, User, Bug, Megaphone, Minus, Square, Copy, Command } from 'lucide-react';
 import { MattLabLogo } from './MattLabLogo';
 import { SearchFloatingModal } from './SearchFloatingModal';
 import { UserAvatar } from './UserAvatar';
@@ -29,6 +29,7 @@ export const TopBar = ({
   onOpenBulletin,
   bulletinUnreadCount = 0,
   onSelectUser,
+  onOpenCommandPalette,
 }) => {
     const { user, isAdmin, logout } = useAuth();
   const { currentTrack, playTrack, togglePlay } = usePlayer();
@@ -535,6 +536,17 @@ export const TopBar = ({
                       <button
                         onClick={() => {
                           setIsUserMenuOpen(false);
+                          onOpenCommandPalette?.();
+                        }}
+                        className="w-full text-left px-4 py-3 text-white rounded-xl active:bg-white/10 flex items-center gap-3 transition text-sm font-medium"
+                      >
+                        <Command size={18} className="text-brand-500" />
+                        <span>Command Palette</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
                           onOpenBulletin?.();
                         }}
                         className="w-full text-left px-4 py-3 text-white rounded-xl active:bg-white/10 flex items-center justify-between transition text-sm font-medium"
@@ -561,9 +573,6 @@ export const TopBar = ({
                           <DownloadCloud size={18} className="text-brand-500" />
                           <span>Request & Download Music</span>
                         </div>
-                        <span className="text-[10px] font-semibold text-brand-500 bg-brand-500/10 px-2 py-0.5 rounded-full border border-brand-500/20">
-                          Torrent + HQ
-                        </span>
                       </button>
 
                       <button
@@ -666,6 +675,22 @@ export const TopBar = ({
                 <button
                   onClick={() => {
                     setIsUserMenuOpen(false);
+                    onOpenCommandPalette?.();
+                  }}
+                  className="w-full text-left px-3 py-2 text-content-primary hover:bg-white/10 flex items-center justify-between transition"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Command size={15} className="text-brand-500" />
+                    <span>Command Palette</span>
+                  </div>
+                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-white/10 text-content-secondary">
+                    Ctrl+K
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
                     onOpenBulletin?.();
                   }}
                   className="w-full text-left px-3 py-2 text-content-primary hover:bg-white/10 flex items-center justify-between transition"
@@ -692,9 +717,6 @@ export const TopBar = ({
                     <DownloadCloud size={15} className="text-brand-500" />
                     <span>Request Music</span>
                   </div>
-                  <span className="text-[9px] font-semibold text-brand-500 bg-brand-500/10 px-1.5 py-0.2 rounded-full border border-brand-500/20">
-                    HQ
-                  </span>
                 </button>
 
                 <button

@@ -395,7 +395,7 @@ export const CommandPaletteModal = ({
               <X size={15} />
             </button>
           ) : (
-            <span className="text-[11px] font-mono text-content-muted bg-surface-elevated px-2 py-0.5 rounded border border-border-subtle">
+            <span className="hidden sm:inline-block text-[11px] font-mono text-content-muted bg-surface-elevated px-2 py-0.5 rounded border border-border-subtle">
               Ctrl + K
             </span>
           )}
@@ -404,7 +404,7 @@ export const CommandPaletteModal = ({
         {/* ── Guidance Tip: Music Search vs Command Palette ── */}
         <div className="bg-surface-island/30 border-b border-border-subtle/50 px-4 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] text-content-muted shrink-0 min-w-0 max-w-full overflow-hidden">
           <span className="truncate">Command Palette • Users, features & system actions</span>
-          <span className="shrink-0">
+          <span className="hidden sm:inline shrink-0">
             Looking for songs? Press <kbd className="bg-surface-island px-1.5 py-0.2 rounded font-mono text-brand-400 font-bold border border-border-medium">S</kbd> for Music Search
           </span>
         </div>
@@ -556,7 +556,7 @@ export const CommandPaletteModal = ({
 
         {/* ── Footer ── */}
         <div className="px-4 py-2 border-t border-border-subtle bg-surface-island/60 flex items-center justify-between text-[11px] text-content-muted shrink-0">
-          <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-3">
             <span>
               <kbd className="bg-surface-elevated px-1.5 py-0.5 rounded border border-border-medium font-mono text-white">↑</kbd>{' '}
               <kbd className="bg-surface-elevated px-1.5 py-0.5 rounded border border-border-medium font-mono text-white">↓</kbd> Navigate
@@ -568,6 +568,7 @@ export const CommandPaletteModal = ({
               <kbd className="bg-surface-elevated px-1.5 py-0.5 rounded border border-border-medium font-mono text-white">Esc</kbd> Close
             </span>
           </div>
+          <span className="sm:hidden text-content-muted">Tap any item to execute</span>
           <span className="font-mono text-content-subtle">
             {navigableItems.length} {navigableItems.length === 1 ? 'item' : 'items'}
           </span>
