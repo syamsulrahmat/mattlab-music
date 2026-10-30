@@ -173,6 +173,16 @@ export const FlagsProvider = ({ children }) => {
     applyCSSVariables(flags);
   }, [flags, applyCSSVariables]);
 
+  // Synchronize developer mode state to documentElement for global CSS overrides (e.g. text selection)
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (isDevUnlocked) {
+      document.documentElement.setAttribute('data-dev-mode', 'true');
+    } else {
+      document.documentElement.removeAttribute('data-dev-mode');
+    }
+  }, [isDevUnlocked]);
+
   const unlockDevMode = useCallback(() => {
     setIsDevUnlocked(true);
     try {

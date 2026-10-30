@@ -407,6 +407,35 @@ export const ContextMenu = ({
             <>
               <div className="h-[1px] bg-white/10 my-1 mx-2" />
               <button
+                onClick={() => {
+                  onClose();
+                  const textToCopy = data.artist ? `"${data.title}" by ${data.artist}` : data.title;
+                  if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                    navigator.clipboard.writeText(textToCopy);
+                    showToast?.(`📋 Copied: ${textToCopy}`, 2500);
+                  }
+                }}
+                className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition text-content-secondary hover:text-white"
+              >
+                <Copy size={14} className="text-cyan-400" />
+                <span>Copy Track & Artist Info</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  onClose();
+                  if (data?.id && typeof navigator !== 'undefined' && navigator.clipboard) {
+                    navigator.clipboard.writeText(String(data.id));
+                    showToast?.(`📋 Copied Track ID: ${data.id}`, 2500);
+                  }
+                }}
+                className="w-full text-left px-3.5 py-2 hover:bg-surface-hover hover:text-content-primary flex items-center gap-2.5 transition text-content-secondary hover:text-white"
+              >
+                <Copy size={14} className="text-cyan-400" />
+                <span>Copy Track ID (#{data.id})</span>
+              </button>
+
+              <button
                 onClick={async () => {
                   onClose();
                   showToast?.(`⚡ Redownloading audio for "${data.title}"...`, 3000);
