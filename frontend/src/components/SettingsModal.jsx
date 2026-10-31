@@ -793,60 +793,60 @@ export const SettingsModal = ({
         {/* Modal Body: Left Tab Rail + Right Content Stage */}
         <div className="flex flex-1 min-h-0 overflow-hidden flex-col md:flex-row">
           {/* Navigation Sidebar / Tabs */}
-          <div className="w-full md:w-56 bg-surface-panel border-b md:border-b-0 md:border-r border-border-medium p-3 flex md:flex-col gap-1.5 shrink-0 overflow-x-auto">
+          <div className="w-full md:w-56 bg-surface-panel border-b md:border-b-0 md:border-r border-border-medium p-2.5 md:p-3 grid grid-cols-2 sm:grid-cols-4 md:flex md:flex-col gap-1.5 shrink-0">
             <button
               onClick={() => setActiveTab('account')}
-              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-left shrink-0 md:shrink md:w-full ${
+              className={`flex items-center gap-2.5 md:gap-3 px-3 py-2 md:px-3.5 md:py-2.5 rounded-xl text-xs font-semibold transition text-left ${
                 activeTab === 'account'
                   ? 'bg-brand-500 text-black shadow-md font-bold'
                   : 'text-content-secondary hover:text-content-primary hover:bg-white/5'
               }`}
             >
-              <User size={16} />
-              <span>Profile & Account</span>
+              <User size={16} className="shrink-0" />
+              <span className="truncate">Profile & Account</span>
             </button>
 
             <button
               onClick={() => setActiveTab('shortcuts')}
-              className={`hidden md:flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-left shrink-0 md:shrink md:w-full ${
+              className={`hidden md:flex items-center gap-2.5 md:gap-3 px-3 py-2 md:px-3.5 md:py-2.5 rounded-xl text-xs font-semibold transition text-left ${
                 activeTab === 'shortcuts'
                   ? 'bg-brand-500 text-black shadow-md font-bold'
                   : 'text-content-secondary hover:text-content-primary hover:bg-white/5'
               }`}
             >
-              <Keyboard size={16} />
-              <span>Keyboard Shortcuts</span>
+              <Keyboard size={16} className="shrink-0" />
+              <span className="truncate">Keyboard Shortcuts</span>
             </button>
 
             <button
               onClick={() => setActiveTab('playback')}
-              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-left shrink-0 md:shrink md:w-full ${
+              className={`flex items-center gap-2.5 md:gap-3 px-3 py-2 md:px-3.5 md:py-2.5 rounded-xl text-xs font-semibold transition text-left ${
                 activeTab === 'playback'
                   ? 'bg-brand-500 text-black shadow-md font-bold'
                   : 'text-content-secondary hover:text-content-primary hover:bg-white/5'
               }`}
             >
-              <Volume2 size={16} />
-              <span>Audio & Playback</span>
+              <Volume2 size={16} className="shrink-0" />
+              <span className="truncate">Audio & Playback</span>
             </button>
 
             <button
               onClick={() => setActiveTab('issues')}
-              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-left shrink-0 md:shrink md:w-full ${
+              className={`flex items-center gap-2.5 md:gap-3 px-3 py-2 md:px-3.5 md:py-2.5 rounded-xl text-xs font-semibold transition text-left ${
                 activeTab === 'issues'
                   ? 'bg-brand-500 text-black shadow-md font-bold'
                   : 'text-content-secondary hover:text-content-primary hover:bg-white/5'
               }`}
             >
-              <div className="relative">
+              <div className="relative shrink-0">
                 <Bug size={16} />
                 {hasResolvedIssues && (
                   <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 animate-pulse ring-2 ring-surface-panel" />
                 )}
               </div>
-              <span className="flex-1">Issues & Notes</span>
+              <span className="flex-1 truncate">Issues & Notes</span>
               {hasResolvedIssues && (
-                <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0">
                   Update
                 </span>
               )}
@@ -854,27 +854,27 @@ export const SettingsModal = ({
 
             <button
               onClick={() => setActiveTab('about')}
-              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-left shrink-0 md:shrink md:w-full ${
+              className={`flex items-center gap-2.5 md:gap-3 px-3 py-2 md:px-3.5 md:py-2.5 rounded-xl text-xs font-semibold transition text-left ${
                 activeTab === 'about'
                   ? 'bg-brand-500 text-black shadow-md font-bold'
                   : 'text-content-secondary hover:text-content-primary hover:bg-white/5'
               }`}
             >
-              <Info size={16} />
-              <span>About & System</span>
+              <Info size={16} className="shrink-0" />
+              <span className="truncate">About & System</span>
             </button>
 
             {isDevUnlocked && (
               <button
                 onClick={() => setActiveTab('experiments')}
-                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-left shrink-0 md:shrink md:w-full ${
+                className={`flex items-center gap-2.5 md:gap-3 px-3 py-2 md:px-3.5 md:py-2.5 rounded-xl text-xs font-semibold transition text-left ${
                   activeTab === 'experiments'
                     ? 'bg-amber-500 text-black shadow-md font-bold'
                     : 'text-amber-400 hover:text-amber-300 hover:bg-amber-500/10'
                 }`}
               >
-                <FlaskConical size={16} />
-                <span>Experiments</span>
+                <FlaskConical size={16} className="shrink-0" />
+                <span className="truncate">Experiments</span>
               </button>
             )}
 
@@ -1345,125 +1345,117 @@ export const SettingsModal = ({
             )}
 
             {activeTab === 'playback' && (
-              <div className="space-y-6">
-                {/* Section Header Banner */}
-                <div className="p-5 rounded-2xl bg-surface-panel border border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-11 h-11 rounded-xl bg-brand-500/10 text-brand-500 border border-brand-500/20 flex items-center justify-center shrink-0">
-                      <Volume2 size={22} />
+              <div className="space-y-4">
+                {/* Compact Section Header */}
+                <div className="p-4 rounded-xl bg-surface-panel border border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-brand-500/10 text-brand-500 border border-brand-500/20 flex items-center justify-center shrink-0">
+                      <Volume2 size={18} />
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-white flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-white flex items-center gap-2">
                         <span>Audio & Playback</span>
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider ${
                           preloadCount === 0 
                             ? 'bg-white/10 text-content-muted' 
                             : 'bg-brand-500/20 text-brand-400 border border-brand-500/30'
                         }`}>
-                          {preloadCount === 0 ? 'Direct Streaming' : `${preloadCount} Song Preload`}
+                          {preloadCount === 0 ? 'Direct Stream' : `${preloadCount} Song Buffer`}
                         </span>
                       </h3>
-                      <p className="text-xs text-content-secondary mt-0.5">
-                        Configure background track caching, gapless buffering, and memory optimization
+                      <p className="text-[11px] text-content-secondary mt-0.5">
+                        Buffer management, audio streaming fidelity, and playback style
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 text-xs self-start sm:self-auto bg-surface-island px-3 py-1.5 rounded-xl border border-border-subtle">
-                    <div className={`w-2 h-2 rounded-full ${
+                  <div className="flex items-center gap-2 text-[11px] self-start sm:self-auto bg-surface-island px-2.5 py-1 rounded-lg border border-border-subtle">
+                    <div className={`w-1.5 h-1.5 rounded-full ${
                       preloadCount > 0 ? 'bg-brand-500 animate-pulse' : 'bg-content-subtle'
                     }`} />
-                    <span className="text-content-secondary font-medium">
+                    <span className="text-content-secondary font-medium font-mono">
                       {preloadedTrackIds?.size || 0} track{preloadedTrackIds?.size === 1 ? '' : 's'} in RAM
                     </span>
                   </div>
                 </div>
 
-                {/* Streaming Audio Quality & Data Saver Card */}
-                <div className="p-5 rounded-2xl bg-surface-panel border border-border-subtle space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border-subtle">
-                    <div>
-                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                        <Gauge size={16} className="text-brand-500" />
-                        <span>Streaming Audio Quality</span>
-                      </h4>
-                      <p className="text-xs text-content-muted mt-0.5">
-                        Select your preferred playback fidelity and bandwidth usage.
-                      </p>
-                    </div>
+                {/* Streaming Audio Quality (Compact Dual-Option Card) */}
+                <div className="p-4 rounded-xl bg-surface-panel border border-border-subtle space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                      <Gauge size={15} className="text-brand-500" />
+                      <span>Streaming Audio Quality</span>
+                    </h4>
                   </div>
 
-                  {/* Dual Mode Selectable Quality Cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {/* Option 1: Original / Lossless Quality */}
                     <button
                       type="button"
                       onClick={() => setAudioQuality('original')}
-                      className={`p-3.5 rounded-xl text-left border transition flex flex-col justify-between relative group ${
+                      className={`p-3 rounded-xl text-left border transition flex items-center justify-between relative group ${
                         audioQuality === 'original'
                           ? 'bg-brand-500/10 border-brand-500 text-white shadow-sm ring-1 ring-brand-500/40'
                           : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <div className="flex items-center gap-2">
+                      <div className="min-w-0 pr-2">
+                        <div className="flex items-center gap-1.5">
                           <span className="font-bold text-xs text-white">Original (Lossless / HQ)</span>
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30">
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30">
                             DEFAULT
                           </span>
                         </div>
-                        {audioQuality === 'original' && (
-                          <Check size={14} className="text-brand-500 shrink-0" />
-                        )}
+                        <p className="text-[11px] text-content-muted mt-0.5 truncate">
+                          Bit-perfect up to 24-bit FLAC & 320 kbps MP3
+                        </p>
                       </div>
-                      <p className="text-[11px] text-content-muted leading-relaxed">
-                        Bit-perfect playback streaming up to 24-bit FLAC and 320 kbps MP3 files.
-                      </p>
+                      {audioQuality === 'original' && (
+                        <Check size={14} className="text-brand-500 shrink-0" />
+                      )}
                     </button>
 
                     {/* Option 2: Data Saver Quality */}
                     <button
                       type="button"
                       onClick={() => setAudioQuality('data_saver')}
-                      className={`p-3.5 rounded-xl text-left border transition flex flex-col justify-between relative group ${
+                      className={`p-3 rounded-xl text-left border transition flex items-center justify-between relative group ${
                         audioQuality === 'data_saver'
                           ? 'bg-amber-500/10 border-amber-500 text-white shadow-sm ring-1 ring-amber-500/40'
                           : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <div className="flex items-center gap-2">
+                      <div className="min-w-0 pr-2">
+                        <div className="flex items-center gap-1.5">
                           <span className="font-bold text-xs text-white">Data Saver</span>
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
                             128 KBPS
                           </span>
                         </div>
-                        {audioQuality === 'data_saver' && (
-                          <Check size={14} className="text-amber-400 shrink-0" />
-                        )}
+                        <p className="text-[11px] text-content-muted mt-0.5 truncate">
+                          Uses ~85–90% less bandwidth for metered networks
+                        </p>
                       </div>
-                      <p className="text-[11px] text-content-muted leading-relaxed">
-                        Uses ~85–90% less bandwidth. Ideal for mobile data plans and metered connections.
-                      </p>
+                      {audioQuality === 'data_saver' && (
+                        <Check size={14} className="text-amber-400 shrink-0" />
+                      )}
                     </button>
                   </div>
 
                   {/* Transcode Cache Info & Clear Action */}
-                  <div className="p-3.5 rounded-xl bg-surface-island border border-border-subtle text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-start gap-2.5">
-                      <HardDrive size={15} className="text-brand-500 shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-content-secondary leading-relaxed">
-                          <strong className="text-white">Server Transcode Cache: </strong>
-                          {transcodeCacheStats.size_mb > 0 ? (
-                            <>
-                              <span className="text-brand-400 font-mono font-bold">{transcodeCacheStats.size_mb} MB</span> across {transcodeCacheStats.file_count} converted track{transcodeCacheStats.file_count === 1 ? '' : 's'}. Cached files enable instant seeking with zero CPU usage.
-                            </>
-                          ) : (
-                            <span>Empty (0 MB). Transcodes are generated on-demand when playing in Data Saver mode.</span>
-                          )}
-                        </p>
-                      </div>
+                  <div className="px-3 py-2 rounded-lg bg-surface-island border border-border-subtle text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <HardDrive size={14} className="text-brand-500 shrink-0" />
+                      <p className="text-content-secondary text-[11px] truncate">
+                        <strong className="text-white">Transcode Cache: </strong>
+                        {transcodeCacheStats.size_mb > 0 ? (
+                          <>
+                            <span className="text-brand-400 font-mono font-bold">{transcodeCacheStats.size_mb} MB</span> ({transcodeCacheStats.file_count} converted)
+                          </>
+                        ) : (
+                          <span>Empty (0 MB)</span>
+                        )}
+                      </p>
                     </div>
 
                     {transcodeCacheStats.file_count > 0 && (
@@ -1471,7 +1463,7 @@ export const SettingsModal = ({
                         type="button"
                         onClick={handleClearTranscodeCache}
                         disabled={clearingTranscodeCache}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shrink-0 self-start sm:self-auto ${
+                        className={`px-2.5 py-1 rounded-md text-[11px] font-semibold flex items-center gap-1.5 transition shrink-0 ${
                           transcodeClearedSuccess
                             ? 'bg-brand-500/20 text-brand-400 border border-brand-500/30'
                             : 'bg-white/10 hover:bg-white/20 text-white border border-border-medium'
@@ -1479,12 +1471,12 @@ export const SettingsModal = ({
                       >
                         {transcodeClearedSuccess ? (
                           <>
-                            <Check size={13} className="text-brand-400" />
-                            <span>Cache Cleared!</span>
+                            <Check size={12} className="text-brand-400" />
+                            <span>Purged!</span>
                           </>
                         ) : (
                           <>
-                            <Trash2 size={13} />
+                            <Trash2 size={12} />
                             <span>{clearingTranscodeCache ? 'Purging...' : 'Purge Transcodes'}</span>
                           </>
                         )}
@@ -1493,146 +1485,130 @@ export const SettingsModal = ({
                   </div>
                 </div>
 
-                {/* Smart Autoplay & Genre Recommendations Card */}
-                <div className="p-5 rounded-2xl bg-surface-panel border border-border-subtle space-y-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3.5">
-                      <div className="w-10 h-10 rounded-xl bg-brand-500/10 text-brand-500 border border-brand-500/20 flex items-center justify-center shrink-0">
-                        <Sparkles size={20} />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                          <span>Autoplay Similar Songs</span>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-400 border border-brand-500/30">
-                            Smart Radio
-                          </span>
-                        </h4>
-                        <p className="text-xs text-content-muted mt-0.5">
-                          When a search song finishes or your queue runs out, automatically recommend and queue songs of the same niche and genre.
-                        </p>
-                      </div>
+                {/* Smart Autoplay (Compact 1-Row Toggle) */}
+                <div className="p-4 rounded-xl bg-surface-panel border border-border-subtle flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-brand-500/10 text-brand-500 border border-brand-500/20 flex items-center justify-center shrink-0">
+                      <Sparkles size={16} />
                     </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setAutoplaySimilar(!autoplaySimilar)}
-                      className={`w-11 h-6 rounded-full p-1 transition-colors relative shrink-0 ${
-                        autoplaySimilar ? 'bg-brand-500' : 'bg-surface-island border border-white/10'
-                      }`}
-                      title="Toggle Autoplay Similar Songs"
-                    >
-                      <div className={`w-4 h-4 rounded-full bg-white transition-transform ${
-                        autoplaySimilar ? 'translate-x-5' : 'translate-x-0'
-                      }`} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Miniplayer Display Style Card */}
-                <div className="p-5 rounded-2xl bg-surface-panel border border-border-subtle space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border-subtle">
                     <div>
-                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                        <PictureInPicture2 size={16} className="text-brand-500" />
-                        <span>Miniplayer</span>
+                      <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                        <span>Autoplay Similar Songs</span>
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-brand-500/20 text-brand-400 border border-brand-500/30">
+                          Smart Radio
+                        </span>
                       </h4>
-                      <p className="text-xs text-content-muted mt-0.5">
-                        Choose your preferred floating miniplayer style for multitasking.
+                      <p className="text-[11px] text-content-muted mt-0.5">
+                        Queue matching songs when current track finishes or queue runs empty
                       </p>
                     </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setAutoplaySimilar(!autoplaySimilar)}
+                    className={`w-10 h-5.5 rounded-full p-0.5 transition-colors relative shrink-0 ${
+                      autoplaySimilar ? 'bg-brand-500' : 'bg-surface-island border border-white/10'
+                    }`}
+                    title="Toggle Autoplay Similar Songs"
+                  >
+                    <div className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                      autoplaySimilar ? 'translate-x-4.5' : 'translate-x-0'
+                    }`} />
+                  </button>
+                </div>
+
+                {/* Miniplayer (Streamlined & Compact) */}
+                <div className="p-4 rounded-xl bg-surface-panel border border-border-subtle space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                      <PictureInPicture2 size={15} className="text-brand-500" />
+                      <span>Miniplayer Display Style</span>
+                    </h4>
 
                     <button
                       type="button"
                       onClick={togglePiP}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white border border-border-medium transition shrink-0 flex items-center gap-1.5 self-start sm:self-auto"
+                      className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white/10 hover:bg-white/20 text-white border border-border-medium transition shrink-0 flex items-center gap-1.5"
                     >
-                      <PictureInPicture2 size={13} />
-                      <span>{isPiPActive ? 'Close Miniplayer' : 'Preview Miniplayer'}</span>
+                      <PictureInPicture2 size={12} />
+                      <span>{isPiPActive ? 'Close' : 'Preview'}</span>
                     </button>
                   </div>
 
                   {/* Dual Mode Selectable Cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {/* Option 1: Interactive Miniplayer */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <button
                       type="button"
                       onClick={() => setPipEngine('interactive')}
-                      className={`p-3.5 rounded-xl text-left border transition flex flex-col justify-between relative group ${
+                      className={`p-3 rounded-xl text-left border transition flex items-center justify-between relative group ${
                         pipEngine === 'interactive'
                           ? 'bg-brand-500/10 border-brand-500 text-white shadow-sm ring-1 ring-brand-500/40'
                           : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <div className="flex items-center gap-2">
+                      <div className="min-w-0 pr-2">
+                        <div className="flex items-center gap-1.5">
                           <span className="font-bold text-xs text-white">Interactive Miniplayer</span>
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30">
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30">
                             DEFAULT
                           </span>
                         </div>
-                        {pipEngine === 'interactive' && (
-                          <Check size={14} className="text-brand-500 shrink-0" />
-                        )}
+                        <p className="text-[11px] text-content-muted mt-0.5 truncate">
+                          Controls, scrubber, volume & live synced lyrics
+                        </p>
                       </div>
-                      <p className="text-[11px] text-content-muted leading-relaxed">
-                        Floating window with click-to-play buttons, scrubber, volume, and live synced lyrics.
-                      </p>
+                      {pipEngine === 'interactive' && (
+                        <Check size={14} className="text-brand-500 shrink-0" />
+                      )}
                     </button>
 
-                    {/* Option 2: Frameless Video Miniplayer */}
                     <button
                       type="button"
                       onClick={() => setPipEngine('video')}
-                      className={`p-3.5 rounded-xl text-left border transition flex flex-col justify-between relative group ${
+                      className={`p-3 rounded-xl text-left border transition flex items-center justify-between relative group ${
                         pipEngine === 'video'
                           ? 'bg-purple-500/10 border-purple-500 text-white shadow-sm ring-1 ring-purple-500/40'
                           : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <div className="flex items-center gap-2">
+                      <div className="min-w-0 pr-2">
+                        <div className="flex items-center gap-1.5">
                           <span className="font-bold text-xs text-white">Frameless Video Miniplayer</span>
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30">
-                            YOUTUBE STYLE
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                            16:9
                           </span>
                         </div>
-                        {pipEngine === 'video' && (
-                          <Check size={14} className="text-purple-400 shrink-0" />
-                        )}
+                        <p className="text-[11px] text-content-muted mt-0.5 truncate">
+                          Borderless floating card with ambient glow
+                        </p>
                       </div>
-                      <p className="text-[11px] text-content-muted leading-relaxed">
-                        Borderless 16:9 floating card with album artwork, ambient glow, and synced lyrics.
-                      </p>
+                      {pipEngine === 'video' && (
+                        <Check size={14} className="text-purple-400 shrink-0" />
+                      )}
                     </button>
                   </div>
 
-                  {/* Desktop Miniplayer Transparency & Ghosting */}
-                  <div className="pt-4 border-t border-border-subtle space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div>
-                        <h5 className="text-xs font-bold text-white flex items-center gap-2">
-                          <span>In-Page MiniPlayer Transparency</span>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-brand-500/15 text-brand-400 border border-brand-500/25">
-                            {miniPlayerOpacity ?? 85}% Opacity
-                          </span>
-                        </h5>
-                        <p className="text-[11px] text-content-muted mt-0.5">
-                          Applies frosted glassmorphism so behind-page content blurs and shines through cleanly.
-                        </p>
+                  {/* Compact Transparency & Idle Dimming Controls */}
+                  <div className="pt-2 border-t border-border-subtle space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="text-content-secondary font-medium">In-Page Transparency</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-brand-500/15 text-brand-400 border border-brand-500/25">
+                          {miniPlayerOpacity ?? 85}%
+                        </span>
                       </div>
-
-                      {/* Preset Opacity Pills */}
-                      <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                      <div className="flex items-center gap-1">
                         {[
-                          { val: 50, label: '50% Glass' },
-                          { val: 85, label: '85% Balanced' },
-                          { val: 100, label: '100% Solid' },
+                          { val: 50, label: '50%' },
+                          { val: 85, label: '85%' },
+                          { val: 100, label: '100%' },
                         ].map((preset) => (
                           <button
                             key={preset.val}
                             type="button"
                             onClick={() => setMiniPlayerOpacity(preset.val)}
-                            className={`px-2 py-0.5 text-[10px] font-semibold rounded-md border transition ${
+                            className={`px-2 py-0.5 text-[10px] font-semibold rounded border transition ${
                               (miniPlayerOpacity ?? 85) === preset.val
                                 ? 'bg-brand-500 text-black border-brand-500 font-bold'
                                 : 'bg-white/5 hover:bg-white/10 text-content-secondary hover:text-white border-border-subtle'
@@ -1644,41 +1620,35 @@ export const SettingsModal = ({
                       </div>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-3">
-                        <span className="text-[10px] font-mono text-content-muted">30%</span>
-                        <input
-                          type="range"
-                          min="30"
-                          max="100"
-                          step="5"
-                          value={miniPlayerOpacity ?? 85}
-                          onChange={(e) => setMiniPlayerOpacity(parseInt(e.target.value, 10))}
-                          className="w-full accent-brand-500 bg-surface-elevated h-1.5 rounded-lg appearance-none cursor-pointer"
-                        />
-                        <span className="text-[10px] font-mono text-content-muted">100%</span>
-                      </div>
-                    </div>
+                    <input
+                      type="range"
+                      min="30"
+                      max="100"
+                      step="5"
+                      value={miniPlayerOpacity ?? 85}
+                      onChange={(e) => setMiniPlayerOpacity(parseInt(e.target.value, 10))}
+                      className="w-full accent-brand-500 bg-surface-elevated h-1.5 rounded-lg appearance-none cursor-pointer"
+                    />
 
-                    {/* Idle Dimming / Ghosting Toggle */}
-                    <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    {/* Idle Dimming Switch */}
+                    <div className="flex items-center justify-between pt-1">
                       <div>
                         <span className="text-xs font-semibold text-white">Idle Dimming (Ghost Mode)</span>
-                        <p className="text-[11px] text-content-muted mt-0.5">
-                          Subtly fades the floating player down when idle for 3 seconds; returns to full clarity on hover or drag.
+                        <p className="text-[11px] text-content-muted">
+                          Fades player when idle; restores on mouse hover or drag
                         </p>
                       </div>
 
                       <button
                         type="button"
                         onClick={() => setMiniPlayerIdleDim(!miniPlayerIdleDim)}
-                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                           miniPlayerIdleDim ? 'bg-brand-500' : 'bg-surface-elevated'
                         }`}
                       >
                         <span
-                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                            miniPlayerIdleDim ? 'translate-x-5' : 'translate-x-0'
+                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                            miniPlayerIdleDim ? 'translate-x-4' : 'translate-x-0'
                           }`}
                         />
                       </button>
@@ -1686,72 +1656,51 @@ export const SettingsModal = ({
                   </div>
                 </div>
 
-                {/* Preload Configuration Card */}
-                <div className="p-5 rounded-2xl bg-surface-panel border border-border-subtle space-y-5">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border-subtle">
+                {/* Preload Configuration Card (Compact & Streamlined) */}
+                <div className="p-4 rounded-xl bg-surface-panel border border-border-subtle space-y-3">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                        <Zap size={16} className="text-brand-500" />
-                        <span>Upcoming Songs Preload Window</span>
+                      <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                        <Zap size={15} className="text-brand-500" />
+                        <span>Upcoming Songs Preload Buffer</span>
                       </h4>
-                      <p className="text-xs text-content-muted mt-0.5">
-                        Pre-buffers upcoming queue tracks in background memory to guarantee zero latency and gapless song transitions.
+                      <p className="text-[11px] text-content-muted mt-0.5">
+                        Buffers upcoming queue songs in memory for instant, gapless song transitions
                       </p>
                     </div>
 
                     <div className="text-right">
-                      <span className="text-lg font-black text-brand-400 font-mono">
-                        {preloadCount === 0 ? '0' : preloadCount}
-                      </span>
-                      <span className="text-xs text-content-muted ml-1">
-                        {preloadCount === 1 ? 'song' : 'songs'}
+                      <span className="text-sm font-bold text-brand-400 font-mono">
+                        {preloadCount === 0 ? 'Direct' : `${preloadCount} songs`}
                       </span>
                     </div>
                   </div>
 
-                  {/* Preset Quick-Buttons */}
-                  <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wider text-content-muted mb-2.5">
-                      Quick Presets
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                      {[
-                        { value: 0, label: '0 (Off)', desc: 'Data Saver' },
-                        { value: 1, label: '1 Song', desc: 'Minimal RAM' },
-                        { value: 3, label: '3 Songs', desc: 'Balanced / Default' },
-                        { value: 5, label: '5 Songs', desc: 'High Buffer' },
-                        { value: 10, label: '10 Songs', desc: 'Max Cache' },
-                      ].map((preset) => (
-                        <button
-                          key={preset.value}
-                          onClick={() => setPreloadCount(preset.value)}
-                          className={`p-2.5 rounded-xl text-left border transition flex flex-col ${
-                            preloadCount === preset.value
-                              ? 'bg-brand-500/15 border-brand-500 text-white shadow-sm ring-1 ring-brand-500/50'
-                              : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
-                          }`}
-                        >
-                          <div className="text-xs font-bold flex items-center justify-between">
-                            <span>{preset.label}</span>
-                            {preloadCount === preset.value && (
-                              <Check size={13} className="text-brand-500" />
-                            )}
-                          </div>
-                          <span className="text-[10px] text-content-subtle mt-1">{preset.desc}</span>
-                        </button>
-                      ))}
-                    </div>
+                  {/* Preset Pills */}
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {[
+                      { value: 0, label: '0 (Off)' },
+                      { value: 1, label: '1 Song' },
+                      { value: 3, label: '3 Songs' },
+                      { value: 5, label: '5 Songs' },
+                      { value: 10, label: '10 Songs' },
+                    ].map((preset) => (
+                      <button
+                        key={preset.value}
+                        onClick={() => setPreloadCount(preset.value)}
+                        className={`py-1.5 px-2 rounded-lg text-center border transition text-xs font-semibold ${
+                          preloadCount === preset.value
+                            ? 'bg-brand-500/20 border-brand-500 text-brand-400 ring-1 ring-brand-500/40'
+                            : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
                   </div>
 
-                  {/* Interactive Range Slider */}
-                  <div className="space-y-2 pt-2">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-content-muted font-medium">Fine-tune buffer size</span>
-                      <span className="font-mono text-white font-bold bg-surface-island px-2.5 py-0.5 rounded border border-border-medium">
-                        {preloadCount === 0 ? 'Disabled (Direct Stream)' : `Preloading next ${preloadCount} song${preloadCount > 1 ? 's' : ''}`}
-                      </span>
-                    </div>
-
+                  {/* Range Slider */}
+                  <div className="space-y-1 pt-1">
                     <input
                       type="range"
                       min="0"
@@ -1759,79 +1708,49 @@ export const SettingsModal = ({
                       step="1"
                       value={preloadCount}
                       onChange={(e) => setPreloadCount(Number(e.target.value))}
-                      className="w-full h-2 bg-surface-elevated2 rounded-lg appearance-none cursor-pointer accent-brand-500 focus:outline-none"
+                      className="w-full h-1.5 bg-surface-elevated2 rounded-lg appearance-none cursor-pointer accent-brand-500 focus:outline-none"
                     />
-
-                    <div className="flex justify-between text-[10px] font-mono text-content-subtle px-1">
+                    <div className="flex justify-between text-[10px] font-mono text-content-subtle">
                       <span>0 (Off)</span>
-                      <span>1</span>
-                      <span>2</span>
                       <span>3 (Default)</span>
-                      <span>5</span>
-                      <span>7</span>
                       <span>10 (Max)</span>
                     </div>
                   </div>
 
-                  {/* Dynamic Recommendation & Insight */}
-                  <div className="p-3.5 rounded-xl bg-surface-island border border-border-subtle text-xs flex items-start gap-3">
-                    <Gauge size={16} className="text-brand-500 shrink-0 mt-0.5" />
-                    <div className="leading-relaxed">
-                      {preloadCount === 0 && (
-                        <p className="text-content-secondary">
-                          <strong className="text-white">Data Saver Mode: </strong>
-                          Upcoming tracks are not buffered in advance. Audio streams strictly on demand. Ideal for metered network connections or devices with low available memory.
-                        </p>
+                  {/* Dynamic Hint & Purge Button Footer */}
+                  <div className="px-3 py-2 rounded-lg bg-surface-island border border-border-subtle text-[11px] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <p className="text-content-secondary">
+                      {preloadCount === 0 ? (
+                        <span><strong className="text-white">Direct Stream: </strong>Zero buffer memory used.</span>
+                      ) : preloadCount <= 3 ? (
+                        <span><strong className="text-white">Balanced: </strong>Instant playback with minimal RAM footprint.</span>
+                      ) : (
+                        <span><strong className="text-white">High Resilience: </strong>Deep buffer to prevent spin-up delay.</span>
                       )}
-                      {preloadCount >= 1 && preloadCount <= 3 && (
-                        <p className="text-content-secondary">
-                          <strong className="text-white">Recommended Balanced Profile: </strong>
-                          Buffers the next {preloadCount} upcoming song{preloadCount > 1 ? 's' : ''} sequentially in the background. Provides instant, gapless song playback with negligible RAM usage.
-                        </p>
-                      )}
-                      {preloadCount > 3 && (
-                        <p className="text-content-secondary">
-                          <strong className="text-white">High Resilience Buffer: </strong>
-                          Buffers up to {preloadCount} upcoming tracks. Ideal for preventing audio pauses if MattLab Unraid mechanical hard drives spin down, or for listening with patchy network connections.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Memory & Cache Purge Tool */}
-                <div className="p-5 rounded-2xl bg-surface-panel border border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                      <Trash2 size={16} className="text-content-muted" />
-                      <span>Purge Preload Cache & Memory</span>
-                    </h4>
-                    <p className="text-xs text-content-muted mt-0.5 max-w-lg">
-                      Immediately revokes Blob URLs and clears the browser CacheStorage API table to release all allocated memory.
                     </p>
-                  </div>
 
-                  <button
-                    onClick={handleClearCache}
-                    disabled={clearingCache}
-                    className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition shrink-0 ${
-                      cacheClearedSuccess
-                        ? 'bg-brand-500/20 text-brand-400 border border-brand-500/30'
-                        : 'bg-white/10 hover:bg-white/20 text-white border border-border-medium'
-                    }`}
-                  >
-                    {cacheClearedSuccess ? (
-                      <>
-                        <Check size={14} className="text-brand-500" />
-                        <span>Cache Cleared!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Trash2 size={14} />
-                        <span>{clearingCache ? 'Clearing...' : 'Clear Audio Cache'}</span>
-                      </>
-                    )}
-                  </button>
+                    <button
+                      onClick={handleClearCache}
+                      disabled={clearingCache}
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-semibold flex items-center gap-1.5 transition shrink-0 ${
+                        cacheClearedSuccess
+                          ? 'bg-brand-500/20 text-brand-400 border border-brand-500/30'
+                          : 'bg-white/10 hover:bg-white/20 text-white border border-border-medium'
+                      }`}
+                    >
+                      {cacheClearedSuccess ? (
+                        <>
+                          <Check size={12} className="text-brand-500" />
+                          <span>Purged!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 size={12} />
+                          <span>{clearingCache ? 'Purging...' : 'Purge RAM'}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Automatic Lyrics Search Engine Card */}
