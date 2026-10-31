@@ -43,7 +43,9 @@ import {
   Lock,
   Download,
   DownloadCloud,
-  Monitor
+  Monitor,
+  ChevronRight,
+  ChevronLeft
 } from 'lucide-react';
 import { MattLabLogo } from './MattLabLogo';
 import { UserAvatar } from './UserAvatar';
@@ -374,6 +376,7 @@ export const SettingsModal = ({
   const [clearingTranscodeCache, setClearingTranscodeCache] = useState(false);
   const [transcodeClearedSuccess, setTranscodeClearedSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState(initialTab || 'account');
+  const [audioSubpage, setAudioSubpage] = useState(null); // null | 'quality' | 'preload' | 'miniplayer'
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
 
@@ -1346,130 +1349,244 @@ export const SettingsModal = ({
 
             {activeTab === 'playback' && (
               <div className="space-y-4">
-                {/* Compact Section Header */}
-                <div className="p-4 rounded-xl bg-surface-panel border border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-brand-500/10 text-brand-500 border border-brand-500/20 flex items-center justify-center shrink-0">
-                      <Volume2 size={18} />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                        <span>Audio & Playback</span>
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                          preloadCount === 0 
-                            ? 'bg-white/10 text-content-muted' 
-                            : 'bg-brand-500/20 text-brand-400 border border-brand-500/30'
-                        }`}>
-                          {preloadCount === 0 ? 'Direct Stream' : `${preloadCount} Song Buffer`}
-                        </span>
-                      </h3>
-                      <p className="text-[11px] text-content-secondary mt-0.5">
-                        Buffer management, audio streaming fidelity, and playback style
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-[11px] self-start sm:self-auto bg-surface-island px-2.5 py-1 rounded-lg border border-border-subtle">
-                    <div className={`w-1.5 h-1.5 rounded-full ${
-                      preloadCount > 0 ? 'bg-brand-500 animate-pulse' : 'bg-content-subtle'
-                    }`} />
-                    <span className="text-content-secondary font-medium font-mono">
-                      {preloadedTrackIds?.size || 0} track{preloadedTrackIds?.size === 1 ? '' : 's'} in RAM
+                {/* Master / Detail Drilldown Header */}
+                {audioSubpage ? (
+                  <div className="flex items-center justify-between pb-2 border-b border-border-subtle">
+                    <button
+                      type="button"
+                      onClick={() => setAudioSubpage(null)}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-brand-400 hover:text-brand-300 transition py-1 px-2 -ml-2 rounded-lg hover:bg-white/5 active:scale-95"
+                    >
+                      <ChevronLeft size={16} />
+                      <span>Audio & Playback</span>
+                    </button>
+                    <span className="text-xs font-bold text-white capitalize">
+                      {audioSubpage === 'quality' && 'Streaming Quality'}
+                      {audioSubpage === 'preload' && 'Preload Buffer'}
+                      {audioSubpage === 'miniplayer' && 'Miniplayer Style'}
                     </span>
                   </div>
-                </div>
-
-                {/* Streaming Audio Quality (Compact Dual-Option Card) */}
-                <div className="p-4 rounded-xl bg-surface-panel border border-border-subtle space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-white flex items-center gap-2">
-                      <Gauge size={15} className="text-brand-500" />
-                      <span>Streaming Audio Quality</span>
-                    </h4>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {/* Option 1: Original / Lossless Quality */}
-                    <button
-                      type="button"
-                      onClick={() => setAudioQuality('original')}
-                      className={`p-3 rounded-xl text-left border transition flex items-center justify-between relative group ${
-                        audioQuality === 'original'
-                          ? 'bg-brand-500/10 border-brand-500 text-white shadow-sm ring-1 ring-brand-500/40'
-                          : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
-                      }`}
-                    >
-                      <div className="min-w-0 pr-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-xs text-white">Original (Lossless / HQ)</span>
-                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30">
-                            DEFAULT
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-content-muted mt-0.5 truncate">
-                          Bit-perfect up to 24-bit FLAC & 320 kbps MP3
+                ) : (
+                  /* Root Header */
+                  <div className="p-3.5 rounded-xl bg-surface-panel border border-border-subtle flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-brand-500/10 text-brand-500 border border-brand-500/20 flex items-center justify-center shrink-0">
+                        <Volume2 size={16} />
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-bold text-white">Audio & Playback</h3>
+                        <p className="text-[11px] text-content-secondary">
+                          Streaming fidelity, buffer management & player style
                         </p>
                       </div>
-                      {audioQuality === 'original' && (
-                        <Check size={14} className="text-brand-500 shrink-0" />
-                      )}
-                    </button>
-
-                    {/* Option 2: Data Saver Quality */}
-                    <button
-                      type="button"
-                      onClick={() => setAudioQuality('data_saver')}
-                      className={`p-3 rounded-xl text-left border transition flex items-center justify-between relative group ${
-                        audioQuality === 'data_saver'
-                          ? 'bg-amber-500/10 border-amber-500 text-white shadow-sm ring-1 ring-amber-500/40'
-                          : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
-                      }`}
-                    >
-                      <div className="min-w-0 pr-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-xs text-white">Data Saver</span>
-                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                            128 KBPS
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-content-muted mt-0.5 truncate">
-                          Uses ~85–90% less bandwidth for metered networks
-                        </p>
-                      </div>
-                      {audioQuality === 'data_saver' && (
-                        <Check size={14} className="text-amber-400 shrink-0" />
-                      )}
-                    </button>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[10px] bg-surface-island px-2.5 py-1 rounded-lg border border-border-subtle">
+                      <div className={`w-1.5 h-1.5 rounded-full ${
+                        preloadCount > 0 ? 'bg-brand-500 animate-pulse' : 'bg-content-subtle'
+                      }`} />
+                      <span className="text-content-secondary font-mono font-medium">
+                        {preloadedTrackIds?.size || 0} in RAM
+                      </span>
+                    </div>
                   </div>
+                )}
 
-                  {/* Transcode Cache Info & Clear Action */}
-                  <div className="px-3 py-2 rounded-lg bg-surface-island border border-border-subtle text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <HardDrive size={14} className="text-brand-500 shrink-0" />
-                      <p className="text-content-secondary text-[11px] truncate">
-                        <strong className="text-white">Transcode Cache: </strong>
-                        {transcodeCacheStats.size_mb > 0 ? (
-                          <>
-                            <span className="text-brand-400 font-mono font-bold">{transcodeCacheStats.size_mb} MB</span> ({transcodeCacheStats.file_count} converted)
-                          </>
-                        ) : (
-                          <span>Empty (0 MB)</span>
-                        )}
-                      </p>
+                {/* SUBPAGE 1: Streaming Audio Quality */}
+                {audioSubpage === 'quality' && (
+                  <div className="space-y-4 animate-in fade-in duration-150">
+                    <div className="p-4 rounded-xl bg-surface-panel border border-border-subtle space-y-3">
+                      <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                        <Gauge size={15} className="text-brand-500" />
+                        <span>Select Playback Fidelity</span>
+                      </h4>
+
+                      <div className="space-y-2">
+                        {/* Option 1: Original */}
+                        <button
+                          type="button"
+                          onClick={() => setAudioQuality('original')}
+                          className={`w-full p-3 rounded-xl text-left border transition flex items-center justify-between ${
+                            audioQuality === 'original'
+                              ? 'bg-brand-500/10 border-brand-500 text-white ring-1 ring-brand-500/40'
+                              : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
+                          }`}
+                        >
+                          <div className="min-w-0 pr-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-xs text-white">Original (Lossless / HQ)</span>
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30">
+                                DEFAULT
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-content-muted mt-0.5">
+                              Bit-perfect streaming up to 24-bit FLAC & 320 kbps MP3 files.
+                            </p>
+                          </div>
+                          {audioQuality === 'original' && (
+                            <Check size={16} className="text-brand-500 shrink-0" />
+                          )}
+                        </button>
+
+                        {/* Option 2: Data Saver */}
+                        <button
+                          type="button"
+                          onClick={() => setAudioQuality('data_saver')}
+                          className={`w-full p-3 rounded-xl text-left border transition flex items-center justify-between ${
+                            audioQuality === 'data_saver'
+                              ? 'bg-amber-500/10 border-amber-500 text-white ring-1 ring-amber-500/40'
+                              : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
+                          }`}
+                        >
+                          <div className="min-w-0 pr-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-xs text-white">Data Saver</span>
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                128 KBPS
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-content-muted mt-0.5">
+                              Uses ~85–90% less data. Best for mobile data plans & metered connections.
+                            </p>
+                          </div>
+                          {audioQuality === 'data_saver' && (
+                            <Check size={16} className="text-amber-400 shrink-0" />
+                          )}
+                        </button>
+                      </div>
                     </div>
 
-                    {transcodeCacheStats.file_count > 0 && (
+                    {/* Transcode Cache Info */}
+                    <div className="p-4 rounded-xl bg-surface-panel border border-border-subtle flex items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <HardDrive size={15} className="text-brand-500 shrink-0" />
+                        <div>
+                          <p className="font-bold text-white">Server Transcode Cache</p>
+                          <p className="text-[11px] text-content-muted mt-0.5">
+                            {transcodeCacheStats.size_mb > 0
+                              ? `${transcodeCacheStats.size_mb} MB stored across ${transcodeCacheStats.file_count} converted tracks`
+                              : 'Empty (0 MB) - generated on-demand in Data Saver'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {transcodeCacheStats.file_count > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleClearTranscodeCache}
+                          disabled={clearingTranscodeCache}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white border border-border-medium transition shrink-0 flex items-center gap-1.5"
+                        >
+                          {transcodeClearedSuccess ? (
+                            <>
+                              <Check size={12} className="text-brand-400" />
+                              <span>Purged!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Trash2 size={12} />
+                              <span>{clearingTranscodeCache ? 'Purging...' : 'Purge'}</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* SUBPAGE 2: Upcoming Track Buffer */}
+                {audioSubpage === 'preload' && (
+                  <div className="space-y-4 animate-in fade-in duration-150">
+                    <div className="p-4 rounded-xl bg-surface-panel border border-border-subtle space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                            <Zap size={15} className="text-brand-500" />
+                            <span>Queue Preload Window</span>
+                          </h4>
+                          <p className="text-[11px] text-content-muted mt-0.5">
+                            Pre-buffers upcoming queue tracks into memory for gapless playback
+                          </p>
+                        </div>
+                        <span className="text-xs font-mono font-bold text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded-md border border-brand-500/20">
+                          {preloadCount === 0 ? 'Off (Direct)' : `${preloadCount} songs`}
+                        </span>
+                      </div>
+
+                      {/* Preset Buttons */}
+                      <div className="grid grid-cols-5 gap-1.5">
+                        {[
+                          { value: 0, label: '0 (Off)' },
+                          { value: 1, label: '1 Song' },
+                          { value: 3, label: '3 Songs' },
+                          { value: 5, label: '5 Songs' },
+                          { value: 10, label: '10 Songs' },
+                        ].map((preset) => (
+                          <button
+                            key={preset.value}
+                            type="button"
+                            onClick={() => setPreloadCount(preset.value)}
+                            className={`py-2 px-1 text-center rounded-lg border transition text-xs font-semibold ${
+                              preloadCount === preset.value
+                                ? 'bg-brand-500/20 border-brand-500 text-brand-400 ring-1 ring-brand-500/40'
+                                : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
+                            }`}
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Slider */}
+                      <div className="space-y-1.5 pt-2 border-t border-border-subtle">
+                        <div className="flex items-center justify-between text-[11px] text-content-muted">
+                          <span>Fine-tune buffer size</span>
+                          <span className="font-mono text-white font-bold">{preloadCount} tracks</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="10"
+                          step="1"
+                          value={preloadCount}
+                          onChange={(e) => setPreloadCount(Number(e.target.value))}
+                          className="w-full h-1.5 bg-surface-elevated2 rounded-lg appearance-none cursor-pointer accent-brand-500"
+                        />
+                        <div className="flex justify-between text-[10px] font-mono text-content-subtle">
+                          <span>0 (Direct)</span>
+                          <span>3 (Default)</span>
+                          <span>10 (Max)</span>
+                        </div>
+                      </div>
+
+                      {/* Guidance note */}
+                      <div className="p-3 rounded-lg bg-surface-island border border-border-subtle text-[11px] text-content-secondary leading-relaxed">
+                        {preloadCount === 0 && (
+                          <span><strong className="text-white">Direct Stream: </strong>Zero RAM allocated. Audio plays on demand.</span>
+                        )}
+                        {preloadCount > 0 && preloadCount <= 3 && (
+                          <span><strong className="text-white">Balanced Profile: </strong>Seamless gapless transitions with minimal memory footprint.</span>
+                        )}
+                        {preloadCount > 3 && (
+                          <span><strong className="text-white">High Resilience: </strong>Deep buffer to prevent spin-up delay on Unraid hard drives.</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Purge Buffer Action */}
+                    <div className="p-4 rounded-xl bg-surface-panel border border-border-subtle flex items-center justify-between text-xs">
+                      <div>
+                        <p className="font-bold text-white">Purge Allocated RAM Buffer</p>
+                        <p className="text-[11px] text-content-muted mt-0.5">
+                          Frees browser blob URLs and caches immediately
+                        </p>
+                      </div>
                       <button
                         type="button"
-                        onClick={handleClearTranscodeCache}
-                        disabled={clearingTranscodeCache}
-                        className={`px-2.5 py-1 rounded-md text-[11px] font-semibold flex items-center gap-1.5 transition shrink-0 ${
-                          transcodeClearedSuccess
-                            ? 'bg-brand-500/20 text-brand-400 border border-brand-500/30'
-                            : 'bg-white/10 hover:bg-white/20 text-white border border-border-medium'
-                        }`}
+                        onClick={handleClearCache}
+                        disabled={clearingCache}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white border border-border-medium transition shrink-0 flex items-center gap-1.5"
                       >
-                        {transcodeClearedSuccess ? (
+                        {cacheClearedSuccess ? (
                           <>
                             <Check size={12} className="text-brand-400" />
                             <span>Purged!</span>
@@ -1477,281 +1594,277 @@ export const SettingsModal = ({
                         ) : (
                           <>
                             <Trash2 size={12} />
-                            <span>{clearingTranscodeCache ? 'Purging...' : 'Purge Transcodes'}</span>
+                            <span>{clearingCache ? 'Purging...' : 'Purge RAM'}</span>
                           </>
                         )}
                       </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Smart Autoplay (Compact 1-Row Toggle) */}
-                <div className="p-4 rounded-xl bg-surface-panel border border-border-subtle flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-brand-500/10 text-brand-500 border border-brand-500/20 flex items-center justify-center shrink-0">
-                      <Sparkles size={16} />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-white flex items-center gap-2">
-                        <span>Autoplay Similar Songs</span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-brand-500/20 text-brand-400 border border-brand-500/30">
-                          Smart Radio
-                        </span>
-                      </h4>
-                      <p className="text-[11px] text-content-muted mt-0.5">
-                        Queue matching songs when current track finishes or queue runs empty
-                      </p>
                     </div>
                   </div>
+                )}
 
-                  <button
-                    type="button"
-                    onClick={() => setAutoplaySimilar(!autoplaySimilar)}
-                    className={`w-10 h-5.5 rounded-full p-0.5 transition-colors relative shrink-0 ${
-                      autoplaySimilar ? 'bg-brand-500' : 'bg-surface-island border border-white/10'
-                    }`}
-                    title="Toggle Autoplay Similar Songs"
-                  >
-                    <div className={`w-4 h-4 rounded-full bg-white transition-transform ${
-                      autoplaySimilar ? 'translate-x-4.5' : 'translate-x-0'
-                    }`} />
-                  </button>
-                </div>
-
-                {/* Miniplayer (Streamlined & Compact) */}
-                <div className="p-4 rounded-xl bg-surface-panel border border-border-subtle space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-white flex items-center gap-2">
-                      <PictureInPicture2 size={15} className="text-brand-500" />
-                      <span>Miniplayer Display Style</span>
-                    </h4>
-
-                    <button
-                      type="button"
-                      onClick={togglePiP}
-                      className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white/10 hover:bg-white/20 text-white border border-border-medium transition shrink-0 flex items-center gap-1.5"
-                    >
-                      <PictureInPicture2 size={12} />
-                      <span>{isPiPActive ? 'Close' : 'Preview'}</span>
-                    </button>
-                  </div>
-
-                  {/* Dual Mode Selectable Cards */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => setPipEngine('interactive')}
-                      className={`p-3 rounded-xl text-left border transition flex items-center justify-between relative group ${
-                        pipEngine === 'interactive'
-                          ? 'bg-brand-500/10 border-brand-500 text-white shadow-sm ring-1 ring-brand-500/40'
-                          : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
-                      }`}
-                    >
-                      <div className="min-w-0 pr-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-xs text-white">Interactive Miniplayer</span>
-                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30">
-                            DEFAULT
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-content-muted mt-0.5 truncate">
-                          Controls, scrubber, volume & live synced lyrics
-                        </p>
-                      </div>
-                      {pipEngine === 'interactive' && (
-                        <Check size={14} className="text-brand-500 shrink-0" />
-                      )}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setPipEngine('video')}
-                      className={`p-3 rounded-xl text-left border transition flex items-center justify-between relative group ${
-                        pipEngine === 'video'
-                          ? 'bg-purple-500/10 border-purple-500 text-white shadow-sm ring-1 ring-purple-500/40'
-                          : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
-                      }`}
-                    >
-                      <div className="min-w-0 pr-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-xs text-white">Frameless Video Miniplayer</span>
-                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30">
-                            16:9
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-content-muted mt-0.5 truncate">
-                          Borderless floating card with ambient glow
-                        </p>
-                      </div>
-                      {pipEngine === 'video' && (
-                        <Check size={14} className="text-purple-400 shrink-0" />
-                      )}
-                    </button>
-                  </div>
-
-                  {/* Compact Transparency & Idle Dimming Controls */}
-                  <div className="pt-2 border-t border-border-subtle space-y-3">
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="text-content-secondary font-medium">In-Page Transparency</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-brand-500/15 text-brand-400 border border-brand-500/25">
-                          {miniPlayerOpacity ?? 85}%
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {[
-                          { val: 50, label: '50%' },
-                          { val: 85, label: '85%' },
-                          { val: 100, label: '100%' },
-                        ].map((preset) => (
-                          <button
-                            key={preset.val}
-                            type="button"
-                            onClick={() => setMiniPlayerOpacity(preset.val)}
-                            className={`px-2 py-0.5 text-[10px] font-semibold rounded border transition ${
-                              (miniPlayerOpacity ?? 85) === preset.val
-                                ? 'bg-brand-500 text-black border-brand-500 font-bold'
-                                : 'bg-white/5 hover:bg-white/10 text-content-secondary hover:text-white border-border-subtle'
-                            }`}
-                          >
-                            {preset.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <input
-                      type="range"
-                      min="30"
-                      max="100"
-                      step="5"
-                      value={miniPlayerOpacity ?? 85}
-                      onChange={(e) => setMiniPlayerOpacity(parseInt(e.target.value, 10))}
-                      className="w-full accent-brand-500 bg-surface-elevated h-1.5 rounded-lg appearance-none cursor-pointer"
-                    />
-
-                    {/* Idle Dimming Switch */}
-                    <div className="flex items-center justify-between pt-1">
-                      <div>
-                        <span className="text-xs font-semibold text-white">Idle Dimming (Ghost Mode)</span>
-                        <p className="text-[11px] text-content-muted">
-                          Fades player when idle; restores on mouse hover or drag
-                        </p>
+                {/* SUBPAGE 3: Floating Miniplayer */}
+                {audioSubpage === 'miniplayer' && (
+                  <div className="space-y-4 animate-in fade-in duration-150">
+                    <div className="p-4 rounded-xl bg-surface-panel border border-border-subtle space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                          <PictureInPicture2 size={15} className="text-brand-500" />
+                          <span>Miniplayer Style</span>
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={togglePiP}
+                          className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white/10 hover:bg-white/20 text-white border border-border-medium transition flex items-center gap-1.5"
+                        >
+                          <PictureInPicture2 size={12} />
+                          <span>{isPiPActive ? 'Close' : 'Preview'}</span>
+                        </button>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => setMiniPlayerIdleDim(!miniPlayerIdleDim)}
-                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                          miniPlayerIdleDim ? 'bg-brand-500' : 'bg-surface-elevated'
-                        }`}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                            miniPlayerIdleDim ? 'translate-x-4' : 'translate-x-0'
+                      <div className="space-y-2">
+                        <button
+                          type="button"
+                          onClick={() => setPipEngine('interactive')}
+                          className={`w-full p-3 rounded-xl text-left border transition flex items-center justify-between ${
+                            pipEngine === 'interactive'
+                              ? 'bg-brand-500/10 border-brand-500 text-white ring-1 ring-brand-500/40'
+                              : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
                           }`}
-                        />
-                      </button>
+                        >
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-xs text-white">Interactive Miniplayer</span>
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30">
+                                DEFAULT
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-content-muted mt-0.5">
+                              Floating window with click-to-play buttons, volume & live synced lyrics.
+                            </p>
+                          </div>
+                          {pipEngine === 'interactive' && (
+                            <Check size={16} className="text-brand-500 shrink-0" />
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setPipEngine('video')}
+                          className={`w-full p-3 rounded-xl text-left border transition flex items-center justify-between ${
+                            pipEngine === 'video'
+                              ? 'bg-purple-500/10 border-purple-500 text-white ring-1 ring-purple-500/40'
+                              : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-xs text-white">Frameless Video Miniplayer</span>
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                                16:9
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-content-muted mt-0.5">
+                              Borderless floating card with album artwork, ambient glow, and lyrics.
+                            </p>
+                          </div>
+                          {pipEngine === 'video' && (
+                            <Check size={16} className="text-purple-400 shrink-0" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Transparency & Ghost Mode */}
+                    <div className="p-4 rounded-xl bg-surface-panel border border-border-subtle space-y-3">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-white">In-Page Transparency</span>
+                        <div className="flex items-center gap-1">
+                          {[
+                            { val: 50, label: '50%' },
+                            { val: 85, label: '85%' },
+                            { val: 100, label: '100%' },
+                          ].map((preset) => (
+                            <button
+                              key={preset.val}
+                              type="button"
+                              onClick={() => setMiniPlayerOpacity(preset.val)}
+                              className={`px-2 py-0.5 text-[10px] font-semibold rounded border transition ${
+                                (miniPlayerOpacity ?? 85) === preset.val
+                                  ? 'bg-brand-500 text-black border-brand-500 font-bold'
+                                  : 'bg-white/5 hover:bg-white/10 text-content-secondary hover:text-white border-border-subtle'
+                              }`}
+                            >
+                              {preset.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <input
+                        type="range"
+                        min="30"
+                        max="100"
+                        step="5"
+                        value={miniPlayerOpacity ?? 85}
+                        onChange={(e) => setMiniPlayerOpacity(parseInt(e.target.value, 10))}
+                        className="w-full accent-brand-500 bg-surface-elevated h-1.5 rounded-lg appearance-none cursor-pointer"
+                      />
+
+                      <div className="pt-2 border-t border-border-subtle flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-semibold text-white">Idle Dimming (Ghost Mode)</p>
+                          <p className="text-[11px] text-content-muted">
+                            Fades player when idle; restores on mouse hover or drag
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setMiniPlayerIdleDim(!miniPlayerIdleDim)}
+                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                            miniPlayerIdleDim ? 'bg-brand-500' : 'bg-surface-elevated'
+                          }`}
+                        >
+                          <span
+                            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                              miniPlayerIdleDim ? 'translate-x-4' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
-                {/* Preload Configuration Card (Compact & Streamlined) */}
-                <div className="p-4 rounded-xl bg-surface-panel border border-border-subtle space-y-3">
-                  <div className="flex items-center justify-between">
+                {/* ROOT: iOS Settings Grouped List */}
+                {!audioSubpage && (
+                  <div className="space-y-3 animate-in fade-in duration-150">
+                    {/* Section 1: Audio Quality & Ingestion */}
                     <div>
-                      <h4 className="text-xs font-bold text-white flex items-center gap-2">
-                        <Zap size={15} className="text-brand-500" />
-                        <span>Upcoming Songs Preload Buffer</span>
-                      </h4>
-                      <p className="text-[11px] text-content-muted mt-0.5">
-                        Buffers upcoming queue songs in memory for instant, gapless song transitions
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-content-muted px-1 mb-1.5">
+                        Audio Streaming & Cache
                       </p>
+                      <div className="bg-surface-panel border border-border-subtle rounded-xl divide-y divide-border-subtle overflow-hidden">
+                        {/* Row: Streaming Audio Quality */}
+                        <button
+                          type="button"
+                          onClick={() => setAudioSubpage('quality')}
+                          className="w-full px-3.5 py-3 hover:bg-white/5 active:bg-white/10 transition flex items-center justify-between text-left group"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-brand-500/10 text-brand-500 flex items-center justify-center shrink-0">
+                              <Gauge size={16} />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-white group-hover:text-brand-400 transition">
+                                Streaming Audio Quality
+                              </p>
+                              <p className="text-[11px] text-content-muted">
+                                Playback fidelity & bandwidth profile
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[11px] font-semibold text-content-secondary bg-surface-island px-2 py-0.5 rounded-md border border-border-subtle">
+                              {audioQuality === 'original' ? 'Lossless (HQ)' : 'Data Saver (128k)'}
+                            </span>
+                            <ChevronRight size={15} className="text-content-muted group-hover:text-white transition" />
+                          </div>
+                        </button>
+
+                        {/* Row: Buffer Management */}
+                        <button
+                          type="button"
+                          onClick={() => setAudioSubpage('preload')}
+                          className="w-full px-3.5 py-3 hover:bg-white/5 active:bg-white/10 transition flex items-center justify-between text-left group"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-brand-500/10 text-brand-500 flex items-center justify-center shrink-0">
+                              <Zap size={16} />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-white group-hover:text-brand-400 transition">
+                                Upcoming Songs Buffer
+                              </p>
+                              <p className="text-[11px] text-content-muted">
+                                Gapless playback caching & memory window
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[11px] font-semibold text-content-secondary bg-surface-island px-2 py-0.5 rounded-md border border-border-subtle">
+                              {preloadCount === 0 ? 'Direct Stream' : `${preloadCount} Songs`}
+                            </span>
+                            <ChevronRight size={15} className="text-content-muted group-hover:text-white transition" />
+                          </div>
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="text-right">
-                      <span className="text-sm font-bold text-brand-400 font-mono">
-                        {preloadCount === 0 ? 'Direct' : `${preloadCount} songs`}
-                      </span>
+                    {/* Section 2: Playback & Interface */}
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-content-muted px-1 mb-1.5">
+                        Queue & Interface
+                      </p>
+                      <div className="bg-surface-panel border border-border-subtle rounded-xl divide-y divide-border-subtle overflow-hidden">
+                        {/* Row: Autoplay (Inline Switch) */}
+                        <div className="w-full px-3.5 py-3 flex items-center justify-between text-left">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-brand-500/10 text-brand-500 flex items-center justify-center shrink-0">
+                              <Sparkles size={16} />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-white">
+                                Autoplay Similar Songs
+                              </p>
+                              <p className="text-[11px] text-content-muted">
+                                Smart radio queue when tracks end
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setAutoplaySimilar(!autoplaySimilar)}
+                            className={`w-10 h-5.5 rounded-full p-0.5 transition-colors relative shrink-0 ${
+                              autoplaySimilar ? 'bg-brand-500' : 'bg-surface-island border border-white/10'
+                            }`}
+                            title="Toggle Autoplay Similar Songs"
+                          >
+                            <div className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                              autoplaySimilar ? 'translate-x-4.5' : 'translate-x-0'
+                            }`} />
+                          </button>
+                        </div>
+
+                        {/* Row: Miniplayer Display */}
+                        <button
+                          type="button"
+                          onClick={() => setAudioSubpage('miniplayer')}
+                          className="w-full px-3.5 py-3 hover:bg-white/5 active:bg-white/10 transition flex items-center justify-between text-left group"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-brand-500/10 text-brand-500 flex items-center justify-center shrink-0">
+                              <PictureInPicture2 size={16} />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-white group-hover:text-brand-400 transition">
+                                Floating Miniplayer
+                              </p>
+                              <p className="text-[11px] text-content-muted">
+                                Style, transparency & idle ghosting
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[11px] font-semibold text-content-secondary bg-surface-island px-2 py-0.5 rounded-md border border-border-subtle">
+                              {pipEngine === 'interactive' ? 'Interactive' : 'Video 16:9'}
+                            </span>
+                            <ChevronRight size={15} className="text-content-muted group-hover:text-white transition" />
+                          </div>
+                        </button>
+                      </div>
                     </div>
                   </div>
-
-                  {/* Preset Pills */}
-                  <div className="grid grid-cols-5 gap-1.5">
-                    {[
-                      { value: 0, label: '0 (Off)' },
-                      { value: 1, label: '1 Song' },
-                      { value: 3, label: '3 Songs' },
-                      { value: 5, label: '5 Songs' },
-                      { value: 10, label: '10 Songs' },
-                    ].map((preset) => (
-                      <button
-                        key={preset.value}
-                        onClick={() => setPreloadCount(preset.value)}
-                        className={`py-1.5 px-2 rounded-lg text-center border transition text-xs font-semibold ${
-                          preloadCount === preset.value
-                            ? 'bg-brand-500/20 border-brand-500 text-brand-400 ring-1 ring-brand-500/40'
-                            : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
-                        }`}
-                      >
-                        {preset.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Range Slider */}
-                  <div className="space-y-1 pt-1">
-                    <input
-                      type="range"
-                      min="0"
-                      max="10"
-                      step="1"
-                      value={preloadCount}
-                      onChange={(e) => setPreloadCount(Number(e.target.value))}
-                      className="w-full h-1.5 bg-surface-elevated2 rounded-lg appearance-none cursor-pointer accent-brand-500 focus:outline-none"
-                    />
-                    <div className="flex justify-between text-[10px] font-mono text-content-subtle">
-                      <span>0 (Off)</span>
-                      <span>3 (Default)</span>
-                      <span>10 (Max)</span>
-                    </div>
-                  </div>
-
-                  {/* Dynamic Hint & Purge Button Footer */}
-                  <div className="px-3 py-2 rounded-lg bg-surface-island border border-border-subtle text-[11px] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <p className="text-content-secondary">
-                      {preloadCount === 0 ? (
-                        <span><strong className="text-white">Direct Stream: </strong>Zero buffer memory used.</span>
-                      ) : preloadCount <= 3 ? (
-                        <span><strong className="text-white">Balanced: </strong>Instant playback with minimal RAM footprint.</span>
-                      ) : (
-                        <span><strong className="text-white">High Resilience: </strong>Deep buffer to prevent spin-up delay.</span>
-                      )}
-                    </p>
-
-                    <button
-                      onClick={handleClearCache}
-                      disabled={clearingCache}
-                      className={`px-2.5 py-1 rounded-md text-[11px] font-semibold flex items-center gap-1.5 transition shrink-0 ${
-                        cacheClearedSuccess
-                          ? 'bg-brand-500/20 text-brand-400 border border-brand-500/30'
-                          : 'bg-white/10 hover:bg-white/20 text-white border border-border-medium'
-                      }`}
-                    >
-                      {cacheClearedSuccess ? (
-                        <>
-                          <Check size={12} className="text-brand-500" />
-                          <span>Purged!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Trash2 size={12} />
-                          <span>{clearingCache ? 'Purging...' : 'Purge RAM'}</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
+                )}
 
                 {/* Automatic Lyrics Search Engine Card */}
                 <div className="p-5 rounded-2xl bg-surface-panel border border-border-subtle space-y-5">
