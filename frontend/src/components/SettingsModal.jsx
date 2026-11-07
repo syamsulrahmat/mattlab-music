@@ -766,22 +766,14 @@ export const SettingsModal = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Bar */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border-medium bg-surface-panel/80 backdrop-blur shrink-0">
+        <div className="flex items-center justify-between px-5 sm:px-6 py-3.5 sm:py-4 border-b border-border-medium bg-surface-panel/80 backdrop-blur shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-brand-500/10 text-brand-500 border border-brand-500/20 flex items-center justify-center shadow-inner">
-              <Sliders size={20} />
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-brand-500/10 text-brand-500 border border-brand-500/20 flex items-center justify-center">
+              <Sliders size={18} />
             </div>
-            <div>
-              <h2 className="text-lg font-bold text-content-primary tracking-tight flex items-center gap-2">
-                <span>Settings</span>
-                <span className="text-[10px] font-semibold bg-white/10 text-content-secondary px-2 py-0.5 rounded-full uppercase tracking-wider">
-                  MattLab Music
-                </span>
-              </h2>
-              <p className="text-xs text-content-secondary mt-0.5">
-                Keyboard shortcuts, interface preferences, and system telemetry
-              </p>
-            </div>
+            <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
+              Settings
+            </h2>
           </div>
 
           <button
