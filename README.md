@@ -1,82 +1,108 @@
 # 🎵 MattLab Music
 
-> **Self-hosted personal music streaming web application with a modern Spotify-inspired Island UI, built for Unraid & Docker.**
+> **Self-Hosted High-Fidelity Music Streaming Platform & Media Management System**
 
-[![Live Domain](https://img.shields.io/badge/Live-music.mattdrive.com-1ed760?style=flat-square&logo=cloudflare)](https://music.mattdrive.com)
+[![Version](https://img.shields.io/badge/Version-1.0.0_GA-1ed760?style=flat-square)](https://github.com)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com)
-[![React](https://img.shields.io/badge/Frontend-React%20%2B%20Vite-61DAFB?style=flat-square&logo=react)](https://react.dev)
+[![React](https://img.shields.io/badge/Frontend-React%2018%20%2B%20Vite-61DAFB?style=flat-square&logo=react)](https://react.dev)
 [![TailwindCSS](https://img.shields.io/badge/Styling-Tailwind%20CSS-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com)
-[![Docker](https://img.shields.io/badge/Deployment-Docker-2496ED?style=flat-square&logo=docker)](https://www.docker.com)
-[![Mobile Friendly](https://img.shields.io/badge/Mobile-Friendly%20(PWA)-purple?style=flat-square)](https://music.mattdrive.com)
+[![Docker](https://img.shields.io/badge/Deployment-Docker%20Compose-2496ED?style=flat-square&logo=docker)](https://www.docker.com)
+[![Platform](https://img.shields.io/badge/Client-Web%20PWA%20%7C%20Windows-purple?style=flat-square)](docs/DESKTOP_APPLICATION.md)
 
-Minimal, blisteringly fast, and focused on essential Spotify-like music discovery without the bloat. Runs natively on your personal server and streams your audio collection anywhere.
+MattLab Music is an enterprise-grade, self-hosted streaming application designed for audio enthusiasts and personal server environments. Built with modern web standards and asynchronous backend services, it delivers bit-perfect audio streaming, automated media cataloging, synchronized lyrics, and multi-client access with complete privacy and zero cloud dependencies.
 
 ---
 
-## 🌟 Features
+## 📑 Documentation Suite
 
-- **Continuous Audio Engine**: Persistent bottom player bar that never interrupts or resets playback during catalog navigation.
-- **HTTP 206 Partial Content**: Native byte-range streaming allowing instant seeking and smooth audio scrubbing.
-- **Lightning-Fast Scanner**:
-  - Incremental tag parser using Mutagen (MP3, FLAC, M4A, AAC, OGG).
-  - Automatically caches and serves embedded/folder album artwork.
-- **Spotify-Inspired Island UI**:
-  - Dark matte aesthetic with album grids, artist discographies, and track tables.
-  - Quick-play hover buttons, live search, and full active queue drawer.
-- **Mobile Friendly**:
-  - Fully responsive layout optimized for mobile screens.
-  - Installable as a progressive web app (PWA) with native lock-screen media controls (MediaSession API).
-- **Playlists & Liked Songs**:
-  - Heart icon to save favorites.
-  - Custom playlists: create, add tracks, reorder, and manage.
-- **Global Keyboard Shortcuts**:
-  - `Space`: Play / Pause
-  - `Arrow Left` / `Arrow Right`: Seek -5s / +5s
-  - `Arrow Up` / `Arrow Down`: Volume -5% / +5%
-  - `Shift + N` / `Shift + P`: Next / Previous song
-  - `M`: Toggle mute
+Comprehensive technical, operational, and user documentation is available in the [`docs/`](docs/) directory:
+
+- 🏛️ **[System Architecture](docs/ARCHITECTURE.md)**: Network topology, streaming protocols, caching layers, and database schema.
+- 📱 **[User & Navigation Guide](docs/USER_GUIDE.md)**: Interface layouts, responsive mobile sheets, Command Palette (`⌘K`), and keyboard shortcuts.
+- ⚙️ **[Backend Services & Automation](docs/BACKEND_SERVICES.md)**: Automated acquisition pipeline, Spotify synchronization, lyrics crawler, auto-healer, and AI stem isolation.
+- 💻 **[Desktop Application](docs/DESKTOP_APPLICATION.md)**: Windows portable Electron client, transparent acrylic miniplayer, and global media keys.
+- 🚀 **[Deployment & Operations](docs/DEPLOYMENT.md)**: Production Docker Compose reference, Unraid guide, reverse proxy configuration, and disaster recovery.
+
+---
+
+## ✨ Core Capabilities
+
+### 1. High-Fidelity Streaming Engine
+- **Bit-Perfect Local Playback**: Streams lossless audio formats (FLAC up to 24-bit/192kHz, MP3 up to 320 kbps, AAC, M4A, Opus, and OGG).
+- **RFC 7233 Partial Content Delivery**: Native HTTP 206 byte-range streaming for instant seeking and timeline scrubbing without re-downloading tracks.
+- **Adaptive Bandwidth Transcoding**: Integrated FFmpeg engine providing on-demand 128 kbps transcoding for bandwidth-constrained mobile connections, backed by an intelligent server transcode cache.
+- **Configurable Preload Buffer**: Client-side background pre-buffering (0 to 10 tracks) ensuring gapless song transitions even when server hard drives spin down.
+
+### 2. Modern Island UI Architecture
+- **Responsive Multi-Device Layout**: Tailored desktop split-pane experience, responsive tablet grid, and mobile touch interface with swipeable bottom sheets.
+- **Progressive Web App (PWA)**: Full offline-capable shell, installable on iOS and Android devices with MediaSession API lock-screen media controls.
+- **Hierarchical Settings Navigation**: iOS-style master-detail configuration menus for granular control over audio fidelity, buffer allocation, and interface transparency.
+- **Command Palette (`⌘K` / `Ctrl+K`)**: Rapid keyboard-first navigation to search library catalogs, trigger system commands, or navigate interfaces in milliseconds.
+
+### 3. Automated Media Ingestion & Discovery
+- **High-Fidelity Media Acquisition**: Automated catalog searching and ingestion pipeline integrated with Lidarr and private indexers.
+- **Spotify Chart & Playlist Reconciliation**: Daily synchronization of global Top 50 and Viral charts, with 1-click import of public Spotify playlists into local lossless tracks.
+- **Smart Radio & Queue Autoplay**: Contextual recommendation engine matching track genres, eras, and popularity curves when active playback finishes.
+
+### 4. Real-Time Lyrics & Media Visualizers
+- **Sub-Second Karaoke Synchronization**: Live line-by-line scrolling lyrics powered by a multi-tier crawler (ID3 tags → local `.lrc` sidecars → LRCLIB API) protected by rate-limiting circuit breakers.
+- **Integrated Lyrics Editor**: In-browser interactive timing studio for manual offset adjustment, line-by-line timestamp creation, and Romanization (Pinyin, Romaji, Hangul).
+- **Dynamic Video Backgrounds**: High-definition looping video visualizers sourcing official Spotify Canvas MP4s and synchronized YouTube video streams.
+
+### 5. Multi-User Administration & Library Watchdog
+- **Role-Based Access Control**: Multi-user authentication supporting administrative and standard user roles, profile management, and custom avatar handling.
+- **System Broadcast Bulletin**: Interactive administrative announcements board with real-time notifications and threaded community discussion.
+- **Self-Healing Library Integrity Watchdog**: Continuous background service detecting corrupted rips, truncated bitstreams, or missing artwork, automatically re-fetching pristine releases.
+- **AI Stem Isolation (Demucs)**: Neural network vocal and instrument isolation microservice separating audio into independent lossless stems (Vocals, Drums, Bass, Other).
 
 ---
 
 ## 🚀 Quick Start (Docker Compose)
 
+The standard deployment configuration runs the application as an isolated container:
+
 ```yaml
 services:
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+  mattlab-music:
+    image: ghcr.io/mattlab/mattlab-music:latest
     container_name: mattlab-music
     restart: unless-stopped
+    ports:
+      - "8085:8085"
     volumes:
-      - ./backend/app:/app/app
-      - ./frontend/dist:/app/frontend_dist:ro
-      - /path/to/your/music:/music:ro
-      - /path/to/appdata:/data
+      - /mnt/user/appdata/mattlab-music/data:/data
+      - /mnt/user/media/music:/music:ro
     environment:
       - MUSIC_DIR=/music
       - DATA_DIR=/data
       - DB_PATH=/data/music.db
       - COVERS_DIR=/data/covers
-    ports:
-      - "8085:8085"
 ```
 
-Start the application:
+Launch the platform:
 ```bash
 docker compose up -d
 ```
+
+Navigate to `http://<your-server-ip>:8085` to complete the initial administrative setup.
 
 ---
 
 ## 🛠️ Management Commands
 
-### Triggering Manual Library Scan via CLI
+Execute operational commands directly inside the active container:
+
 ```bash
-docker compose run --rm backend python -m app.scanner_cli
+# Trigger an incremental media library scan
+docker exec -it mattlab-music python3 -m app.scanner_cli
+
+# Inspect real-time server runtime logs
+docker logs -f mattlab-music
 ```
 
-### Checking Backend Logs
-```bash
-docker compose logs -f backend
-```
+---
+
+## 🛡️ License
+
+This project is licensed under the terms of the MIT License.
