@@ -39,6 +39,7 @@ import { ComponentInspectorOverlay } from './components/ComponentInspectorOverla
 import { ExperimentalFlagsModal } from './components/ExperimentalFlagsModal';
 import { BulletinDrawer } from './components/BulletinDrawer';
 import { UserProfileView } from './components/UserProfileView';
+import { useSwipeGesture } from './hooks/useSwipeGesture';
 import { PlayerProvider, usePlayer } from './context/PlayerContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { FlagsProvider, useDevFlags } from './context/FlagsContext';
@@ -496,6 +497,45 @@ const MainAppContent = () => {
     setIsLyricsOpen(false);
     navigateTo({ tab: 'home', isLyricsOpen: false });
   }, [navigateTo]);
+
+  // Mobile One-Handed Gesture Navigation
+  const MAIN_TABS = ['home', 'search', 'favorites', 'library'];
+  const isInsideDetailView = Boolean(
+    selectedAlbumId || selectedArtistId || selectedPlaylistId || selectedProfileUserId
+  );
+
+  const handleSwipeLeft = useCallback(() => {
+    // If inside a detail view, left-swipe does nothing (or can be configured)
+    if (isInsideDetailView || isLyricsOpen) return;
+    const currentIndex = MAIN_TABS.indexOf(activeTab);
+    if (currentIndex !== -1 && currentIndex < MAIN_TABS.length - 1) {
+      handleSelectTab(MAIN_TABS[currentIndex + 1]);
+    }
+  }, [isInsideDetailView, isLyricsOpen, activeTab]);
+
+  const handleSwipeRight = useCallback(() => {
+    if (isInsideDetailView) {
+      // Natural edge/swipe back to main view
+      if (canGoBack) {
+        handleGoBack();
+      } else {
+        handleGoHome();
+      }
+      return;
+    }
+    if (isLyricsOpen) return;
+    const currentIndex = MAIN_TABS.indexOf(activeTab);
+    if (currentIndex > 0) {
+      handleSelectTab(MAIN_TABS[currentIndex - 1]);
+    }
+  }, [isInsideDetailView, isLyricsOpen, canGoBack, handleGoBack, handleGoHome, activeTab]);
+
+  useSwipeGesture({
+    onSwipeLeft: handleSwipeLeft,
+    onSwipeRight: handleSwipeRight,
+    onEdgeSwipeRight: isInsideDetailView ? handleGoBack : undefined,
+    enabled: true,
+  });
 
   // Global Keyboard & Mouse Button Event Listeners
   useEffect(() => {

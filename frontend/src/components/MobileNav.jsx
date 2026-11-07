@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Home, Disc3, Search, Mic2, Heart, ListMusic } from 'lucide-react';
 
 export const MobileNav = ({ activeTab, setActiveTab }) => {
@@ -9,8 +9,48 @@ export const MobileNav = ({ activeTab, setActiveTab }) => {
     { id: 'library', label: 'Library', icon: ListMusic },
   ];
 
+  const touchStartRef = useRef(null);
+
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 1) {
+      touchStartRef.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+        time: Date.now(),
+      };
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    if (!touchStartRef.current || e.changedTouches.length === 0) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartRef.current.x;
+    const deltaY = e.changedTouches[0].clientY - touchStartRef.current.y;
+    const elapsedTime = Date.now() - touchStartRef.current.time;
+    touchStartRef.current = null;
+
+    // Quick swipe across nav dock (25px threshold, <= 500ms, mostly horizontal)
+    if (elapsedTime <= 500 && Math.abs(deltaX) >= 25 && Math.abs(deltaX) > Math.abs(deltaY)) {
+      const currentIndex = tabs.findIndex((t) => t.id === activeTab);
+      if (currentIndex !== -1) {
+        if (deltaX < 0 && currentIndex < tabs.length - 1) {
+          // Slide thumb right-to-left -> Next tab
+          setActiveTab(tabs[currentIndex + 1].id);
+          try { navigator.vibrate?.(10); } catch {}
+        } else if (deltaX > 0 && currentIndex > 0) {
+          // Slide thumb left-to-right -> Previous tab
+          setActiveTab(tabs[currentIndex - 1].id);
+          try { navigator.vibrate?.(10); } catch {}
+        }
+      }
+    }
+  };
+
   return (
-    <nav className="pointer-events-auto md:hidden bg-black border-t border-white/5 px-3 pt-1 flex items-center justify-around z-40 select-none pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
+    <nav
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      className="pointer-events-auto md:hidden bg-black border-t border-white/5 px-3 pt-1 flex items-center justify-around z-40 select-none pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] touch-pan-x"
+    >
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.id;
