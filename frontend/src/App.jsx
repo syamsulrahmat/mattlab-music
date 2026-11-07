@@ -503,9 +503,9 @@ const MainAppContent = () => {
   const isInsideDetailView = Boolean(
     selectedAlbumId || selectedArtistId || selectedPlaylistId || selectedProfileUserId
   );
+  const currentTabIndex = MAIN_TABS.indexOf(activeTab);
 
   const handleSwipeLeft = useCallback(() => {
-    // If inside a detail view, left-swipe does nothing (or can be configured)
     if (isInsideDetailView || isLyricsOpen) return;
     const currentIndex = MAIN_TABS.indexOf(activeTab);
     if (currentIndex !== -1 && currentIndex < MAIN_TABS.length - 1) {
@@ -515,7 +515,6 @@ const MainAppContent = () => {
 
   const handleSwipeRight = useCallback(() => {
     if (isInsideDetailView) {
-      // Natural edge/swipe back to main view
       if (canGoBack) {
         handleGoBack();
       } else {
@@ -530,10 +529,12 @@ const MainAppContent = () => {
     }
   }, [isInsideDetailView, isLyricsOpen, canGoBack, handleGoBack, handleGoHome, activeTab]);
 
-  useSwipeGesture({
+  const { dragOffset: mobileSwipeOffset, isDragging: isMobileSwiping } = useSwipeGesture({
     onSwipeLeft: handleSwipeLeft,
     onSwipeRight: handleSwipeRight,
     onEdgeSwipeRight: isInsideDetailView ? handleGoBack : undefined,
+    canSwipeLeft: !isInsideDetailView && currentTabIndex < MAIN_TABS.length - 1,
+    canSwipeRight: isInsideDetailView ? true : currentTabIndex > 0,
     enabled: true,
   });
 
@@ -1236,7 +1237,21 @@ const MainAppContent = () => {
         />
 
         {/* Island 2: Center Panel (Main Stage / Content Area - Full-bleed on mobile, Seamless Background) */}
-        <main ref={mainContentRef} className={`flex-1 min-w-0 max-w-full bg-black md:bg-surface-island rounded-none md:rounded-lg overflow-y-auto overflow-x-hidden flex flex-col h-full border-0 md:border md:border-border-subtle relative ${isLyricsOpen ? 'pb-0' : (hasStartedPlayback && currentTrack ? 'pb-36' : 'pb-20')} md:pb-0`}>
+        <main
+          ref={mainContentRef}
+          style={
+            mobileSwipeOffset !== 0
+              ? {
+                  transform: `translateX(${mobileSwipeOffset}px)`,
+                  transition: isMobileSwiping ? 'none' : 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1)',
+                  willChange: 'transform',
+                }
+              : {
+                  transition: 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1)',
+                }
+          }
+          className={`flex-1 min-w-0 max-w-full bg-black md:bg-surface-island rounded-none md:rounded-lg overflow-y-auto overflow-x-hidden flex flex-col h-full border-0 md:border md:border-border-subtle relative ${isLyricsOpen ? 'pb-0' : (hasStartedPlayback && currentTrack ? 'pb-36' : 'pb-20')} md:pb-0`}
+        >
           {/* Synchronized Lyrics Immersion Mode */}
           {isLyricsOpen ? (
             <LyricsView onClose={() => setIsLyricsOpen(false)} />
