@@ -291,14 +291,10 @@ html[data-dev-mode="true"] ::selection {
   }
 }
 
-/* Safe-area insets for iOS Safari & PWA standalone status bar */
-.safe-top-pt {
-  padding-top: env(safe-area-inset-top, 0px) !important;
-  padding-top: -webkit-env(safe-area-inset-top, 0px) !important;
-}
-
-.safe-top-spacer {
-  height: env(safe-area-inset-top, 0px) !important;
-  height: -webkit-env(safe-area-inset-top, 0px) !important;
+/* PWA standalone status bar safe-area insets */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .pwa-safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
 }
 

@@ -125,7 +125,18 @@ if (hasGate1Error) {
   console.error('\n⛔ Gate 1 FAILED: Resolve render-time TDZ violations before deployment.\n');
   process.exit(1);
 }
-console.log('✅ Gate 1 PASSED: Zero render-time TDZ violations detected.\n');
+
+// Check for PWA TopBar duplicate safe-area-inset regressions
+const topBarPath = path.join(FRONTEND_DIR, 'src/components/TopBar.jsx');
+if (fs.existsSync(topBarPath)) {
+  const topBarContent = fs.readFileSync(topBarPath, 'utf8');
+  if (topBarContent.includes('safe-top-spacer')) {
+    console.error('\n⛔ Gate 1 FAILED: Duplicate safe-top-spacer detected in TopBar.jsx. This causes a massive gap in PWA standalone mode.');
+    process.exit(1);
+  }
+}
+
+console.log('✅ Gate 1 PASSED: Zero render-time TDZ violations & clean PWA safe-area layout confirmed.\n');
 
 // ----------------------------------------------------
 // GATE 2: PRODUCTION BUILD VERIFICATION
