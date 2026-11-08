@@ -13,6 +13,7 @@ export const MobileNav = ({ activeTab, setActiveTab }) => {
   ];
 
   const touchStartRef = useRef(null);
+  const lastSwitchTimeRef = useRef(0);
 
   const handleTouchStart = (e) => {
     if (e.touches.length === 1) {
@@ -31,14 +32,20 @@ export const MobileNav = ({ activeTab, setActiveTab }) => {
     const elapsedTime = Date.now() - touchStartRef.current.time;
     touchStartRef.current = null;
 
-    // Quick swipe across nav dock (25px threshold, <= 500ms, mostly horizontal)
-    if (elapsedTime <= 500 && Math.abs(deltaX) >= 25 && Math.abs(deltaX) > Math.abs(deltaY)) {
+    const now = Date.now();
+    // Enforce 300ms cooldown between gesture-triggered tab switches
+    if (now - lastSwitchTimeRef.current < 300) return;
+
+    // Swipe across nav dock (requires intentional 40px drag, mostly horizontal)
+    if (elapsedTime <= 500 && Math.abs(deltaX) >= 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.3) {
       const currentIndex = tabs.findIndex((t) => t.id === activeTab);
       if (currentIndex !== -1) {
         if (deltaX < 0 && currentIndex < tabs.length - 1) {
+          lastSwitchTimeRef.current = now;
           handleTabClick(tabs[currentIndex + 1].id);
           try { navigator.vibrate?.(10); } catch {}
         } else if (deltaX > 0 && currentIndex > 0) {
+          lastSwitchTimeRef.current = now;
           handleTabClick(tabs[currentIndex - 1].id);
           try { navigator.vibrate?.(10); } catch {}
         }
@@ -123,6 +130,7 @@ export const MobileNav = ({ activeTab, setActiveTab }) => {
       <nav
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
+        data-no-swipe="true"
         className="relative pointer-events-auto h-12 w-full bg-surface-island/40 backdrop-blur-2xl backdrop-saturate-[220%] border border-border-subtle rounded-full p-1.5 flex items-center justify-between shadow-2xl select-none touch-pan-x"
       >
         {/* Sliding Fluid Translucent Pill Active Container WITHOUT border outline - slightly lighter */}

@@ -326,6 +326,7 @@ const MainAppContent = () => {
     showToast,
     fetchTrackLyrics,
     hasStartedPlayback,
+    setIsMobileNowPlayingOpen,
   } = usePlayer();
   const { isDevUnlocked, isFlagsModalOpen, setIsFlagsModalOpen, toggleComponentInspector } = useDevFlags();
 
@@ -499,7 +500,7 @@ const MainAppContent = () => {
   }, [navigateTo]);
 
   // Mobile One-Handed Gesture Navigation
-  const MAIN_TABS = ['home', 'search', 'favorites', 'library'];
+  const MAIN_TABS = ['home', 'playing', 'search', 'library'];
   const isInsideDetailView = Boolean(
     selectedAlbumId || selectedArtistId || selectedPlaylistId || selectedProfileUserId
   );
@@ -941,6 +942,14 @@ const MainAppContent = () => {
 
   const handleSelectTab = (tab) => {
     setIsLyricsOpen(false);
+    if (tab === 'playing') {
+      if (currentTrack) {
+        setIsMobileNowPlayingOpen(true);
+      } else {
+        navigateTo({ tab: 'home', isLyricsOpen: false });
+        return;
+      }
+    }
     navigateTo({ tab, isLyricsOpen: false });
     if (tab === 'search') {
       setTimeout(() => {
@@ -1250,7 +1259,7 @@ const MainAppContent = () => {
                   transition: 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1)',
                 }
           }
-          className={`flex-1 min-w-0 max-w-full bg-black md:bg-surface-island rounded-none md:rounded-lg overflow-y-auto overflow-x-hidden flex flex-col h-full border-0 md:border md:border-border-subtle relative ${isLyricsOpen ? 'pb-0' : (hasStartedPlayback && currentTrack ? 'pb-36' : 'pb-20')} md:pb-0`}
+          className={`flex-1 min-w-0 max-w-full bg-black md:bg-surface-island rounded-none md:rounded-lg overflow-y-auto overflow-x-hidden flex flex-col h-full border-0 md:border md:border-border-subtle relative ${isLyricsOpen ? 'pb-0' : 'pb-24'} md:pb-0`}
         >
           {/* Synchronized Lyrics Immersion Mode */}
           {isLyricsOpen ? (
