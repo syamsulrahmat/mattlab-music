@@ -98,6 +98,7 @@ const MainAppContent = () => {
   const [isResizingRight, setIsResizingRight] = useState(false);
   const resizeRef = useRef({ side: null, startX: 0, startWidth: 0 });
   const mainContentRef = useRef(null);
+  const previousTabBeforePlayingRef = useRef('home');
 
   // Auto-scroll main stage to top on navigation/view change
   useEffect(() => {
@@ -326,6 +327,7 @@ const MainAppContent = () => {
     showToast,
     fetchTrackLyrics,
     hasStartedPlayback,
+    isMobileNowPlayingOpen,
     setIsMobileNowPlayingOpen,
   } = usePlayer();
   const { isDevUnlocked, isFlagsModalOpen, setIsFlagsModalOpen, toggleComponentInspector } = useDevFlags();
@@ -536,7 +538,7 @@ const MainAppContent = () => {
     onEdgeSwipeRight: isInsideDetailView ? handleGoBack : undefined,
     canSwipeLeft: !isInsideDetailView && currentTabIndex < MAIN_TABS.length - 1,
     canSwipeRight: isInsideDetailView ? true : currentTabIndex > 0,
-    enabled: true,
+    enabled: !isMobileNowPlayingOpen && !isLyricsOpen,
   });
 
   // Global Keyboard & Mouse Button Event Listeners
@@ -944,11 +946,16 @@ const MainAppContent = () => {
     setIsLyricsOpen(false);
     if (tab === 'playing') {
       if (currentTrack) {
+        if (activeTab !== 'playing') {
+          previousTabBeforePlayingRef.current = activeTab;
+        }
         setIsMobileNowPlayingOpen(true);
       } else {
         navigateTo({ tab: 'home', isLyricsOpen: false });
         return;
       }
+    } else {
+      previousTabBeforePlayingRef.current = tab;
     }
     navigateTo({ tab, isLyricsOpen: false });
     if (tab === 'search') {
@@ -968,6 +975,14 @@ const MainAppContent = () => {
   const handleToggleLyrics = (open) => {
     setIsLyricsOpen(open);
   };
+
+  const handleCloseNowPlaying = useCallback(() => {
+    setIsMobileNowPlayingOpen(false);
+    const returnTab = previousTabBeforePlayingRef.current && previousTabBeforePlayingRef.current !== 'playing'
+      ? previousTabBeforePlayingRef.current
+      : 'home';
+    navigateTo({ tab: returnTab, isLyricsOpen: false });
+  }, [navigateTo]);
 
   const handleRefreshScan = async () => {
     try {
@@ -1457,6 +1472,7 @@ const MainAppContent = () => {
           onSelectArtist={handleSelectArtist}
           onContextMenu={handleOpenContextMenu}
           onSelectTab={handleSelectTab}
+          onCloseNowPlaying={handleCloseNowPlaying}
         />
 
         {/* Mobile Bottom Navigation Bar (Hidden when lyrics view is open) */}

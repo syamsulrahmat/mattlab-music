@@ -56,63 +56,94 @@ export const MobileNowPlayingSheet = ({
     queueIndex,
   } = usePlayer();
 
-  // One-handed horizontal swipe gesture across the full-screen player
+  // Bi-directional gesture navigation:
+  // - Horizontal swipe left/right: navigate adjacent tabs (Search / Home)
+  // - Vertical swipe down: dismiss player and return to previous tab
   const touchStartRef = useRef({ x: 0, y: 0, time: 0 });
   const [dragOffsetX, setDragOffsetX] = useState(0);
+  const [dragOffsetY, setDragOffsetY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
-  const isHorizontalGestureRef = useRef(null);
+  const gestureDirectionRef = useRef(null); // 'horizontal' | 'vertical' | null
 
-  // Reset drag offset when opening/closing
+  // Reset drag offsets when opening/closing
   useEffect(() => {
     if (!isOpen) {
       setDragOffsetX(0);
+      setDragOffsetY(0);
       setIsDragging(false);
-      isHorizontalGestureRef.current = null;
+      gestureDirectionRef.current = null;
     }
   }, [isOpen]);
 
   const handleTouchStart = (e) => {
+    e.stopPropagation();
     if (e.touches.length !== 1) return;
     touchStartRef.current = {
       x: e.touches[0].clientX,
       y: e.touches[0].clientY,
       time: Date.now(),
     };
-    isHorizontalGestureRef.current = null;
+    gestureDirectionRef.current = null;
     setIsDragging(true);
   };
 
   const handleTouchMove = (e) => {
+    e.stopPropagation();
     if (!isDragging || e.touches.length !== 1) return;
     const currentX = e.touches[0].clientX;
     const currentY = e.touches[0].clientY;
     const deltaX = currentX - touchStartRef.current.x;
     const deltaY = currentY - touchStartRef.current.y;
 
-    // Detect gesture direction after initial 8px travel
-    if (isHorizontalGestureRef.current === null) {
+    // Detect gesture direction after initial 8px of finger travel
+    if (gestureDirectionRef.current === null) {
       if (Math.abs(deltaX) > 8 || Math.abs(deltaY) > 8) {
-        isHorizontalGestureRef.current = Math.abs(deltaX) > Math.abs(deltaY);
+        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+          gestureDirectionRef.current = 'horizontal';
+        } else if (deltaY > 0) {
+          gestureDirectionRef.current = 'vertical';
+        }
       }
     }
 
-    if (isHorizontalGestureRef.current) {
-      // Apply smooth interactive physical resistance
+    if (gestureDirectionRef.current === 'horizontal') {
+      // Elastic horizontal travel
       setDragOffsetX(deltaX * 0.75);
+    } else if (gestureDirectionRef.current === 'vertical') {
+      // Downwards pull travel only
+      if (deltaY > 0) {
+        setDragOffsetY(deltaY);
+      }
     }
   };
 
   const handleTouchEnd = (e) => {
+    e.stopPropagation();
     if (!isDragging) return;
     setIsDragging(false);
 
     const endX = e.changedTouches?.[0]?.clientX ?? touchStartRef.current.x;
+    const endY = e.changedTouches?.[0]?.clientY ?? touchStartRef.current.y;
     const deltaX = endX - touchStartRef.current.x;
+    const deltaY = endY - touchStartRef.current.y;
     const elapsedTime = Date.now() - touchStartRef.current.time;
-    const isHorizontal = isHorizontalGestureRef.current;
-    isHorizontalGestureRef.current = null;
+    const direction = gestureDirectionRef.current;
+    gestureDirectionRef.current = null;
 
-    if (isHorizontal || Math.abs(deltaX) >= 50) {
+    // 1. Vertical Swipe Down -> Dismiss and return to previous tab
+    if (direction === 'vertical' || (!direction && deltaY > 60)) {
+      const isQuickDownFlick = elapsedTime < 250 && deltaY > 50;
+      const isPastDownDistance = deltaY >= 90;
+
+      if (isQuickDownFlick || isPastDownDistance) {
+        try { navigator.vibrate?.(10); } catch {}
+        onClose();
+        return;
+      }
+    }
+
+    // 2. Horizontal Swipe Left / Right -> Navigate tabs
+    if (direction === 'horizontal' || (!direction && Math.abs(deltaX) >= 50)) {
       const isQuickFlick = elapsedTime < 300 && Math.abs(deltaX) > 40;
       const isPastDistance = Math.abs(deltaX) >= 60;
 
@@ -131,8 +162,9 @@ export const MobileNowPlayingSheet = ({
       }
     }
 
-    // Spring back to center
+    // Spring back to center if threshold was not reached
     setDragOffsetX(0);
+    setDragOffsetY(0);
   };
 
   const handleToggleAudioQuality = (e) => {
@@ -154,12 +186,13 @@ export const MobileNowPlayingSheet = ({
 
   return createPortal(
     <div
+      data-no-swipe="true"
       data-dev-component="MobileNowPlayingSheet"
       data-dev-file="src/components/MobileNowPlayingSheet.jsx"
       data-dev-desc="Full-screen touch-optimized Now Playing player sheet for smartphones and mobile viewports"
       className="fixed inset-0 h-[100dvh] max-h-[100dvh] z-[70] flex flex-col bg-surface-base text-white select-none overflow-hidden transition-transform duration-200 ease-out"
       style={{
-        transform: `translate3d(${dragOffsetX}px, 0, 0)`,
+        transform: `translate3d(${dragOffsetX}px, ${dragOffsetY}px, 0)`,
         transition: isDragging ? 'none' : 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1)',
       }}
     >

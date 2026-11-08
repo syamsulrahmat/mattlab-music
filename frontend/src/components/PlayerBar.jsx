@@ -27,7 +27,8 @@ export const PlayerBar = ({
   onSelectAlbum,
   onSelectArtist,
   onContextMenu,
-  onSelectTab
+  onSelectTab,
+  onCloseNowPlaying
 }) => {
   const {
     currentTrack,
@@ -353,7 +354,7 @@ export const PlayerBar = ({
       {/* Mobile Full-Screen Now Playing Sheet */}
       <MobileNowPlayingSheet
         isOpen={isMobileNowPlayingOpen}
-        onClose={() => setIsMobileNowPlayingOpen(false)}
+        onClose={onCloseNowPlaying || (() => setIsMobileNowPlayingOpen(false))}
         onOpenQueue={() => setIsMobileQueueOpen(true)}
         onOpenLyrics={() => {
           setIsMobileNowPlayingOpen(false);
