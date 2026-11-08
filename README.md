@@ -2,7 +2,7 @@
 
 > **Self-Hosted High-Fidelity Music Streaming Platform & Media Management System**
 
-[![Version](https://img.shields.io/badge/Version-1.1.0-1ed760?style=flat-square)](https://github.com)
+[![Version](https://img.shields.io/badge/Version-1.2.0-1ed760?style=flat-square)](https://github.com)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/Frontend-React%2018%20%2B%20Vite-61DAFB?style=flat-square&logo=react)](https://react.dev)

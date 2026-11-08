@@ -12,7 +12,7 @@ from app.routes import stream, library, scan, playlists, lyrics, request_music, 
 app = FastAPI(
     title="MattLab Music App API",
     description="Clean, lightweight streaming backend for personal Unraid music library",
-    version="1.0.0",
+    version="1.2.0",
 )
 
 # Allow origins for dev and remote PWA access

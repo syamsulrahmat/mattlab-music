@@ -2359,7 +2359,7 @@ export const SettingsModal = ({
                           onClick={handleVersionClick}
                           className="text-xs font-bold bg-brand-500 text-black px-2 py-0.5 rounded-full cursor-default select-none"
                         >
-                          v1.1.0
+                          v1.2.0
                         </span>
                       </h3>
                       <p className="text-xs text-content-secondary mt-1 max-w-md">
