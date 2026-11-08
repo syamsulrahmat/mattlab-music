@@ -29,6 +29,7 @@ export const MobileNowPlayingSheet = ({
   onSelectAlbum,
   onSelectArtist,
   onContextMenu,
+  onSelectTab,
 }) => {
   const {
     currentTrack,
@@ -55,44 +56,83 @@ export const MobileNowPlayingSheet = ({
     queueIndex,
   } = usePlayer();
 
-  // Swipe-down to dismiss gesture
-  const touchStartY = useRef(0);
-  const touchCurrentY = useRef(0);
-  const [dragOffset, setDragOffset] = useState(0);
+  // One-handed horizontal swipe gesture across the full-screen player
+  const touchStartRef = useRef({ x: 0, y: 0, time: 0 });
+  const [dragOffsetX, setDragOffsetX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const isHorizontalGestureRef = useRef(null);
 
   // Reset drag offset when opening/closing
   useEffect(() => {
     if (!isOpen) {
-      setDragOffset(0);
+      setDragOffsetX(0);
       setIsDragging(false);
+      isHorizontalGestureRef.current = null;
     }
   }, [isOpen]);
 
   const handleTouchStart = (e) => {
-    touchStartY.current = e.touches[0].clientY;
-    touchCurrentY.current = e.touches[0].clientY;
+    if (e.touches.length !== 1) return;
+    touchStartRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+      time: Date.now(),
+    };
+    isHorizontalGestureRef.current = null;
     setIsDragging(true);
   };
 
   const handleTouchMove = (e) => {
-    if (!isDragging) return;
-    touchCurrentY.current = e.touches[0].clientY;
-    const diff = touchCurrentY.current - touchStartY.current;
-    if (diff > 0) {
-      // Only drag downwards
-      setDragOffset(diff);
+    if (!isDragging || e.touches.length !== 1) return;
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const deltaX = currentX - touchStartRef.current.x;
+    const deltaY = currentY - touchStartRef.current.y;
+
+    // Detect gesture direction after initial 8px travel
+    if (isHorizontalGestureRef.current === null) {
+      if (Math.abs(deltaX) > 8 || Math.abs(deltaY) > 8) {
+        isHorizontalGestureRef.current = Math.abs(deltaX) > Math.abs(deltaY);
+      }
+    }
+
+    if (isHorizontalGestureRef.current) {
+      // Apply smooth interactive physical resistance
+      setDragOffsetX(deltaX * 0.75);
     }
   };
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (e) => {
     if (!isDragging) return;
     setIsDragging(false);
-    if (dragOffset > 100) {
-      onClose();
-    } else {
-      setDragOffset(0);
+
+    const endX = e.changedTouches?.[0]?.clientX ?? touchStartRef.current.x;
+    const deltaX = endX - touchStartRef.current.x;
+    const elapsedTime = Date.now() - touchStartRef.current.time;
+    const isHorizontal = isHorizontalGestureRef.current;
+    isHorizontalGestureRef.current = null;
+
+    if (isHorizontal || Math.abs(deltaX) >= 50) {
+      const isQuickFlick = elapsedTime < 300 && Math.abs(deltaX) > 40;
+      const isPastDistance = Math.abs(deltaX) >= 60;
+
+      if (isQuickFlick || isPastDistance) {
+        try { navigator.vibrate?.(10); } catch {}
+        if (deltaX < 0) {
+          // Swipe Left (<--) -> Navigate to Search (and close full player)
+          onClose();
+          if (onSelectTab) onSelectTab('search');
+        } else {
+          // Swipe Right (-->) -> Navigate to Home (and close full player)
+          onClose();
+          if (onSelectTab) onSelectTab('home');
+        }
+        return;
+      }
     }
+
+    // Spring back to center
+    setDragOffsetX(0);
   };
 
   const handleToggleAudioQuality = (e) => {
@@ -119,7 +159,8 @@ export const MobileNowPlayingSheet = ({
       data-dev-desc="Full-screen touch-optimized Now Playing player sheet for smartphones and mobile viewports"
       className="fixed inset-0 h-[100dvh] max-h-[100dvh] z-[70] flex flex-col bg-surface-base text-white select-none overflow-hidden transition-transform duration-200 ease-out"
       style={{
-        transform: `translateY(${dragOffset}px)`,
+        transform: `translate3d(${dragOffsetX}px, 0, 0)`,
+        transition: isDragging ? 'none' : 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1)',
       }}
     >
       {/* ── Dynamic Ambient Blur Backdrop ── */}

@@ -26,7 +26,8 @@ export const PlayerBar = ({
   setIsMiniPlayerOpen,
   onSelectAlbum,
   onSelectArtist,
-  onContextMenu
+  onContextMenu,
+  onSelectTab
 }) => {
   const {
     currentTrack,
@@ -361,6 +362,7 @@ export const PlayerBar = ({
         onSelectAlbum={onSelectAlbum}
         onSelectArtist={onSelectArtist}
         onContextMenu={onContextMenu}
+        onSelectTab={onSelectTab}
       />
 
       {/* Mobile Queue Bottom Sheet */}

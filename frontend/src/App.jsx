@@ -1456,6 +1456,7 @@ const MainAppContent = () => {
           onSelectAlbum={handleSelectAlbum}
           onSelectArtist={handleSelectArtist}
           onContextMenu={handleOpenContextMenu}
+          onSelectTab={handleSelectTab}
         />
 
         {/* Mobile Bottom Navigation Bar (Hidden when lyrics view is open) */}
