@@ -424,6 +424,27 @@ def init_db() -> None:
             except Exception as e:
                 print(f"[DB MIGRATION] Error adding last_played_at to tracks: {e}")
 
+        # Migrations for audio loudness normalization (EBU R128 standard -14 LUFS)
+        if "lufs_i" not in track_cols:
+            try:
+                conn.execute("ALTER TABLE tracks ADD COLUMN lufs_i REAL DEFAULT NULL")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_tracks_lufs_i ON tracks(lufs_i)")
+            except Exception as e:
+                print(f"[DB MIGRATION] Error adding lufs_i to tracks: {e}")
+
+        if "gain_db" not in track_cols:
+            try:
+                conn.execute("ALTER TABLE tracks ADD COLUMN gain_db REAL DEFAULT NULL")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_tracks_gain_db ON tracks(gain_db)")
+            except Exception as e:
+                print(f"[DB MIGRATION] Error adding gain_db to tracks: {e}")
+
+        if "true_peak" not in track_cols:
+            try:
+                conn.execute("ALTER TABLE tracks ADD COLUMN true_peak REAL DEFAULT NULL")
+            except Exception as e:
+                print(f"[DB MIGRATION] Error adding true_peak to tracks: {e}")
+
         _init_lyrics_fts(conn)
 
 def _backfill_existing_lyrics_cache(conn: sqlite3.Connection):

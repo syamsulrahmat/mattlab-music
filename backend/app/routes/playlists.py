@@ -43,7 +43,7 @@ async def get_favorites(current_user: Dict[str, Any] = Depends(get_current_user)
         cursor = conn.cursor()
         cursor.execute("""
             SELECT 
-                t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, t.mtime,
+                t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, t.mtime, t.gain_db, t.lufs_i,
                 a.id AS album_id, a.title AS album_title, a.cover_path,
                 ar.id AS artist_id, ar.name AS artist_name,
                 f.created_at AS favorited_at
@@ -187,7 +187,7 @@ async def get_playlist_detail(playlist_id: int, current_user: Dict[str, Any] = D
 
         cursor.execute("""
             SELECT 
-                t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, t.mtime,
+                t.id, t.title, t.track_number, t.duration_seconds, t.file_format, t.bitrate, t.mtime, t.gain_db, t.lufs_i,
                 a.id AS album_id, a.title AS album_title, a.cover_path,
                 ar.id AS artist_id, ar.name AS artist_name,
                 pt.position, pt.added_at

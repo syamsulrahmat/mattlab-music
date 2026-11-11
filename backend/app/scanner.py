@@ -452,5 +452,19 @@ def index_single_audio_file(file_path: Path) -> Optional[int]:
             except Exception as e:
                 logger.debug(f"Could not enqueue single track to lyrics_fetcher: {e}")
 
+            # Calculate and store loudness normalization metadata (EBU R128)
+            try:
+                from app.audio_normalizer import analyze_audio_loudness
+                loudness_data = analyze_audio_loudness(file_path)
+                if loudness_data:
+                    cursor.execute("""
+                        UPDATE tracks
+                        SET lufs_i = ?, gain_db = ?, true_peak = ?
+                        WHERE id = ?
+                    """, (loudness_data["lufs_i"], loudness_data["gain_db"], loudness_data["true_peak"], track_id))
+                    logger.info(f"[AudioNormalizer] Analyzed track {track_id}: {loudness_data}")
+            except Exception as norm_err:
+                logger.debug(f"[AudioNormalizer] Error analyzing track {track_id}: {norm_err}")
+
         return track_id
 

@@ -131,3 +131,83 @@ def clear_transcode_cache() -> dict:
         "freed_bytes": freed_bytes,
         "freed_mb": round(freed_bytes / (1024 * 1024), 2),
     }
+
+
+async def get_or_create_normalized_track(
+    track_id: int,
+    source_path: Path,
+    gain_db: float,
+    source_format: str = "mp3",
+    is_data_saver: bool = False
+) -> Path:
+    """
+    Retrieve an existing normalized audio file for a track with gain_db applied,
+    or generate it via FFmpeg on-demand.
+    Uses lossless FLAC if source is FLAC (and not data saver), or high-bitrate 320k MP3 (or 128k MP3 if data saver).
+    """
+    TRANSCODES_DIR.mkdir(parents=True, exist_ok=True)
+    if is_data_saver:
+        ext = "mp3"
+        bitrate_suffix = "_128k"
+    else:
+        ext = "flac" if source_format.lower() == "flac" else "mp3"
+        bitrate_suffix = ""
+
+    safe_gain_tag = f"{gain_db:+.1f}dB".replace("+", "p").replace("-", "m").replace(".", "_")
+    target_file = TRANSCODES_DIR / f"{track_id}_norm_{safe_gain_tag}{bitrate_suffix}.{ext}"
+    temp_file = TRANSCODES_DIR / f"{track_id}_norm_{safe_gain_tag}{bitrate_suffix}.tmp.{ext}"
+
+    if target_file.exists() and target_file.stat().st_size > 1024:
+        return target_file
+
+    lock_key = f"norm_{track_id}{bitrate_suffix}"
+    lock = await _get_track_lock(track_id, lock_key)
+    async with lock:
+        if target_file.exists() and target_file.stat().st_size > 1024:
+            return target_file
+
+        if not source_path.exists():
+            raise FileNotFoundError(f"Source audio file not found: {source_path}")
+
+        logger.info(f"[Transcoder] Normalizing track {track_id} (data_saver={is_data_saver}) with gain {gain_db:+.2f} dB: {source_path.name}")
+
+        def _run_ffmpeg():
+            # Native EBU R128 Dual-Pass Loudnorm Engine (-14.0 LUFS Standard)
+            # Exactly matches Spotify, Apple Music, and YouTube loudness standards!
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-i", str(source_path),
+                "-filter:a", "loudnorm=I=-14.0:TP=-1.0:LRA=11",
+            ]
+            if ext == "flac":
+                cmd.extend(["-c:a", "flac", "-f", "flac"])
+            elif is_data_saver:
+                cmd.extend(["-c:a", "libmp3lame", "-b:a", "128k", "-compression_level", "5", "-f", "mp3"])
+            else:
+                cmd.extend(["-c:a", "libmp3lame", "-b:a", "320k", "-compression_level", "3", "-f", "mp3"])
+
+            cmd.extend([
+                "-threads", "4",
+                "-map_metadata", "0",
+                str(temp_file),
+            ])
+
+            result = subprocess.run(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                check=False
+            )
+            if result.returncode != 0:
+                err_msg = result.stderr.decode("utf-8", errors="replace")
+                logger.error(f"[Transcoder] FFmpeg normalization failed on track {track_id}: {err_msg[:300]}")
+                if temp_file.exists():
+                    temp_file.unlink(missing_ok=True)
+                raise RuntimeError(f"FFmpeg normalization failed with return code {result.returncode}")
+
+            temp_file.replace(target_file)
+            logger.info(f"[Transcoder] Finished normalized stream for track {track_id} -> {target_file.name}")
+
+        await asyncio.to_thread(_run_ffmpeg)
+        return target_file

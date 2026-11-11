@@ -121,6 +121,20 @@ export const AudioMetricsHUD = () => {
           </span>
         </div>
 
+        <div className="flex justify-between">
+          <span className="text-content-secondary">Target Loudness:</span>
+          <span className="text-brand-300 font-bold">
+            {typeof currentTrack?.lufs_i === 'number' ? `${currentTrack.lufs_i} LUFS` : 'Measuring...'}
+          </span>
+        </div>
+
+        <div className="flex justify-between">
+          <span className="text-content-secondary">Loudness Gain:</span>
+          <span className={typeof currentTrack?.gain_db === 'number' && currentTrack.gain_db > 0 ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}>
+            {typeof currentTrack?.gain_db === 'number' ? `${currentTrack.gain_db > 0 ? '+' : ''}${currentTrack.gain_db} dB` : 'None'}
+          </span>
+        </div>
+
         <div className="flex justify-between pt-1 border-t border-white/10 text-[10px] text-content-muted">
           <span>Font:</span>
           <span className="text-white font-sans">{flags?.font_family || 'circular'}</span>

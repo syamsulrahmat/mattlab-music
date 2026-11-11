@@ -324,6 +324,8 @@ export const SettingsModal = ({
     clearPreloadCache,
     audioQuality,
     setAudioQuality,
+    audioNormalization,
+    setAudioNormalization,
     pipEngine,
     setPipEngine,
     togglePiP,
@@ -1789,6 +1791,36 @@ export const SettingsModal = ({
                             <ChevronRight size={15} className="text-content-muted group-hover:text-white transition" />
                           </div>
                         </button>
+
+                        {/* Row: Audio Normalization (EBU R128) */}
+                        <div className="w-full px-3.5 py-3 flex items-center justify-between text-left">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-brand-500/10 text-brand-500 flex items-center justify-center shrink-0">
+                              <Volume2 size={16} />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-white">
+                                Audio Normalization
+                              </p>
+                              <p className="text-[11px] text-content-muted">
+                                Set the same volume level for all songs (-14 LUFS)
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setAudioNormalization(!audioNormalization)}
+                            className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer focus:outline-none ${
+                              audioNormalization ? 'bg-brand-500' : 'bg-surface-island border border-border-subtle'
+                            }`}
+                          >
+                            <span
+                              className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${
+                                audioNormalization ? 'translate-x-5' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
+                        </div>
                       </div>
                     </div>
 

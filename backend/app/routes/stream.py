@@ -92,7 +92,8 @@ def stream_file_chunks(file_path: Path, start: int, length: int, chunk_size: int
 async def stream_track(
     track_id: int, 
     request: Request,
-    quality: Optional[str] = None
+    quality: Optional[str] = None,
+    norm: Optional[str] = None
 ):
     """
     Stream audio file supporting HTTP 206 Partial Content (Range requests)
@@ -101,7 +102,7 @@ async def stream_track(
     """
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT file_path, file_format, file_size, bitrate FROM tracks WHERE id = ?", (track_id,))
+        cursor.execute("SELECT file_path, file_format, file_size, bitrate, gain_db FROM tracks WHERE id = ?", (track_id,))
         row = cursor.fetchone()
 
     if not row:
@@ -119,7 +120,29 @@ async def stream_track(
     quality_mode = (quality or "").lower().strip()
     is_data_saver = quality_mode in ("low", "data_saver", "128k")
 
-    if is_data_saver:
+    # Server-Side Audio Loudness Normalization (EBU R128 standard -14 LUFS)
+    # When norm=1, delivers stream with gain_db physically pre-applied (in 128k if data saver, 320k/FLAC otherwise)
+    gain_val = row["gain_db"]
+    should_normalize = norm is not None and str(norm).lower() in ("1", "true") and gain_val is not None and abs(float(gain_val)) >= 0.2
+
+    if should_normalize:
+        try:
+            from app.transcoder import get_or_create_normalized_track
+            normalized_path = await get_or_create_normalized_track(
+                track_id, file_path, float(gain_val), file_format, is_data_saver=is_data_saver
+            )
+            if normalized_path.exists() and normalized_path.stat().st_size > 1024:
+                file_path = normalized_path
+                file_size = normalized_path.stat().st_size
+                if file_path.suffix.lower() == ".flac":
+                    file_format = "flac"
+                    media_type = "audio/flac"
+                else:
+                    file_format = "mp3"
+                    media_type = "audio/mpeg"
+        except Exception as norm_err:
+            logger.warning(f"[Stream] Normalization fallback for track {track_id}: {norm_err}")
+    elif is_data_saver:
         raw_bitrate = row["bitrate"] or 0
         # If the file is already an MP3 at <= 192k, stream directly without re-encoding
         if file_format == "mp3" and raw_bitrate > 0 and raw_bitrate <= 192000:
@@ -286,7 +309,7 @@ async def get_track_detail(track_id: int):
         cursor.execute("""
             SELECT 
                 t.id, t.title, t.track_number, t.disc_number, t.duration_seconds,
-                t.file_format, t.bitrate,
+                t.file_format, t.bitrate, t.mtime, t.gain_db, t.lufs_i,
                 a.id AS album_id, a.title AS album_title, a.year AS album_year, a.cover_path,
                 ar.id AS artist_id, ar.name AS artist_name
             FROM tracks t

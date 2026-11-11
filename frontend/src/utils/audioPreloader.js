@@ -10,7 +10,7 @@
  * - Seamless offline playback if connection drops or Unraid server goes offline.
  */
 
-const CACHE_NAME = 'mattlab-audio-preload-v4';
+const CACHE_NAME = 'mattlab-audio-preload-v7-norm';
 const DEFAULT_PRELOAD_COUNT = 3;
 
 class AudioPreloader {
@@ -31,6 +31,13 @@ class AudioPreloader {
           }
         }
       }).catch(() => {});
+      // Also clear current cache on first initialization after update to eliminate un-normalized audio blobs
+      try {
+        if (!sessionStorage.getItem('mattlab_preload_purged_v6')) {
+          caches.delete(CACHE_NAME).catch(() => {});
+          sessionStorage.setItem('mattlab_preload_purged_v6', '1');
+        }
+      } catch (_) {}
     }
 
     // Load user preload preference from localStorage (0 = disabled, 1..10 = songs)
@@ -46,6 +53,14 @@ class AudioPreloader {
     }
     this.maxPreloadCount = savedCount;
     let savedQuality = 'original';
+    let savedNorm = true;
+    if (typeof localStorage !== 'undefined') {
+      const storedNorm = localStorage.getItem('mattlab_audio_normalization');
+      if (storedNorm !== null) {
+        savedNorm = storedNorm === 'true';
+      }
+    }
+    this.audioNormalization = savedNorm;
     if (typeof localStorage !== 'undefined') {
       const storedQuality = localStorage.getItem('mattlab_audio_quality');
       if (storedQuality === 'data_saver' || storedQuality === 'original') {
@@ -59,6 +74,14 @@ class AudioPreloader {
     const q = quality === 'data_saver' ? 'data_saver' : 'original';
     if (this.audioQuality !== q) {
       this.audioQuality = q;
+      this.clearAll();
+    }
+  }
+
+  setAudioNormalization(enabled) {
+    const norm = Boolean(enabled);
+    if (this.audioNormalization !== norm) {
+      this.audioNormalization = norm;
       this.clearAll();
     }
   }
@@ -228,10 +251,14 @@ class AudioPreloader {
   }
 
   async preloadSingleTrack(track, signal) {
-    const baseStreamUrl = track.stream_url || (track.mtime ? `/api/stream/${track.id}?v=${Math.floor(track.mtime)}` : `/api/stream/${track.id}`);
-    const streamUrl = this.audioQuality === 'data_saver'
-      ? (baseStreamUrl.includes('?') ? `${baseStreamUrl}&quality=low` : `${baseStreamUrl}?quality=low`)
-      : baseStreamUrl;
+    const rawBase = track.stream_url || (track.mtime ? `/api/stream/${track.id}?v=${Math.floor(track.mtime)}` : `/api/stream/${track.id}`);
+    const cleanBase = rawBase.split('?')[0];
+    const vParam = track.mtime ? `v=${Math.floor(track.mtime)}` : '';
+    const params = [];
+    if (vParam) params.push(vParam);
+    if (this.audioQuality === 'data_saver') params.push('quality=low');
+    if (this.audioNormalization) params.push('norm=1');
+    const streamUrl = params.length > 0 ? `${cleanBase}?${params.join('&')}` : cleanBase;
     let audioBlob = null;
 
     // Try Cache API if available in browser
