@@ -89,6 +89,13 @@ export const PlayerProvider = ({ children }) => {
   const isCrossfadingRef = useRef(false);
   const crossfadeTimerRef = useRef(null);
 
+  // Web Audio API DSP graph (GainNode + DynamicsCompressor / Limiter)
+  // Ensures volume and gain staging work across iOS Safari, iPadOS, Android, and desktop!
+  const audioContextRef = useRef(null);
+  const gainNodeRef = useRef(null);
+  const audioSourceNodeRef = useRef(null);
+  const standbySourceNodeRef = useRef(null);
+
   if (!audioRef.current) {
     const a = new Audio();
     a.crossOrigin = 'anonymous';
@@ -99,6 +106,50 @@ export const PlayerProvider = ({ children }) => {
     b.crossOrigin = 'anonymous';
     standbyAudioRef.current = b;
   }
+
+  const initWebAudio = useCallback(() => {
+    if (audioContextRef.current) {
+      if (audioContextRef.current.state === 'suspended') {
+        audioContextRef.current.resume().catch(() => {});
+      }
+      return audioContextRef.current;
+    }
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return null;
+      const ctx = new AudioCtx();
+      const gainNode = ctx.createGain();
+
+      // NOTE: DynamicsCompressor intentionally removed.
+      // The server already applies EBU R128 loudnorm (I=-14 LUFS, TP=-1.0 dBFS).
+      // A second brick-wall limiter (ratio=20:1, threshold=-0.5 dBFS) in the browser
+      // was selectively compressing dense/mastered tracks (low LRA) far more than
+      // dynamic tracks (high LRA), undoing server-side normalization entirely.
+      gainNode.connect(ctx.destination);
+
+      if (audioRef.current && !audioSourceNodeRef.current) {
+        try {
+          const srcA = ctx.createMediaElementSource(audioRef.current);
+          srcA.connect(gainNode);
+          audioSourceNodeRef.current = srcA;
+        } catch (_) {}
+      }
+      if (standbyAudioRef.current && !standbySourceNodeRef.current) {
+        try {
+          const srcB = ctx.createMediaElementSource(standbyAudioRef.current);
+          srcB.connect(gainNode);
+          standbySourceNodeRef.current = srcB;
+        } catch (_) {}
+      }
+
+      audioContextRef.current = ctx;
+      gainNodeRef.current = gainNode;
+      return ctx;
+    } catch (e) {
+      console.warn('[WebAudio] Initialization notice:', e);
+      return null;
+    }
+  }, []);
 
   const [currentTrack, setCurrentTrack] = useState(() => savedState?.track || null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -126,21 +177,61 @@ export const PlayerProvider = ({ children }) => {
       return 'original';
     }
   });
+  const [audioNormalization, setAudioNormalizationState] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mattlab_audio_normalization');
+      return saved !== null ? saved === 'true' : true; // Default ON (Spotify standard)
+    } catch (_) {
+      return true;
+    }
+  });
 
-  const getTrackStreamUrl = useCallback((track, qualityOverride = null) => {
-    if (!track?.id) return '';
+    const getTrackStreamUrl = useCallback((track, qualityOverride = null, normOverride = null) => {
+    if (!track?.id) return "";
     const q = qualityOverride || audioQuality;
+    const isNorm = normOverride !== null ? Boolean(normOverride) : audioNormalization;
     let base = track.stream_url;
     if (!base) {
-      const v = track.mtime ? `?v=${Math.floor(track.mtime)}` : '';
+      const v = track.mtime ? `?v=${Math.floor(track.mtime)}` : "";
       base = `/api/stream/${track.id}${v}`;
     }
-    return q === 'data_saver' 
-      ? (base.includes('?') ? `${base}&quality=low` : `${base}?quality=low`)
-      : base;
-  }, [audioQuality]);
+    const params = [];
+    if (q === "data_saver") {
+      params.push("quality=low");
+    }
+    if (isNorm) {
+      params.push("norm=1");
+    }
+    if (params.length === 0) return base;
+    const separator = base.includes("?") ? "&" : "?";
+    return `${base}${separator}${params.join("&")}`;
+  }, [audioQuality, audioNormalization]);
 
-  // Mobile Now Playing Full-Screen Sheet State
+  // Clean volume staging across Web Audio GainNode (iOS/iPadOS) and HTML5 Audio.
+  // Note: Stream audio is already normalized server-side to -14.0 LUFS via EBU R128 loudnorm when norm=1.
+  const applyLoudnessGain = useCallback((track = currentTrack, targetVol = volume) => {
+    const baseVol = isMuted ? 0 : targetVol;
+
+    // 1. Web Audio GainNode (iOS Safari WebKit respects GainNode for system audio staging)
+    if (gainNodeRef.current && audioContextRef.current) {
+      try {
+        gainNodeRef.current.gain.setTargetAtTime(baseVol, audioContextRef.current.currentTime, 0.02);
+      } catch (_) {}
+    }
+
+    // 2. HTML5 audio.volume
+    const audio = audioRef.current;
+    if (audio && !isCrossfadingRef.current) {
+      try {
+        audio.volume = baseVol;
+      } catch (_) {}
+    }
+  }, [isMuted, volume, currentTrack]);
+
+  const getEffectiveVolume = useCallback((baseVol) => {
+    if (isMuted) return 0;
+    return baseVol;
+  }, [isMuted]);
   const [isMobileNowPlayingOpen, setIsMobileNowPlayingOpen] = useState(false);
 
   // Karaoke Mode (Pure Demucs AI Instrumental Toggle - starts OFF by default on load/reload)
@@ -288,7 +379,7 @@ export const PlayerProvider = ({ children }) => {
     const standbyAudio = standbyAudioRef.current;
     if (!currentTrack || !currentAudio || !standbyAudio) return;
 
-    const baseVolume = isMuted ? 0 : volume;
+    const baseVolume = getEffectiveVolume(volume, currentTrack);
     const wasPlaying = !currentAudio.paused;
     const currentTimeSnapshot = currentAudio.currentTime;
 
@@ -465,7 +556,7 @@ export const PlayerProvider = ({ children }) => {
     } else {
       standbyAudio.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
     }
-  }, [currentTrack, volume, isMuted, flags?.crossfade_curve]);
+  }, [currentTrack, volume, isMuted, flags?.crossfade_curve, getEffectiveVolume]);
 
   const generateKaraokeStems = useCallback(async (trackId) => {
     if (!trackId) return;
@@ -746,7 +837,42 @@ export const PlayerProvider = ({ children }) => {
     }
   }, [saveUserPreference, currentTrack, isKaraokeMode, getTrackStreamUrl, crossfadeToSource]);
 
-  // Document Picture-in-Picture & Canvas Video PiP & Mini Player state
+  const setAudioNormalization = useCallback(async (enabled) => {
+    const val = Boolean(enabled);
+    setAudioNormalizationState(val);
+    try {
+      localStorage.setItem('mattlab_audio_normalization', val.toString());
+    } catch (_) {}
+    saveUserPreference({ audioNormalization: val });
+    audioPreloader.setAudioNormalization(val);
+    setPreloadedTrackIds(new Set());
+
+    let activeTrack = currentTrack;
+    // If turning ON and currentTrack lacks gain_db, fetch fresh metadata first
+    if (val && activeTrack?.id && (activeTrack.gain_db === undefined || activeTrack.gain_db === null)) {
+      try {
+        const res = await fetch(`/api/stream/tracks/${activeTrack.id}`);
+        if (res.ok) {
+          const fresh = await res.json();
+          if (fresh && typeof fresh.gain_db === 'number') {
+            activeTrack = { ...activeTrack, gain_db: fresh.gain_db, lufs_i: fresh.lufs_i };
+            setCurrentTrack(activeTrack);
+          }
+        }
+      } catch (_) {}
+    }
+
+    const audio = audioRef.current;
+    if (audio && activeTrack && !isKaraokeMode) {
+      const newUrl = getTrackStreamUrl(activeTrack, audioQuality, val);
+      if (audio.src !== newUrl && !audio.src.endsWith(newUrl)) {
+        crossfadeToSource(newUrl, null);
+      }
+    }
+    if (audio && !isCrossfadingRef.current) {
+      applyLoudnessGain(activeTrack, volume);
+    }
+  }, [saveUserPreference, currentTrack, volume, isMuted, getEffectiveVolume]);
   const [pipWindow, setPipWindow] = useState(null);
   const [isMiniPlayerOpen, setIsMiniPlayerOpen] = useState(false);
   const [isCanvasPiPActive, setIsCanvasPiPActive] = useState(false);
@@ -971,6 +1097,13 @@ export const PlayerProvider = ({ children }) => {
             localStorage.setItem('mattlab_audio_quality', prefs.audioQuality);
           } catch (_) {}
           audioPreloader.setAudioQuality(prefs.audioQuality);
+        }
+        if (typeof prefs.audioNormalization === 'boolean') {
+          setAudioNormalizationState(prefs.audioNormalization);
+          audioPreloader.setAudioNormalization(prefs.audioNormalization);
+          try {
+            localStorage.setItem('mattlab_audio_normalization', String(prefs.audioNormalization));
+          } catch (_) {}
         }
 
         // Restore server-saved playback state if client has no current track
@@ -1216,20 +1349,34 @@ export const PlayerProvider = ({ children }) => {
     };
   }, [queue, queueIndex, repeatMode, isShuffle, isKaraokeMode, currentTrack, duration, persistState]);
 
-  // Sync volume to audio element
+  // Sync volume to audio element (with EBU R128 loudness normalization gain staging)
   useEffect(() => {
     const audio = audioRef.current;
     if (audio && !isCrossfadingRef.current) {
-      audio.volume = isMuted ? 0 : volume;
+      audio.volume = getEffectiveVolume(volume, currentTrack);
+    applyLoudnessGain(currentTrack, volume);
     }
     localStorage.setItem('music_volume', volume.toString());
-  }, [volume, isMuted]);
+  }, [volume, isMuted, audioNormalization, currentTrack, getEffectiveVolume]);
 
-  // Prefetch karaoke stem status whenever current track changes
+  // Prefetch karaoke stem status & ensure fresh loudness gain_db whenever current track changes
   useEffect(() => {
     setBufferedTime(0);
     if (currentTrack?.id) {
       fetchKaraokeStatus(currentTrack.id);
+
+      // If currentTrack is missing gain_db (e.g. from an older queue session or before scan completed),
+      // fetch its fresh loudness metadata from /api/stream/tracks/:id to apply normalization immediately!
+      if (currentTrack.gain_db === undefined || currentTrack.gain_db === null) {
+        fetch(`/api/stream/tracks/${currentTrack.id}`)
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data) => {
+            if (data && typeof data.gain_db === 'number') {
+              setCurrentTrack((prev) => (prev?.id === currentTrack.id ? { ...prev, gain_db: data.gain_db, lufs_i: data.lufs_i } : prev));
+            }
+          })
+          .catch(() => {});
+      }
     }
   }, [currentTrack?.id, fetchKaraokeStatus]);
 
@@ -1334,8 +1481,23 @@ export const PlayerProvider = ({ children }) => {
       standbyAudioRef.current.src = '';
     }
 
+    // Ensure we have fresh gain_db immediately BEFORE starting playback
+    let resolvedTrack = track;
+    if (track?.id && (track.gain_db === undefined || track.gain_db === null)) {
+      try {
+        const res = await fetch(`/api/stream/tracks/${track.id}`);
+        if (res.ok) {
+          const fresh = await res.json();
+          if (fresh && typeof fresh.gain_db === 'number') {
+            resolvedTrack = { ...track, gain_db: fresh.gain_db, lufs_i: fresh.lufs_i };
+          }
+        }
+      } catch (_) {}
+    }
+
     const audio = audioRef.current;
-    audio.volume = isMuted ? 0 : volume;
+    audio.volume = getEffectiveVolume(volume, resolvedTrack);
+    applyLoudnessGain(resolvedTrack, volume);
 
     if (newQueue) {
       if (options.isSearchPlay) {
@@ -1371,12 +1533,12 @@ export const PlayerProvider = ({ children }) => {
     }
 
     const cleanedTrack = {
-      ...track,
-      cover_url: resolveCoverUrl(track),
+      ...resolvedTrack,
+      cover_url: resolveCoverUrl(resolvedTrack),
     };
     setCurrentTrack(cleanedTrack);
-    if (typeof track.duration_seconds === 'number' && track.duration_seconds > 0) {
-      setDuration(track.duration_seconds);
+    if (typeof resolvedTrack.duration_seconds === 'number' && resolvedTrack.duration_seconds > 0) {
+      setDuration(resolvedTrack.duration_seconds);
     }
     setIsBuffering(true);
 
@@ -1384,11 +1546,11 @@ export const PlayerProvider = ({ children }) => {
     currentTimeRef.current = 0;
     lastSavedTimeRef.current = 0;
     const activeQueue = newQueue || queue;
-    const activeIdx = newQueue ? (isShuffle ? 0 : newQueue.findIndex((t) => t.id === track.id)) : queueIndex;
-    persistState(track, 0, track.duration_seconds || 0, activeQueue, activeIdx !== -1 ? activeIdx : 0);
+    const activeIdx = newQueue ? (isShuffle ? 0 : newQueue.findIndex((t) => t.id === resolvedTrack.id)) : queueIndex;
+    persistState(resolvedTrack, 0, resolvedTrack.duration_seconds || 0, activeQueue, activeIdx !== -1 ? activeIdx : 0);
 
-    const preloadedAudio = audioPreloader.getPreloadedAudio(track.id);
-    const standardUrl = preloadedAudio || getTrackStreamUrl(track);
+    // Always use getTrackStreamUrl to ensure the latest server-side normalized stream (?norm=1) is played directly
+    const standardUrl = getTrackStreamUrl(resolvedTrack);
 
     const wantKaraoke = options.karaoke !== undefined ? Boolean(options.karaoke) : isKaraokeMode;
     let stemInfo = karaokeStemStatus[track.id];
@@ -1413,6 +1575,7 @@ export const PlayerProvider = ({ children }) => {
       audio.src = standardUrl;
     }
 
+    initWebAudio();
     audio.play().catch((err) => {
       console.warn('Autoplay prevented:', err);
       setIsBuffering(false);
@@ -2366,6 +2529,8 @@ export const PlayerProvider = ({ children }) => {
         clearPreloadCache,
         audioQuality,
         setAudioQuality,
+        audioNormalization,
+        setAudioNormalization,
         getTrackStreamUrl,
         pipWindow,
         setPipWindow,
