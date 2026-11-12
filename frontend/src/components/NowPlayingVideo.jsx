@@ -1,11 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ExternalLink, Loader2, Music } from 'lucide-react';
-import { usePlayer } from '../context/PlayerContext';
+import { ExternalLink, Loader2, Music, Sparkles, Film } from 'lucide-react';
+import { usePlayer, resolveCoverUrl } from '../context/PlayerContext';
 
 // In-memory cache for track visualizer metadata across component re-renders
 const videoMetadataCache = new Map();
 
-export const NowPlayingVideo = React.memo(({ track, onSelectAlbum }) => {
+export const NowPlayingVideo = React.memo(({
+  track,
+  onSelectAlbum,
+  className = '',
+  containerClassName = '',
+  isKaraokeMode = false,
+  hideExternalLinks = false,
+  showVideoBadge = false,
+}) => {
   const { isPlaying, audioQuality } = usePlayer();
   const [videoData, setVideoData] = useState(() => videoMetadataCache.get(track?.id) || null);
   const [isLoadingVideo, setIsLoadingVideo] = useState(!videoMetadataCache.has(track?.id));
@@ -16,6 +24,9 @@ export const NowPlayingVideo = React.memo(({ track, onSelectAlbum }) => {
 
   const videoRef = useRef(null);
   const pollTimerRef = useRef(null);
+  const touchStartPosRef = useRef({ x: 0, y: 0 });
+
+  const coverUrl = track ? (resolveCoverUrl(track) || track.cover_url) : null;
 
   // Fetch video/canvas metadata when track changes
   useEffect(() => {
@@ -97,8 +108,23 @@ export const NowPlayingVideo = React.memo(({ track, onSelectAlbum }) => {
     }
   }, [isPlaying, hasValidVideo, mediaMode]);
 
-  const handleCardClick = () => {
+  const handleTouchStart = (e) => {
+    if (e.touches && e.touches.length === 1) {
+      touchStartPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+  };
+
+  const handleCardClick = (e) => {
     if (!hasValidVideo) return;
+    // If the click originated from a touch drag greater than 12px, ignore to avoid conflict with swipe gestures
+    if (e.clientX !== undefined && touchStartPosRef.current.x) {
+      const deltaX = Math.abs(e.clientX - touchStartPosRef.current.x);
+      const deltaY = Math.abs(e.clientY - touchStartPosRef.current.y);
+      if (deltaX > 12 || deltaY > 12) return;
+    }
+    try {
+      if (navigator.vibrate) navigator.vibrate(10);
+    } catch (_) {}
     setMediaMode((prev) => (prev === 'video' ? 'cover' : 'video'));
   };
 
@@ -106,20 +132,21 @@ export const NowPlayingVideo = React.memo(({ track, onSelectAlbum }) => {
     <div 
       data-dev-component="NowPlayingVideo"
       data-dev-file="src/components/NowPlayingVideo.jsx"
-      data-dev-desc="Right panel 1:1 canvas toggling between album artwork and synchronized YouTube music video"
-      className="flex flex-col space-y-3"
+      data-dev-desc="1:1 canvas toggling between album artwork and synchronized video clip"
+      className={containerClassName || "flex flex-col space-y-3"}
     >
-      {/* 1:1 Square Media Display Card - Click to toggle between Video and Cover */}
+      {/* 1:1 Media Display Card - Click/tap to toggle between Video and Cover */}
       <div 
         onClick={handleCardClick}
-        className={`relative aspect-square w-full rounded-2xl overflow-hidden bg-surface-elevated shadow-lg group select-none ${
-          hasValidVideo ? 'cursor-pointer' : ''
+        onTouchStart={handleTouchStart}
+        className={`${className || 'relative aspect-square w-full rounded-2xl overflow-hidden bg-surface-elevated shadow-lg'} group select-none ${
+          hasValidVideo ? 'cursor-pointer active:scale-[0.99] transition-transform duration-150' : ''
         }`}
       >
         {/* Layer 1: Ambient Blurred Album Art Glow (Behind) */}
-        {track?.cover_url && (
+        {coverUrl && (
           <img
-            src={track.cover_url}
+            src={coverUrl}
             alt=""
             className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 pointer-events-none"
           />
@@ -131,10 +158,10 @@ export const NowPlayingVideo = React.memo(({ track, onSelectAlbum }) => {
             !hasValidVideo || mediaMode === 'cover' ? 'opacity-100 z-10' : 'opacity-0 z-0'
           }`}
         >
-          {track?.cover_url ? (
+          {coverUrl ? (
             <img
-              src={track.cover_url}
-              alt={track.title}
+              src={coverUrl}
+              alt={track?.title || ''}
               className="w-full h-full object-cover"
             />
           ) : (
@@ -144,6 +171,16 @@ export const NowPlayingVideo = React.memo(({ track, onSelectAlbum }) => {
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20" />
         </div>
+
+        {/* Layer 2b: Karaoke Mode Indicator */}
+        {isKaraokeMode && (
+          <div className="absolute top-3 left-3 z-30 pointer-events-none">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-brand-500 text-black shadow-lg animate-pulse">
+              <Sparkles size={11} />
+              Karaoke Stem
+            </span>
+          </div>
+        )}
 
         {/* Layer 3: Native HTML5 Looping Video (Canvas MP4 or YouTube Snippet MP4) */}
         {hasValidVideo && (
@@ -173,8 +210,20 @@ export const NowPlayingVideo = React.memo(({ track, onSelectAlbum }) => {
           </div>
         )}
 
+        {/* Subtle Video/Canvas Pill Indicator */}
+        {hasValidVideo && showVideoBadge && (
+          <div className="absolute bottom-2.5 right-2.5 z-30 pointer-events-none">
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-medium bg-black/60 backdrop-blur-md text-white/90 px-2.5 py-1 rounded-full border border-white/10 shadow-sm transition">
+              <Film size={11} className={mediaMode === 'video' ? 'text-brand-400' : 'text-white/60'} />
+              <span className="uppercase text-[9px] tracking-wider font-semibold">
+                {mediaMode === 'video' ? (videoData?.type === 'canvas' ? 'Canvas' : 'Video') : 'Cover'}
+              </span>
+            </span>
+          </div>
+        )}
+
         {/* Top-Right Subtle External Link (revealed on hover) */}
-        {Boolean(videoData?.spotify_track_id || videoData?.video_id) && (
+        {!hideExternalLinks && Boolean(videoData?.spotify_track_id || videoData?.video_id) && (
           <div className="absolute top-2.5 right-2.5 z-30">
             {videoData?.spotify_track_id ? (
               <a

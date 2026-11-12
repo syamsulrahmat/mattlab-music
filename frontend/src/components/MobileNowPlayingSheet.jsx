@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { usePlayer, resolveCoverUrl } from '../context/PlayerContext';
 import { TimelineScrubber } from './TimelineScrubber';
+import { NowPlayingVideo } from './NowPlayingVideo';
 
 export const MobileNowPlayingSheet = ({
   isOpen,
@@ -265,21 +266,16 @@ export const MobileNowPlayingSheet = ({
         onTouchEnd={handleTouchEnd}
         className="relative z-10 flex-1 flex flex-col justify-around px-6 py-2 w-full min-h-0 overflow-y-auto cursor-grab active:cursor-grabbing"
       >
-        {/* Large Artwork with Shadow */}
-        <div className="flex items-center justify-center py-2 shrink-0 pointer-events-none">
-          <div className="relative w-[82vw] max-w-[340px] aspect-square rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.85)] border border-white/10">
-            <img
-              src={coverUrl}
-              alt=""
-              className="w-full h-full object-cover"
-            />
-            {isKaraokeMode && (
-              <div className="absolute top-3 left-3 px-2 py-0.5 rounded-full bg-brand-500 text-black text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1 shadow-lg animate-pulse">
-                <Sparkles size={11} />
-                <span>Karaoke Stem</span>
-              </div>
-            )}
-          </div>
+        {/* Large Artwork with Video / Canvas support */}
+        <div className="flex items-center justify-center py-2 shrink-0">
+          <NowPlayingVideo
+            track={currentTrack}
+            isKaraokeMode={isKaraokeMode}
+            className="relative w-[82vw] max-w-[340px] aspect-square rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.85)] border border-white/10"
+            containerClassName="w-[82vw] max-w-[340px] flex items-center justify-center"
+            hideExternalLinks={true}
+            showVideoBadge={true}
+          />
         </div>
 
         {/* Track Title, Artist & Favorite Button */}
