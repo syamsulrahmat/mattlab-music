@@ -38,8 +38,6 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
     currentLyricLine,
     upcomingLyricLine,
     fetchTrackLyrics,
-    miniPlayerOpacity,
-    miniPlayerIdleDim,
     isFavorite,
     toggleFavorite,
   } = usePlayer();
@@ -91,34 +89,8 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
   });
 
   const [isDragging, setIsDragging] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-  const [isIdle, setIsIdle] = useState(false);
-  const idleTimerRef = useRef(null);
   const dragRef = useRef({ startX: 0, startY: 0, posX: 0, posY: 0 });
   const containerRef = useRef(null);
-
-  // Activity tracker for smooth idle ghosting/dimming
-  const handleActivity = useCallback(() => {
-    setIsIdle(false);
-    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-    if (miniPlayerIdleDim) {
-      idleTimerRef.current = setTimeout(() => {
-        setIsIdle(true);
-      }, 3000);
-    }
-  }, [miniPlayerIdleDim]);
-
-  useEffect(() => {
-    if (!miniPlayerIdleDim) {
-      setIsIdle(false);
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-      return;
-    }
-    handleActivity();
-    return () => {
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-    };
-  }, [miniPlayerIdleDim, handleActivity]);
 
   // Full lyrics scrolling refs & state
   const lyricsContainerRef = useRef(null);
@@ -344,12 +316,10 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
     return (
       <div
         ref={smallLyricsRef}
-        className={`relative w-full h-full flex flex-col justify-between ${
-          isPiP ? 'bg-gradient-to-b from-[#181818] to-[#121212]' : 'bg-surface-island/40'
-        } text-content-primary font-sans select-none box-border overflow-hidden ${containerPadding}`}
+        className={`relative w-full h-full flex flex-col justify-between bg-gradient-to-b from-[#181818] to-[#121212] text-content-primary font-sans select-none box-border overflow-hidden ${containerPadding}`}
       >
-        {/* Ambient album glow in PiP window */}
-        {isPiP && currentTrack && (
+        {/* Ambient album glow */}
+        {currentTrack && (
           <div
             className="absolute inset-0 opacity-15 pointer-events-none blur-2xl transform scale-125"
             style={{
@@ -611,12 +581,10 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
     return (
       <div
         ref={fullLyricsRef}
-        className={`relative w-full h-full flex flex-col justify-between ${
-          isPiP ? 'bg-gradient-to-b from-[#181818] to-[#121212]' : 'bg-surface-island/40'
-        } text-content-primary font-sans select-none box-border overflow-hidden`}
+        className="relative w-full h-full flex flex-col justify-between bg-gradient-to-b from-[#181818] to-[#121212] text-content-primary font-sans select-none box-border overflow-hidden"
       >
-        {/* Ambient album glow in PiP window */}
-        {isPiP && currentTrack && (
+        {/* Ambient album glow */}
+        {currentTrack && (
           <div
             className="absolute inset-0 opacity-15 pointer-events-none blur-3xl transform scale-125"
             style={{
@@ -1030,13 +998,6 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
     );
   };
 
-  // Calculate active opacity for the in-page floating mini player
-  const effectiveOpacity = isDragging || isHovered
-    ? Math.min(1, (miniPlayerOpacity / 100) + 0.15)
-    : isIdle && miniPlayerIdleDim
-    ? Math.max(0.25, (miniPlayerOpacity / 100) * 0.6)
-    : (miniPlayerOpacity / 100);
-
   return (
     <>
       {/* 1. Document PiP Portal (Persistent OS desktop window across tabs & apps) */}
@@ -1047,26 +1008,16 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
         <div
           data-dev-component="FloatingMiniPlayer"
           data-dev-file="src/components/FloatingMiniPlayer.jsx"
-          data-dev-desc="Draggable floating picture-in-picture player with interactive controls and background visualizer"
+          data-dev-desc="Draggable floating interactive miniplayer with playback controls and lyrics"
           ref={containerRef}
           onPointerDown={handlePointerDown}
-          onPointerEnter={() => {
-            setIsHovered(true);
-            handleActivity();
-          }}
-          onPointerLeave={() => {
-            setIsHovered(false);
-            handleActivity();
-          }}
-          onPointerMove={handleActivity}
           style={{
             left: `${position.x}px`,
             top: `${position.y}px`,
-            opacity: effectiveOpacity,
             touchAction: 'none',
           }}
-          className={`fixed z-50 transition-[opacity,box-shadow,transform] duration-300 ease-out select-none shadow-2xl rounded-2xl border border-white/10 bg-surface-island/40 backdrop-blur-xl group cursor-move ${
-            isDragging ? 'shadow-green-500/20 scale-[1.01]' : ''
+          className={`fixed z-50 transition-[box-shadow,transform] duration-200 select-none shadow-2xl rounded-2xl border border-white/10 bg-[#121212] text-white group cursor-move ${
+            isDragging ? 'shadow-brand-500/20 scale-[1.01]' : ''
           }`}
         >
           {/* 2-LINE LYRICS MODE */}
@@ -1103,7 +1054,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
 
           {/* MICRO MODE: Only the transport buttons */}
           {sizeMode === 'micro' && (
-            <div className="flex items-center gap-1 px-2.5 py-1.5 bg-black/60 rounded-full border border-white/10">
+            <div className="flex items-center gap-1 px-2.5 py-1.5 bg-[#121212] rounded-full border border-white/10 shadow-xl">
               {currentTrack && (
                 <button
                   type="button"

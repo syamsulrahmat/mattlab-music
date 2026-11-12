@@ -28,7 +28,6 @@ import {
   EyeOff,
   AlertCircle,
   Loader2,
-  PictureInPicture2,
   Play,
   Pause,
   RefreshCw,
@@ -326,14 +325,6 @@ export const SettingsModal = ({
     setAudioQuality,
     audioNormalization,
     setAudioNormalization,
-    pipEngine,
-    setPipEngine,
-    togglePiP,
-    isPiPActive,
-    miniPlayerOpacity,
-    setMiniPlayerOpacity,
-    miniPlayerIdleDim,
-    setMiniPlayerIdleDim,
     autoplaySimilar,
     setAutoplaySimilar,
   } = usePlayer();
@@ -378,7 +369,7 @@ export const SettingsModal = ({
   const [clearingTranscodeCache, setClearingTranscodeCache] = useState(false);
   const [transcodeClearedSuccess, setTranscodeClearedSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState(initialTab || 'account');
-  const [audioSubpage, setAudioSubpage] = useState(null); // null | 'quality' | 'preload' | 'miniplayer'
+  const [audioSubpage, setAudioSubpage] = useState(null); // null | 'quality' | 'preload'
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
 
@@ -1357,7 +1348,6 @@ export const SettingsModal = ({
                     <span className="text-xs font-bold text-white capitalize">
                       {audioSubpage === 'quality' && 'Streaming Quality'}
                       {audioSubpage === 'preload' && 'Preload Buffer'}
-                      {audioSubpage === 'miniplayer' && 'Miniplayer Style'}
                     </span>
                   </div>
                 ) : (
@@ -1370,7 +1360,7 @@ export const SettingsModal = ({
                       <div>
                         <h3 className="text-xs font-bold text-white">Audio & Playback</h3>
                         <p className="text-[11px] text-content-secondary">
-                          Streaming fidelity, buffer management & player style
+                          Streaming fidelity, buffer management & loudness normalization
                         </p>
                       </div>
                     </div>
@@ -1596,139 +1586,6 @@ export const SettingsModal = ({
                   </div>
                 )}
 
-                {/* SUBPAGE 3: Floating Miniplayer */}
-                {audioSubpage === 'miniplayer' && (
-                  <div className="space-y-4 animate-in fade-in duration-150">
-                    <div className="p-4 rounded-xl bg-surface-panel border border-border-subtle space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-bold text-white flex items-center gap-2">
-                          <PictureInPicture2 size={15} className="text-brand-500" />
-                          <span>Miniplayer Style</span>
-                        </h4>
-                        <button
-                          type="button"
-                          onClick={togglePiP}
-                          className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white/10 hover:bg-white/20 text-white border border-border-medium transition flex items-center gap-1.5"
-                        >
-                          <PictureInPicture2 size={12} />
-                          <span>{isPiPActive ? 'Close' : 'Preview'}</span>
-                        </button>
-                      </div>
-
-                      <div className="space-y-2">
-                        <button
-                          type="button"
-                          onClick={() => setPipEngine('interactive')}
-                          className={`w-full p-3 rounded-xl text-left border transition flex items-center justify-between ${
-                            pipEngine === 'interactive'
-                              ? 'bg-brand-500/10 border-brand-500 text-white ring-1 ring-brand-500/40'
-                              : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
-                          }`}
-                        >
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-xs text-white">Interactive Miniplayer</span>
-                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30">
-                                DEFAULT
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-content-muted mt-0.5">
-                              Floating window with click-to-play buttons, volume & live synced lyrics.
-                            </p>
-                          </div>
-                          {pipEngine === 'interactive' && (
-                            <Check size={16} className="text-brand-500 shrink-0" />
-                          )}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setPipEngine('video')}
-                          className={`w-full p-3 rounded-xl text-left border transition flex items-center justify-between ${
-                            pipEngine === 'video'
-                              ? 'bg-purple-500/10 border-purple-500 text-white ring-1 ring-purple-500/40'
-                              : 'bg-surface-island border-border-subtle hover:border-border-strong text-content-secondary hover:text-white'
-                          }`}
-                        >
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-xs text-white">Frameless Video Miniplayer</span>
-                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30">
-                                16:9
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-content-muted mt-0.5">
-                              Borderless floating card with album artwork, ambient glow, and lyrics.
-                            </p>
-                          </div>
-                          {pipEngine === 'video' && (
-                            <Check size={16} className="text-purple-400 shrink-0" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Transparency & Ghost Mode */}
-                    <div className="p-4 rounded-xl bg-surface-panel border border-border-subtle space-y-3">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-bold text-white">In-Page Transparency</span>
-                        <div className="flex items-center gap-1">
-                          {[
-                            { val: 50, label: '50%' },
-                            { val: 85, label: '85%' },
-                            { val: 100, label: '100%' },
-                          ].map((preset) => (
-                            <button
-                              key={preset.val}
-                              type="button"
-                              onClick={() => setMiniPlayerOpacity(preset.val)}
-                              className={`px-2 py-0.5 text-[10px] font-semibold rounded border transition ${
-                                (miniPlayerOpacity ?? 85) === preset.val
-                                  ? 'bg-brand-500 text-black border-brand-500 font-bold'
-                                  : 'bg-white/5 hover:bg-white/10 text-content-secondary hover:text-white border-border-subtle'
-                              }`}
-                            >
-                              {preset.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <input
-                        type="range"
-                        min="30"
-                        max="100"
-                        step="5"
-                        value={miniPlayerOpacity ?? 85}
-                        onChange={(e) => setMiniPlayerOpacity(parseInt(e.target.value, 10))}
-                        className="w-full accent-brand-500 bg-surface-elevated h-1.5 rounded-lg appearance-none cursor-pointer"
-                      />
-
-                      <div className="pt-2 border-t border-border-subtle flex items-center justify-between">
-                        <div>
-                          <p className="text-xs font-semibold text-white">Idle Dimming (Ghost Mode)</p>
-                          <p className="text-[11px] text-content-muted">
-                            Fades player when idle; restores on mouse hover or drag
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setMiniPlayerIdleDim(!miniPlayerIdleDim)}
-                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                            miniPlayerIdleDim ? 'bg-brand-500' : 'bg-surface-elevated'
-                          }`}
-                        >
-                          <span
-                            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                              miniPlayerIdleDim ? 'translate-x-4' : 'translate-x-0'
-                            }`}
-                          />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 {/* ROOT: iOS Settings Grouped List */}
                 {!audioSubpage && (
                   <div className="space-y-3 animate-in fade-in duration-150">
@@ -1859,32 +1716,6 @@ export const SettingsModal = ({
                           </button>
                         </div>
 
-                        {/* Row: Miniplayer Display */}
-                        <button
-                          type="button"
-                          onClick={() => setAudioSubpage('miniplayer')}
-                          className="w-full px-3.5 py-3 hover:bg-white/5 active:bg-white/10 transition flex items-center justify-between text-left group"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-brand-500/10 text-brand-500 flex items-center justify-center shrink-0">
-                              <PictureInPicture2 size={16} />
-                            </div>
-                            <div>
-                              <p className="text-xs font-bold text-white group-hover:text-brand-400 transition">
-                                Floating Miniplayer
-                              </p>
-                              <p className="text-[11px] text-content-muted">
-                                Style, transparency & idle ghosting
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-[11px] font-semibold text-content-secondary bg-surface-island px-2 py-0.5 rounded-md border border-border-subtle">
-                              {pipEngine === 'interactive' ? 'Interactive' : 'Video 16:9'}
-                            </span>
-                            <ChevronRight size={15} className="text-content-muted group-hover:text-white transition" />
-                          </div>
-                        </button>
                       </div>
                     </div>
                   </div>
@@ -2415,7 +2246,7 @@ export const SettingsModal = ({
                         </span>
                       </div>
                       <p className="text-xs text-content-secondary mt-0.5">
-                        Features OS-level transparent acrylic miniplayer, persistent background listening, and global media keys.
+                        Features OS-level interactive Spotify-style miniplayer with live lyrics, persistent background listening, and global media keys.
                       </p>
                     </div>
                   </div>

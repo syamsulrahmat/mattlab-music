@@ -913,63 +913,6 @@ export const PlayerProvider = ({ children }) => {
   }, [saveUserPreference, currentTrack, volume, isMuted, getEffectiveVolume]);
   const [pipWindow, setPipWindow] = useState(null);
   const [isMiniPlayerOpen, setIsMiniPlayerOpen] = useState(false);
-  const [isCanvasPiPActive, setIsCanvasPiPActive] = useState(false);
-
-  // Picture-in-Picture Display Engine ('interactive' = Document PiP [default] | 'video' = YouTube-style 16:9 Video PiP)
-  const [pipEngine, setPipEngineState] = useState(() => {
-    try {
-      return localStorage.getItem('music_pip_engine') || 'interactive';
-    } catch (_) {
-      return 'interactive';
-    }
-  });
-
-  const setPipEngine = useCallback((engine) => {
-    const validEngine = engine === 'video' ? 'video' : 'interactive';
-    setPipEngineState(validEngine);
-    try {
-      localStorage.setItem('music_pip_engine', validEngine);
-    } catch (_) {}
-    saveUserPreference({ pipEngine: validEngine });
-  }, [saveUserPreference]);
-
-  // Miniplayer Opacity & Idle Dimming States (Glassmorphism)
-  const [miniPlayerOpacity, setMiniPlayerOpacityState] = useState(() => {
-    try {
-      const stored = localStorage.getItem('mattlab_miniplayer_opacity');
-      if (stored !== null) {
-        const val = parseInt(stored, 10);
-        if (!isNaN(val) && val >= 30 && val <= 100) return val;
-      }
-    } catch (_) {}
-    return 85;
-  });
-
-  const setMiniPlayerOpacity = useCallback((val) => {
-    const clamped = Math.max(30, Math.min(100, Number(val) || 85));
-    setMiniPlayerOpacityState(clamped);
-    try {
-      localStorage.setItem('mattlab_miniplayer_opacity', String(clamped));
-    } catch (_) {}
-    saveUserPreference({ miniPlayerOpacity: clamped });
-  }, [saveUserPreference]);
-
-  const [miniPlayerIdleDim, setMiniPlayerIdleDimState] = useState(() => {
-    try {
-      const stored = localStorage.getItem('mattlab_miniplayer_idle_dim');
-      return stored !== null ? stored === 'true' : true;
-    } catch (_) {
-      return true;
-    }
-  });
-
-  const setMiniPlayerIdleDim = useCallback((enabled) => {
-    setMiniPlayerIdleDimState(enabled);
-    try {
-      localStorage.setItem('mattlab_miniplayer_idle_dim', String(enabled));
-    } catch (_) {}
-    saveUserPreference({ miniPlayerIdleDim: enabled });
-  }, [saveUserPreference]);
 
   // Auto-introduction of MiniPlayer on tab / desktop app switch (always on, once per calendar day)
   const autoMiniPlayerIntroEnabled = true;
@@ -1057,7 +1000,6 @@ export const PlayerProvider = ({ children }) => {
       try { pipWindow.close(); } catch (_) {}
       setPipWindow(null);
     }
-    setIsCanvasPiPActive(false);
     setIsMiniPlayerOpen(false);
 
     if (typeof window !== 'undefined' && window.electronAPI && typeof window.electronAPI.closeFloatingMiniPlayer === 'function') {
@@ -1109,25 +1051,6 @@ export const PlayerProvider = ({ children }) => {
         if (typeof prefs.preloadCount === 'number') {
           const updated = audioPreloader.setMaxPreloadCount(prefs.preloadCount);
           setPreloadCountState(updated);
-        }
-        if (prefs.pipEngine && ['interactive', 'video'].includes(prefs.pipEngine)) {
-          setPipEngineState(prefs.pipEngine);
-          try {
-            localStorage.setItem('music_pip_engine', prefs.pipEngine);
-          } catch (_) {}
-        }
-        if (typeof prefs.miniPlayerOpacity === 'number') {
-          const clamped = Math.max(30, Math.min(100, prefs.miniPlayerOpacity));
-          setMiniPlayerOpacityState(clamped);
-          try {
-            localStorage.setItem('mattlab_miniplayer_opacity', String(clamped));
-          } catch (_) {}
-        }
-        if (typeof prefs.miniPlayerIdleDim === 'boolean') {
-          setMiniPlayerIdleDimState(prefs.miniPlayerIdleDim);
-          try {
-            localStorage.setItem('mattlab_miniplayer_idle_dim', String(prefs.miniPlayerIdleDim));
-          } catch (_) {}
         }
         if (prefs.audioQuality && ['original', 'data_saver'].includes(prefs.audioQuality)) {
           setAudioQualityState(prefs.audioQuality);
@@ -2075,168 +1998,6 @@ export const PlayerProvider = ({ children }) => {
     });
   };
 
-  // Helper to draw media card on canvas for native OS Video PiP (16:9 aspect ratio: 640x360)
-  const drawPiPCanvas = useCallback((track, time, totalDuration, lyricLine = null, upcomingLyric = null) => {
-    let canvas = canvasRef.current;
-    if (!canvas) {
-      canvas = document.createElement('canvas');
-      canvas.width = 640;
-      canvas.height = 360;
-      canvasRef.current = canvas;
-    } else if (canvas.width !== 640 || canvas.height !== 360) {
-      canvas.width = 640;
-      canvas.height = 360;
-    }
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Helper for rounded rectangle fallback
-    const safeRoundRect = (ctx2d, x, y, w, h, r) => {
-      if (typeof ctx2d.roundRect === 'function') {
-        ctx2d.roundRect(x, y, w, h, r);
-      } else {
-        ctx2d.rect(x, y, w, h);
-      }
-    };
-
-    const coverUrl = track?.cover_url || '/api/covers/0';
-    let cachedImg = coverImageCacheRef.current[coverUrl];
-    if (!cachedImg) {
-      cachedImg = new Image();
-      cachedImg.crossOrigin = 'anonymous';
-      cachedImg.src = coverUrl;
-      cachedImg.onload = () => {
-        coverImageCacheRef.current[coverUrl] = cachedImg;
-        drawPiPCanvas(track, time, totalDuration, lyricLine, upcomingLyric);
-      };
-      coverImageCacheRef.current[coverUrl] = cachedImg;
-    }
-
-    const brandColor = LYRICS_CONFIG.colors.canvasActiveColor;
-
-    // 1. Ambient blurred background or gradient (16:9 aspect ratio: 640x360)
-    ctx.clearRect(0, 0, 640, 360);
-    if (cachedImg.complete && cachedImg.naturalWidth > 0) {
-      try {
-        ctx.save();
-        ctx.filter = 'blur(28px) brightness(0.22)';
-        ctx.drawImage(cachedImg, -40, -40, 720, 440);
-        ctx.restore();
-      } catch (_) {
-        ctx.fillStyle = DESIGN_TOKENS.getCssVar('--surface-island', 'rgb(18, 18, 18)');
-        ctx.fillRect(0, 0, 640, 360);
-      }
-    } else {
-      const grad = ctx.createLinearGradient(0, 0, 640, 360);
-      grad.addColorStop(0, DESIGN_TOKENS.getCssVar('--surface-elevated', 'rgb(31, 31, 31)'));
-      grad.addColorStop(1, DESIGN_TOKENS.getCssVar('--surface-base', 'rgb(0, 0, 0)'));
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, 640, 360);
-    }
-
-    // Semi-transparent overlay to ensure contrast
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-    ctx.fillRect(0, 0, 640, 360);
-
-    // 2. Cover Art (220x220 on left)
-    const coverX = 36;
-    const coverY = 55;
-    const coverSize = 220;
-    if (cachedImg.complete && cachedImg.naturalWidth > 0) {
-      try {
-        ctx.save();
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
-        ctx.shadowBlur = 24;
-        ctx.shadowOffsetY = 8;
-        ctx.beginPath();
-        safeRoundRect(ctx, coverX, coverY, coverSize, coverSize, 14);
-        ctx.clip();
-        ctx.drawImage(cachedImg, coverX, coverY, coverSize, coverSize);
-        ctx.restore();
-      } catch (_) {
-        ctx.fillStyle = DESIGN_TOKENS.getCssVar('--surface-elevated2', 'rgb(36, 36, 36)');
-        ctx.fillRect(coverX, coverY, coverSize, coverSize);
-      }
-    } else {
-      ctx.fillStyle = DESIGN_TOKENS.getCssVar('--surface-elevated', 'rgb(31, 31, 31)');
-      ctx.beginPath();
-      safeRoundRect(ctx, coverX, coverY, coverSize, coverSize, 14);
-      ctx.fill();
-      ctx.fillStyle = brandColor;
-      ctx.font = '60px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('🎵', coverX + coverSize / 2, coverY + coverSize / 2 + 20);
-      ctx.textAlign = 'left';
-    }
-
-    // 3. Right Content Area (Starts at x=280)
-    const textX = 280;
-
-    // Small Brand Tag
-    ctx.fillStyle = brandColor;
-    ctx.font = `bold 11px ${LYRICS_CONFIG.typography.fontFamily}`;
-    ctx.fillText('● MATTLAB MUSIC', textX, 75);
-
-    // Track Title
-    ctx.fillStyle = DESIGN_TOKENS.getCssVar('--content-primary', 'rgb(255, 255, 255)');
-    ctx.font = `bold 24px ${LYRICS_CONFIG.typography.fontFamily}`;
-    const rawTitle = track?.title || 'No Track Selected';
-    const truncatedTitle = rawTitle.length > 22 ? rawTitle.substring(0, 20) + '...' : rawTitle;
-    ctx.fillText(truncatedTitle, textX, 110);
-
-    // Artist Name
-    ctx.fillStyle = DESIGN_TOKENS.getCssVar('--content-secondary', 'rgb(179, 179, 179)');
-    ctx.font = `600 16px ${LYRICS_CONFIG.typography.fontFamily}`;
-    const rawArtist = track?.artist_name || 'MattLab';
-    const truncatedArtist = rawArtist.length > 26 ? rawArtist.substring(0, 24) + '...' : rawArtist;
-    ctx.fillText(truncatedArtist, textX, 138);
-
-    // Separator line
-    ctx.fillStyle = DESIGN_TOKENS.getCssVar('--border-medium', 'rgba(255, 255, 255, 0.1)');
-    ctx.fillRect(textX, 156, 320, 1);
-
-    // Live Synced Lyrics (Current + Next)
-    if (lyricLine) {
-      // Active line
-      ctx.fillStyle = DESIGN_TOKENS.getCssVar('--content-primary', 'rgb(255, 255, 255)');
-      ctx.font = `${LYRICS_CONFIG.typography.canvasWeight} 18px ${LYRICS_CONFIG.typography.fontFamily}`;
-      const truncatedCurr = lyricLine.length > 30 ? lyricLine.substring(0, 28) + '...' : lyricLine;
-      const displayCurr = LYRICS_CONFIG.timing.showQuotesInPiP ? `“${truncatedCurr}”` : truncatedCurr;
-      ctx.fillText(displayCurr, textX, 192);
-
-      // Upcoming line
-      if (upcomingLyric && LYRICS_CONFIG.timing.showUpcomingLine) {
-        ctx.fillStyle = LYRICS_CONFIG.colors.canvasUpcomingColor;
-        ctx.font = `${LYRICS_CONFIG.typography.canvasWeight} 14px ${LYRICS_CONFIG.typography.fontFamily}`;
-        const truncatedNext = upcomingLyric.length > 36 ? upcomingLyric.substring(0, 34) + '...' : upcomingLyric;
-        ctx.fillText(truncatedNext, textX, 222);
-      }
-    } else {
-      // If no lyrics available, show album or clean hint
-      const rawAlbum = track?.album_title;
-      if (rawAlbum) {
-        ctx.fillStyle = DESIGN_TOKENS.getCssVar('--content-secondary', 'rgba(255, 255, 255, 0.5)');
-        ctx.font = `${LYRICS_CONFIG.typography.canvasWeight} 14px ${LYRICS_CONFIG.typography.fontFamily}`;
-        const truncatedAlbum = rawAlbum.length > 32 ? rawAlbum.substring(0, 30) + '...' : rawAlbum;
-        ctx.fillText(`Album: ${truncatedAlbum}`, textX, 192);
-      } else {
-        ctx.fillStyle = DESIGN_TOKENS.getCssVar('--content-muted', 'rgba(255, 255, 255, 0.3)');
-        ctx.font = `italic 14px ${LYRICS_CONFIG.typography.fontFamily}`;
-        ctx.fillText('Streaming in high fidelity', textX, 192);
-      }
-    }
-
-    ctx.textAlign = 'left';
-  }, []);
-
-  // Continuously update native Canvas Video PiP frame while active
-  useEffect(() => {
-    if (isCanvasPiPActive) {
-      drawPiPCanvas(currentTrack, currentTime, duration, currentLyricLine, upcomingLyricLine);
-    }
-  }, [isCanvasPiPActive, currentTrack, currentTime, duration, currentLyricLine, upcomingLyricLine, drawPiPCanvas]);
-
   // Sync state to native Electron floating miniplayer window if running in desktop app
   useEffect(() => {
     if (typeof window !== 'undefined' && window.electronAPI && typeof window.electronAPI.updateMiniPlayerTrack === 'function') {
@@ -2258,10 +2019,9 @@ export const PlayerProvider = ({ children }) => {
         duration,
         currentLyric: currentLyricLine || (lyricsState?.notFound ? 'No lyrics available' : ''),
         upcomingLyric: upcomingLyricLine || '',
-        opacity: miniPlayerOpacity,
       });
     }
-  }, [currentTrack, isPlaying, currentTime, duration, currentLyricLine, upcomingLyricLine, miniPlayerOpacity, lyricsState?.notFound]);
+  }, [currentTrack, isPlaying, currentTime, duration, currentLyricLine, upcomingLyricLine, lyricsState?.notFound]);
 
   // Keep latest callbacks in ref to ensure IPC handlers never execute stale closures
   const actionsRef = useRef({ togglePlay, nextTrack, prevTrack });
@@ -2345,90 +2105,25 @@ export const PlayerProvider = ({ children }) => {
         duration,
         currentLyric: currentLyricLine || (lyricsState?.notFound ? 'No lyrics available' : ''),
         upcomingLyric: upcomingLyricLine || '',
-        opacity: miniPlayerOpacity,
       };
       window.electronAPI.toggleFloatingMiniPlayer(activeState);
       return;
     }
 
-    // 1. If native Video Canvas PiP is open, exit it immediately and RETURN
-    const pipElem = typeof document !== 'undefined' && 'pictureInPictureElement' in document ? document.pictureInPictureElement : null;
-    if (pipElem || isCanvasPiPActive) {
-      try {
-        if (pipElem && typeof document.exitPictureInPicture === 'function') {
-          await document.exitPictureInPicture();
-        }
-      } catch (_) {}
-      setIsCanvasPiPActive(false);
-      return;
-    }
-
-    // 2. If native Document PiP window is open, close it immediately and RETURN
+    // 1. If native Document PiP window is open, close it immediately and RETURN
     if (pipWindow) {
       try { pipWindow.close(); } catch (_) {}
       setPipWindow(null);
       return;
     }
 
-    // 3. If in-page player is open, close it immediately and RETURN
+    // 2. If in-page player is open, close it immediately and RETURN
     if (isMiniPlayerOpen) {
       setIsMiniPlayerOpen(false);
       return;
     }
 
-    // 4. If user configured Video PiP (YouTube-style frameless 16:9 canvas with OS hover controls)
-    if (pipEngine === 'video') {
-      const hasCanvasPiP =
-        (typeof document !== 'undefined' && 'pictureInPictureEnabled' in document && document.pictureInPictureEnabled) ||
-        (typeof HTMLVideoElement !== 'undefined' && HTMLVideoElement?.prototype && 'requestPictureInPicture' in HTMLVideoElement.prototype);
-      if (hasCanvasPiP) {
-        try {
-          let canvas = canvasRef.current;
-          if (!canvas) {
-            canvas = document.createElement('canvas');
-            canvas.width = 640;
-            canvas.height = 360;
-            canvasRef.current = canvas;
-          } else if (canvas.width !== 640 || canvas.height !== 360) {
-            canvas.width = 640;
-            canvas.height = 360;
-          }
-
-          drawPiPCanvas(currentTrack, currentTime, duration, currentLyricLine, upcomingLyricLine);
-
-          let video = pipVideoRef.current;
-          if (!video) {
-            video = document.createElement('video');
-            video.muted = true;
-            video.autoplay = true;
-            video.playsInline = true;
-            video.style.position = 'fixed';
-            video.style.opacity = '0';
-            video.style.pointerEvents = 'none';
-            video.style.zIndex = '-9999';
-            document.body.appendChild(video);
-            pipVideoRef.current = video;
-
-            video.addEventListener('leavepictureinpicture', () => {
-              setIsCanvasPiPActive(false);
-            });
-          }
-
-          const stream = canvas.captureStream ? canvas.captureStream(25) : (canvas.mozCaptureStream ? canvas.mozCaptureStream(25) : null);
-          if (stream) {
-            video.srcObject = stream;
-            await video.play();
-            await video.requestPictureInPicture();
-            setIsCanvasPiPActive(true);
-            return;
-          }
-        } catch (err) {
-          console.warn('Native Video Canvas PiP request failed:', err);
-        }
-      }
-    }
-
-    // 5. Fallback: Document Picture-in-Picture window (with disallowReturnToOpener)
+    // 3. Document Picture-in-Picture window (Spotify-grade interactive popup)
     if ('documentPictureInPicture' in window) {
       try {
         const savedMode = localStorage.getItem('mini_player_size_mode') || 'lyrics-small';
@@ -2526,7 +2221,7 @@ export const PlayerProvider = ({ children }) => {
       if (typeof window !== 'undefined' && window.innerWidth < 768) return;
 
       // Skip if miniplayer or PiP is already active
-      if (isMiniPlayerOpen || pipWindow || isCanvasPiPActive) return;
+      if (isMiniPlayerOpen || pipWindow) return;
 
       // Check once-per-calendar-day limit (e.g. "2026-10-22")
       const today = new Date().toISOString().slice(0, 10);
@@ -2577,7 +2272,7 @@ export const PlayerProvider = ({ children }) => {
         } catch (_) {}
       }
     };
-  }, [autoMiniPlayerIntroEnabled, isPlaying, currentTrack, isMiniPlayerOpen, pipWindow, isCanvasPiPActive, togglePiP, showToast]);
+  }, [autoMiniPlayerIntroEnabled, isPlaying, currentTrack, isMiniPlayerOpen, pipWindow, togglePiP, showToast]);
 
   // Smooth Volume Fade Helpers (for 30s song previews)
   const fadePause = useCallback((durationMs = 300) => {
@@ -2695,19 +2390,13 @@ export const PlayerProvider = ({ children }) => {
         setPipWindow,
         isMiniPlayerOpen,
         setIsMiniPlayerOpen,
-        pipEngine,
-        setPipEngine,
         autoMiniPlayerIntroEnabled,
-        miniPlayerOpacity,
-        setMiniPlayerOpacity,
-        miniPlayerIdleDim,
-        setMiniPlayerIdleDim,
         autoplaySimilar,
         setAutoplaySimilar,
         recommendedTracks,
         seedGenre,
         fetchRecommendations,
-        isPiPActive: Boolean(pipWindow) || isCanvasPiPActive || isMiniPlayerOpen,
+        isPiPActive: Boolean(pipWindow) || isMiniPlayerOpen,
         togglePiP,
         lyricsState,
         currentLyricLine,
