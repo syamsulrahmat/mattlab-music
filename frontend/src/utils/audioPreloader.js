@@ -21,6 +21,7 @@ class AudioPreloader {
     this.isPreloading = false;
     this.lastQueue = null;
     this.lastCurrentIndex = -1;
+    this.pinnedTrackIds = new Set();
 
     // Automatically purge legacy CacheStorage namespaces from older buggy builds
     if (typeof window !== 'undefined' && 'caches' in window) {
@@ -120,6 +121,20 @@ class AudioPreloader {
     return new Set(this.preloadedMap.keys());
   }
 
+  /**
+   * Pin a recently played track ID so its audio blob is retained in cache
+   * when switching playlists, making cross-playlist "Previous" instant (0ms wait).
+   */
+  pinRecentTrack(trackId) {
+    if (!trackId) return;
+    this.pinnedTrackIds.add(trackId);
+    // Retain at most 3 recently played tracks in pinned cache
+    if (this.pinnedTrackIds.size > 3) {
+      const oldest = this.pinnedTrackIds.values().next().value;
+      this.pinnedTrackIds.delete(oldest);
+    }
+  }
+
   getMaxPreloadCount() {
     return this.maxPreloadCount;
   }
@@ -195,6 +210,11 @@ class AudioPreloader {
     // Keep current track if already cached in memory from earlier preloading
     if (currentTrack) {
       targetTrackIds.add(currentTrack.id);
+    }
+
+    // Keep recently played tracks pinned in cache so Previous track starts with 0ms buffering
+    for (const pinnedId of this.pinnedTrackIds) {
+      targetTrackIds.add(pinnedId);
     }
 
     // 1. Prune tracks outside the target window to free memory
@@ -357,6 +377,7 @@ class AudioPreloader {
       if (entry.coverUrl?.startsWith('blob:')) URL.revokeObjectURL(entry.coverUrl);
     }
     this.preloadedMap.clear();
+    this.pinnedTrackIds.clear();
     this.notify();
 
     if ('caches' in window) {

@@ -50,6 +50,7 @@ const loadSavedPlaybackState = () => {
 
         const q = Array.isArray(parsed.queue) && parsed.queue.length > 0 ? parsed.queue : [parsed.track];
         const qIdx = typeof parsed.queueIndex === 'number' && parsed.queueIndex >= 0 && parsed.queueIndex < q.length ? parsed.queueIndex : 0;
+        const hist = Array.isArray(parsed.history) ? parsed.history : [];
         return {
           track: {
             ...parsed.track,
@@ -60,6 +61,7 @@ const loadSavedPlaybackState = () => {
           duration: dur,
           queue: q,
           queueIndex: qIdx,
+          history: hist,
         };
       }
     }
@@ -83,6 +85,8 @@ export const PlayerProvider = ({ children }) => {
   const lastSavedTimeRef = useRef(0);
   const debouncePrefSaveRef = useRef(null);
   const scrobbledTrackIdRef = useRef(null);
+  const playbackHistoryRef = useRef(savedState?.history || []);
+  const forwardHistoryRef = useRef([]);
 
   const audioRef = useRef(null);
   const standbyAudioRef = useRef(null);
@@ -713,6 +717,39 @@ export const PlayerProvider = ({ children }) => {
         stream_url: t.stream_url || `/api/stream/${t.id}`,
       })),
       queueIndex: typeof qIdx === 'number' ? qIdx : 0,
+      history: (playbackHistoryRef.current || []).slice(-15).map((h) => ({
+        track: {
+          id: h.track?.id,
+          title: h.track?.title,
+          artist_id: h.track?.artist_id || null,
+          artist_name: h.track?.artist_name || h.track?.artist || '',
+          album_id: h.track?.album_id || null,
+          album_title: h.track?.album_title || '',
+          duration_seconds: h.track?.duration_seconds || 0,
+          cover_url: resolveCoverUrl(h.track),
+          file_format: h.track?.file_format || null,
+          bitrate: h.track?.bitrate || null,
+          stream_url: h.track?.stream_url || `/api/stream/${h.track?.id}`,
+          gain_db: h.track?.gain_db ?? null,
+          lufs_i: h.track?.lufs_i ?? null,
+        },
+        queue: (h.queue || []).slice(0, 50).map((t) => ({
+          id: t.id,
+          title: t.title,
+          artist_id: t.artist_id || null,
+          artist_name: t.artist_name || t.artist || '',
+          album_id: t.album_id || null,
+          album_title: t.album_title || '',
+          duration_seconds: t.duration_seconds || 0,
+          cover_url: resolveCoverUrl(t),
+          file_format: t.file_format || null,
+          bitrate: t.bitrate || null,
+          stream_url: t.stream_url || `/api/stream/${t.id}`,
+          gain_db: t.gain_db ?? null,
+          lufs_i: t.lufs_i ?? null,
+        })),
+        queueIndex: typeof h.queueIndex === 'number' ? h.queueIndex : 0,
+      })),
       savedAt: Date.now(),
     };
 
@@ -1481,6 +1518,26 @@ export const PlayerProvider = ({ children }) => {
       standbyAudioRef.current.src = '';
     }
 
+    // ── Track History & Pinned Preload Cache Management ──
+    if (currentTrack && currentTrack.id && currentTrack.id !== track.id) {
+      // Pin previously playing track in preloader so its decoded audio blob stays hot in memory
+      audioPreloader.pinRecentTrack(currentTrack.id);
+
+      if (!options.isHistoryNavigation) {
+        playbackHistoryRef.current.push({
+          track: currentTrack,
+          queue: queue,
+          queueIndex: queueIndex,
+        });
+        if (playbackHistoryRef.current.length > 50) {
+          playbackHistoryRef.current.shift();
+        }
+        if (!options.fromForwardHistory) {
+          forwardHistoryRef.current = [];
+        }
+      }
+    }
+
     // Ensure we have fresh gain_db immediately BEFORE starting playback
     let resolvedTrack = track;
     if (track?.id && (track.gain_db === undefined || track.gain_db === null)) {
@@ -1500,7 +1557,14 @@ export const PlayerProvider = ({ children }) => {
     applyLoudnessGain(resolvedTrack, volume);
 
     if (newQueue) {
-      if (options.isSearchPlay) {
+      if (options.isHistoryNavigation || options.fromForwardHistory) {
+        // Restoring queue context from history: preserve order strictly
+        setQueue(newQueue);
+        const targetIdx = typeof options.queueIndexOverride === 'number'
+          ? options.queueIndexOverride
+          : newQueue.findIndex((t) => t.id === track.id);
+        setQueueIndex(targetIdx !== -1 ? targetIdx : 0);
+      } else if (options.isSearchPlay) {
         // Search Play: set the selected track as current and immediately append Spotify Radio recommendations!
         setQueue([track]);
         setQueueIndex(0);
@@ -1518,10 +1582,12 @@ export const PlayerProvider = ({ children }) => {
         setQueueIndex(0);
       } else {
         setQueue(newQueue);
-        const idx = newQueue.findIndex((t) => t.id === track.id);
+        const idx = typeof options.queueIndexOverride === 'number'
+          ? options.queueIndexOverride
+          : newQueue.findIndex((t) => t.id === track.id);
         setQueueIndex(idx !== -1 ? idx : 0);
       }
-    } else if (autoplaySimilar) {
+    } else if (autoplaySimilar && !options.isHistoryNavigation && !options.fromForwardHistory) {
       // Standalone play (e.g. from recommendation card or single track)
       setQueue([track]);
       setQueueIndex(0);
@@ -1546,11 +1612,18 @@ export const PlayerProvider = ({ children }) => {
     currentTimeRef.current = 0;
     lastSavedTimeRef.current = 0;
     const activeQueue = newQueue || queue;
-    const activeIdx = newQueue ? (isShuffle ? 0 : newQueue.findIndex((t) => t.id === resolvedTrack.id)) : queueIndex;
+    const activeIdx = typeof options.queueIndexOverride === 'number'
+      ? options.queueIndexOverride
+      : (newQueue
+        ? (isShuffle && !options.preserveOrder && !options.isHistoryNavigation && !options.fromForwardHistory
+          ? 0
+          : newQueue.findIndex((t) => t.id === resolvedTrack.id))
+        : queueIndex);
     persistState(resolvedTrack, 0, resolvedTrack.duration_seconds || 0, activeQueue, activeIdx !== -1 ? activeIdx : 0);
 
-    // Always use getTrackStreamUrl to ensure the latest server-side normalized stream (?norm=1) is played directly
+    // Stream URL resolution: check preloader blob first for instant 0ms switching
     const standardUrl = getTrackStreamUrl(resolvedTrack);
+    const preloadedBlob = audioPreloader.getPreloadedAudio(track.id);
 
     const wantKaraoke = options.karaoke !== undefined ? Boolean(options.karaoke) : isKaraokeMode;
     let stemInfo = karaokeStemStatus[track.id];
@@ -1572,7 +1645,7 @@ export const PlayerProvider = ({ children }) => {
       } else if (options.karaoke === false) {
         setIsKaraokeMode(false);
       }
-      audio.src = standardUrl;
+      audio.src = preloadedBlob || standardUrl;
     }
 
     initWebAudio();
@@ -1738,21 +1811,41 @@ export const PlayerProvider = ({ children }) => {
   };
 
   const nextTrack = () => {
+    // 1. Step forward in history if user previously navigated backward with Previous
+    if (forwardHistoryRef.current.length > 0) {
+      const forwardContext = forwardHistoryRef.current.pop();
+      if (forwardContext?.track) {
+        if (currentTrack?.id) {
+          audioPreloader.pinRecentTrack(currentTrack.id);
+          playbackHistoryRef.current.push({
+            track: currentTrack,
+            queue: queue,
+            queueIndex: queueIndex,
+          });
+        }
+        playTrack(forwardContext.track, forwardContext.queue, {
+          fromForwardHistory: true,
+          queueIndexOverride: forwardContext.queueIndex,
+          preserveOrder: true,
+        });
+        return;
+      }
+    }
+
     if (queue.length === 0) return;
 
     const nextIdx = queueIndex + 1;
     if (nextIdx < queue.length) {
-      setQueueIndex(nextIdx);
-      playTrack(queue[nextIdx]);
+      playTrack(queue[nextIdx], queue, {
+        queueIndexOverride: nextIdx,
+        preserveOrder: true,
+      });
     } else if (repeatMode === 'all') {
       if (isShuffle) {
         const reshuffled = shuffleArray(queue);
-        setQueue(reshuffled);
-        setQueueIndex(0);
-        playTrack(reshuffled[0]);
+        playTrack(reshuffled[0], reshuffled, { queueIndexOverride: 0 });
       } else {
-        setQueueIndex(0);
-        playTrack(queue[0]);
+        playTrack(queue[0], queue, { queueIndexOverride: 0, preserveOrder: true });
       }
     } else if (autoplaySimilar && currentTrack?.id) {
       // Smart Autoplay: Fetch & append similar niche tracks instead of stopping!
@@ -1760,10 +1853,12 @@ export const PlayerProvider = ({ children }) => {
         const freshRecs = data?.tracks || recommendedTracks;
         if (freshRecs && freshRecs.length > 0) {
           const firstRec = freshRecs[0];
-          const restRecs = freshRecs.slice(1);
           setQueue((prevQ) => [...prevQ, ...freshRecs]);
           setQueueIndex((prevIdx) => prevIdx + 1);
-          playTrack(firstRec);
+          playTrack(firstRec, [...queue, ...freshRecs], {
+            queueIndexOverride: queue.length,
+            preserveOrder: true,
+          });
         } else {
           setIsPlaying(false);
         }
@@ -1777,18 +1872,61 @@ export const PlayerProvider = ({ children }) => {
 
   const prevTrack = () => {
     const audio = audioRef.current;
-    if (audio.currentTime > 3) {
+    // 1. Spotify standard: If song has played for > 3.0 seconds, restart to 0:00
+    if (audio && audio.currentTime > 3.0) {
       audio.currentTime = 0;
+      currentTimeRef.current = 0;
+      setCurrentTime(0);
+      initialSeekTimeRef.current = 0;
       return;
     }
 
-    if (queue.length === 0) return;
-    const prevIdx = queueIndex - 1;
-    if (prevIdx >= 0) {
-      setQueueIndex(prevIdx);
-      playTrack(queue[prevIdx]);
-    } else {
+    // 2. Cross-Playlist & Playback History Stack
+    if (playbackHistoryRef.current.length > 0) {
+      const prevContext = playbackHistoryRef.current.pop();
+      if (prevContext?.track) {
+        if (currentTrack?.id) {
+          audioPreloader.pinRecentTrack(currentTrack.id);
+          forwardHistoryRef.current.push({
+            track: currentTrack,
+            queue: queue,
+            queueIndex: queueIndex,
+          });
+        }
+        playTrack(prevContext.track, prevContext.queue, {
+          isHistoryNavigation: true,
+          queueIndexOverride: prevContext.queueIndex,
+          preserveOrder: true,
+        });
+        return;
+      }
+    }
+
+    // 3. Fallback within current active queue if history stack is empty
+    if (queue.length > 0 && queueIndex > 0) {
+      const prevIdx = queueIndex - 1;
+      if (currentTrack?.id) {
+        audioPreloader.pinRecentTrack(currentTrack.id);
+        forwardHistoryRef.current.push({
+          track: currentTrack,
+          queue: queue,
+          queueIndex: queueIndex,
+        });
+      }
+      playTrack(queue[prevIdx], queue, {
+        isHistoryNavigation: true,
+        queueIndexOverride: prevIdx,
+        preserveOrder: true,
+      });
+      return;
+    }
+
+    // 4. At the very beginning: restart track at 0:00
+    if (audio) {
       audio.currentTime = 0;
+      currentTimeRef.current = 0;
+      setCurrentTime(0);
+      initialSeekTimeRef.current = 0;
     }
   };
 
