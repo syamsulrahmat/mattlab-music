@@ -85,6 +85,7 @@ export const PlayerProvider = ({ children }) => {
   const lastSavedTimeRef = useRef(0);
   const debouncePrefSaveRef = useRef(null);
   const scrobbledTrackIdRef = useRef(null);
+  const trackStartTimeRef = useRef(Date.now());
   const playbackHistoryRef = useRef(savedState?.history || []);
   const forwardHistoryRef = useRef([]);
 
@@ -888,7 +889,7 @@ export const PlayerProvider = ({ children }) => {
     // If turning ON and currentTrack lacks gain_db, fetch fresh metadata first
     if (val && activeTrack?.id && (activeTrack.gain_db === undefined || activeTrack.gain_db === null)) {
       try {
-        const res = await fetch(`/api/stream/tracks/${activeTrack.id}`);
+        const res = await fetch(`/api/tracks/${activeTrack.id}`);
         if (res.ok) {
           const fresh = await res.json();
           if (fresh && typeof fresh.gain_db === 'number') {
@@ -1403,9 +1404,9 @@ export const PlayerProvider = ({ children }) => {
       fetchKaraokeStatus(currentTrack.id);
 
       // If currentTrack is missing gain_db (e.g. from an older queue session or before scan completed),
-      // fetch its fresh loudness metadata from /api/stream/tracks/:id to apply normalization immediately!
+      // fetch its fresh loudness metadata from /api/tracks/:id to apply normalization immediately!
       if (currentTrack.gain_db === undefined || currentTrack.gain_db === null) {
-        fetch(`/api/stream/tracks/${currentTrack.id}`)
+        fetch(`/api/tracks/${currentTrack.id}`)
           .then((res) => (res.ok ? res.json() : null))
           .then((data) => {
             if (data && typeof data.gain_db === 'number') {
@@ -1538,18 +1539,20 @@ export const PlayerProvider = ({ children }) => {
       }
     }
 
-    // Ensure we have fresh gain_db immediately BEFORE starting playback
+    trackStartTimeRef.current = Date.now();
+
+    // Ensure we have fresh gain_db; fetch in background non-blockingly so audio playback begins immediately (0ms wait)
     let resolvedTrack = track;
     if (track?.id && (track.gain_db === undefined || track.gain_db === null)) {
-      try {
-        const res = await fetch(`/api/stream/tracks/${track.id}`);
-        if (res.ok) {
-          const fresh = await res.json();
+      fetch(`/api/tracks/${track.id}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((fresh) => {
           if (fresh && typeof fresh.gain_db === 'number') {
-            resolvedTrack = { ...track, gain_db: fresh.gain_db, lufs_i: fresh.lufs_i };
+            setCurrentTrack((prev) => (prev?.id === track.id ? { ...prev, gain_db: fresh.gain_db, lufs_i: fresh.lufs_i } : prev));
+            applyLoudnessGain({ ...track, gain_db: fresh.gain_db, lufs_i: fresh.lufs_i }, volume);
           }
-        }
-      } catch (_) {}
+        })
+        .catch(() => {});
     }
 
     const audio = audioRef.current;
@@ -1620,6 +1623,10 @@ export const PlayerProvider = ({ children }) => {
           : newQueue.findIndex((t) => t.id === resolvedTrack.id))
         : queueIndex);
     persistState(resolvedTrack, 0, resolvedTrack.duration_seconds || 0, activeQueue, activeIdx !== -1 ? activeIdx : 0);
+
+    try {
+      audio.currentTime = 0;
+    } catch (_) {}
 
     // Stream URL resolution: check preloader blob first for instant 0ms switching
     const standardUrl = getTrackStreamUrl(resolvedTrack);
@@ -1872,12 +1879,21 @@ export const PlayerProvider = ({ children }) => {
 
   const prevTrack = () => {
     const audio = audioRef.current;
-    // 1. Spotify standard: If song has played for > 3.0 seconds, restart to 0:00
-    if (audio && audio.currentTime > 3.0) {
-      audio.currentTime = 0;
+    const timeSinceStart = (Date.now() - (trackStartTimeRef.current || Date.now())) / 1000;
+    const currentAudioTime = (audio && typeof audio.currentTime === 'number' && !isNaN(audio.currentTime)) ? audio.currentTime : 0;
+
+    // 1. Spotify standard: If song has legitimately played for > 3.0 seconds, restart to 0:00
+    // Check BOTH audio.currentTime and elapsed wall-clock time so stale audio timestamps never block jumping back!
+    if (currentAudioTime > 3.0 && timeSinceStart > 3.0) {
+      if (audio) {
+        try {
+          audio.currentTime = 0;
+        } catch (_) {}
+      }
       currentTimeRef.current = 0;
       setCurrentTime(0);
       initialSeekTimeRef.current = 0;
+      trackStartTimeRef.current = Date.now();
       return;
     }
 
@@ -1893,6 +1909,7 @@ export const PlayerProvider = ({ children }) => {
             queueIndex: queueIndex,
           });
         }
+        trackStartTimeRef.current = Date.now();
         playTrack(prevContext.track, prevContext.queue, {
           isHistoryNavigation: true,
           queueIndexOverride: prevContext.queueIndex,
@@ -1913,6 +1930,7 @@ export const PlayerProvider = ({ children }) => {
           queueIndex: queueIndex,
         });
       }
+      trackStartTimeRef.current = Date.now();
       playTrack(queue[prevIdx], queue, {
         isHistoryNavigation: true,
         queueIndexOverride: prevIdx,
@@ -1923,10 +1941,13 @@ export const PlayerProvider = ({ children }) => {
 
     // 4. At the very beginning: restart track at 0:00
     if (audio) {
-      audio.currentTime = 0;
+      try {
+        audio.currentTime = 0;
+      } catch (_) {}
       currentTimeRef.current = 0;
       setCurrentTime(0);
       initialSeekTimeRef.current = 0;
+      trackStartTimeRef.current = Date.now();
     }
   };
 

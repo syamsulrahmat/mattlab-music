@@ -302,6 +302,7 @@ async def get_album_cover(album_id: int, request: Request, v: Optional[str] = No
     return Response(content=DEFAULT_SVG_COVER, media_type="image/svg+xml")
 
 @router.get("/tracks/{track_id}")
+@router.get("/stream/tracks/{track_id}")
 async def get_track_detail(track_id: int):
     """Get metadata for a single track."""
     with get_db() as conn:
