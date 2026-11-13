@@ -60,7 +60,7 @@ export function useSwipeGesture({
         x: touch.clientX,
         y: touch.clientY,
         time: Date.now(),
-        isEdge: touch.clientX <= 35,
+        isEdge: touch.clientX <= 40,
       };
       isTrackingRef.current = true;
     };
