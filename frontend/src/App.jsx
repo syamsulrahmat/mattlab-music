@@ -291,11 +291,17 @@ const MainAppContent = () => {
     setIsRequestMusicOpen(true);
   };
 
-  // History stack for Back/Forward navigation
+  // History stack for Back/Forward navigation synchronized with HTML5 History API
   const [history, setHistory] = useState([
-    { tab: 'home', albumId: null, artistId: null, playlistId: null, userId: null, searchQuery: '', isLyricsOpen: false }
+    { tab: 'home', albumId: null, artistId: null, playlistId: null, userId: null, searchQuery: '', isLyricsOpen: false, historyIndex: 0, mattlab: true }
   ]);
   const [historyIndex, setHistoryIndex] = useState(0);
+  const historyIndexRef = useRef(0);
+  useEffect(() => {
+    historyIndexRef.current = historyIndex;
+  }, [historyIndex]);
+  const isInsideDetailViewRef = useRef(false);
+  const isApplyingPopStateRef = useRef(false);
 
   // Context Menu State
   const [contextMenu, setContextMenu] = useState({
@@ -440,8 +446,28 @@ const MainAppContent = () => {
     }).catch(() => {});
   }, [currentTrack?.id, isPlaying, isAuthenticated]);
 
-  // Centralized Navigation Dispatcher
+  // Initial browser history anchor on mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const initialEntry = {
+      tab: 'home',
+      albumId: null,
+      artistId: null,
+      playlistId: null,
+      userId: null,
+      searchQuery: '',
+      isLyricsOpen: false,
+      historyIndex: 0,
+      mattlab: true,
+    };
+    try {
+      window.history.replaceState(initialEntry, '');
+    } catch (_) {}
+  }, []);
+
+  // Centralized Navigation Dispatcher synchronized with HTML5 History API
   const navigateTo = useCallback((nextState) => {
+    const nextIdx = historyIndex + 1;
     const fullState = {
       tab: nextState.tab || 'home',
       albumId: nextState.albumId !== undefined ? nextState.albumId : null,
@@ -450,13 +476,21 @@ const MainAppContent = () => {
       userId: nextState.userId !== undefined ? nextState.userId : null,
       searchQuery: nextState.searchQuery !== undefined ? nextState.searchQuery : '',
       isLyricsOpen: Boolean(nextState.isLyricsOpen),
+      historyIndex: nextIdx,
+      mattlab: true,
     };
 
     setHistory((prev) => {
       const truncated = prev.slice(0, historyIndex + 1);
       return [...truncated, fullState];
     });
-    setHistoryIndex((prev) => prev + 1);
+    setHistoryIndex(nextIdx);
+
+    if (typeof window !== 'undefined' && !isApplyingPopStateRef.current) {
+      try {
+        window.history.pushState(fullState, '');
+      } catch (_) {}
+    }
 
     setActiveTab(fullState.tab);
     setSelectedAlbumId(fullState.albumId);
@@ -468,44 +502,143 @@ const MainAppContent = () => {
   }, [historyIndex]);
 
   const applyHistoryState = useCallback((stateObj) => {
-    setActiveTab(stateObj.tab);
-    setSelectedAlbumId(stateObj.albumId);
-    setSelectedArtistId(stateObj.artistId);
-    setSelectedPlaylistId(stateObj.playlistId);
+    setActiveTab(stateObj.tab || 'home');
+    setSelectedAlbumId(stateObj.albumId !== undefined ? stateObj.albumId : null);
+    setSelectedArtistId(stateObj.artistId !== undefined ? stateObj.artistId : null);
+    setSelectedPlaylistId(stateObj.playlistId !== undefined ? stateObj.playlistId : null);
     setSelectedProfileUserId(stateObj.userId || null);
-    setSearchQuery(stateObj.searchQuery);
-    setIsLyricsOpen(stateObj.isLyricsOpen);
+    setSearchQuery(stateObj.searchQuery || '');
+    setIsLyricsOpen(Boolean(stateObj.isLyricsOpen));
   }, []);
-
-  const canGoBack = historyIndex > 0;
-  const canGoForward = historyIndex < history.length - 1;
-
-  const handleGoBack = useCallback(() => {
-    if (historyIndex > 0) {
-      const nextIdx = historyIndex - 1;
-      setHistoryIndex(nextIdx);
-      applyHistoryState(history[nextIdx]);
-    }
-  }, [historyIndex, history, applyHistoryState]);
-
-  const handleGoForward = useCallback(() => {
-    if (historyIndex < history.length - 1) {
-      const nextIdx = historyIndex + 1;
-      setHistoryIndex(nextIdx);
-      applyHistoryState(history[nextIdx]);
-    }
-  }, [historyIndex, history, applyHistoryState]);
 
   const handleGoHome = useCallback(() => {
     setIsLyricsOpen(false);
     navigateTo({ tab: 'home', isLyricsOpen: false });
   }, [navigateTo]);
 
+  const canGoBack = historyIndex > 0;
+  const canGoForward = historyIndex < history.length - 1;
+
+  const handleGoBack = useCallback(() => {
+    if (typeof window !== 'undefined' && window.history.length > 1 && canGoBack) {
+      window.history.back();
+    } else if (historyIndex > 0) {
+      const nextIdx = historyIndex - 1;
+      setHistoryIndex(nextIdx);
+      applyHistoryState(history[nextIdx]);
+    } else if (isInsideDetailViewRef.current) {
+      handleGoHome();
+    }
+  }, [canGoBack, historyIndex, history, applyHistoryState, handleGoHome]);
+
+  const handleGoForward = useCallback(() => {
+    if (typeof window !== 'undefined' && canGoForward) {
+      window.history.forward();
+    } else if (historyIndex < history.length - 1) {
+      const nextIdx = historyIndex + 1;
+      setHistoryIndex(nextIdx);
+      applyHistoryState(history[nextIdx]);
+    }
+  }, [canGoForward, historyIndex, history, applyHistoryState]);
+
+  const handleSelectTab = useCallback((tab) => {
+    setIsLyricsOpen(false);
+    if (tab === 'playing') {
+      if (currentTrack) {
+        if (activeTab !== 'playing') {
+          previousTabBeforePlayingRef.current = activeTab;
+        }
+        setIsMobileNowPlayingOpen(true);
+      } else {
+        navigateTo({ tab: 'home', isLyricsOpen: false });
+        return;
+      }
+    } else {
+      previousTabBeforePlayingRef.current = tab;
+    }
+    navigateTo({ tab, isLyricsOpen: false });
+    if (tab === 'search') {
+      setTimeout(() => {
+        const mobileInput = document.getElementById('mobile-search-input');
+        const desktopInput = document.getElementById('global-search-input');
+        if (window.innerWidth < 640 && mobileInput) {
+          mobileInput.focus();
+        } else if (desktopInput) {
+          desktopInput.focus();
+          desktopInput.select();
+        }
+      }, 50);
+    }
+  }, [currentTrack, activeTab, navigateTo]);
+
+  // Synchronize browser history popstate (iOS Edge-Swipe, Android Back Gesture, Browser Back/Forward)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handlePopState = (e) => {
+      const state = e.state;
+      isApplyingPopStateRef.current = true;
+
+      if (state && state.mattlab) {
+        if (typeof state.historyIndex === 'number') {
+          setHistoryIndex(state.historyIndex);
+        }
+        applyHistoryState(state);
+      } else if (isInsideDetailViewRef.current) {
+        // User popped back to root or non-mattlab history state while inside a detail view
+        const rootState = {
+          tab: 'home',
+          albumId: null,
+          artistId: null,
+          playlistId: null,
+          userId: null,
+          searchQuery: '',
+          isLyricsOpen: false,
+          historyIndex: 0,
+          mattlab: true,
+        };
+        setHistoryIndex(0);
+        applyHistoryState(rootState);
+        try {
+          window.history.replaceState(rootState, '');
+        } catch (_) {}
+      }
+
+      setTimeout(() => {
+        isApplyingPopStateRef.current = false;
+      }, 50);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [applyHistoryState]);
+
   // Mobile One-Handed Gesture Navigation
   const MAIN_TABS = ['home', 'playing', 'search', 'library'];
   const isInsideDetailView = Boolean(
     selectedAlbumId || selectedArtistId || selectedPlaylistId || selectedProfileUserId
   );
+  useEffect(() => {
+    isInsideDetailViewRef.current = isInsideDetailView;
+  }, [isInsideDetailView]);
+
+  // Root Edge Guard: When user is at the root (historyIndex === 0 and !isInsideDetailView),
+  // prevent iOS Safari edge-swipe from navigating back to external sites/closing app.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleEdgeTouch = (e) => {
+      if (historyIndexRef.current === 0 && !isInsideDetailViewRef.current) {
+        if (e.touches && e.touches.length === 1 && e.touches[0].clientX <= 20) {
+          e.preventDefault();
+        }
+      }
+    };
+
+    window.addEventListener('touchstart', handleEdgeTouch, { passive: false });
+    return () => window.removeEventListener('touchstart', handleEdgeTouch);
+  }, []);
+
   const currentTabIndex = MAIN_TABS.indexOf(activeTab);
 
   const handleSwipeLeft = useCallback(() => {
@@ -514,15 +647,11 @@ const MainAppContent = () => {
     if (currentIndex !== -1 && currentIndex < MAIN_TABS.length - 1) {
       handleSelectTab(MAIN_TABS[currentIndex + 1]);
     }
-  }, [isInsideDetailView, isLyricsOpen, activeTab]);
+  }, [isInsideDetailView, isLyricsOpen, activeTab, handleSelectTab]);
 
   const handleSwipeRight = useCallback(() => {
     if (isInsideDetailView) {
-      if (canGoBack) {
-        handleGoBack();
-      } else {
-        handleGoHome();
-      }
+      handleGoBack();
       return;
     }
     if (isLyricsOpen) return;
@@ -530,7 +659,7 @@ const MainAppContent = () => {
     if (currentIndex > 0) {
       handleSelectTab(MAIN_TABS[currentIndex - 1]);
     }
-  }, [isInsideDetailView, isLyricsOpen, canGoBack, handleGoBack, handleGoHome, activeTab]);
+  }, [isInsideDetailView, isLyricsOpen, handleGoBack, activeTab, handleSelectTab]);
 
   const { dragOffset: mobileSwipeOffset, isDragging: isMobileSwiping } = useSwipeGesture({
     onSwipeLeft: handleSwipeLeft,
@@ -940,36 +1069,6 @@ const MainAppContent = () => {
   const handleSelectUser = (userId) => {
     setIsLyricsOpen(false);
     navigateTo({ tab: 'user-profile', userId, isLyricsOpen: false });
-  };
-
-  const handleSelectTab = (tab) => {
-    setIsLyricsOpen(false);
-    if (tab === 'playing') {
-      if (currentTrack) {
-        if (activeTab !== 'playing') {
-          previousTabBeforePlayingRef.current = activeTab;
-        }
-        setIsMobileNowPlayingOpen(true);
-      } else {
-        navigateTo({ tab: 'home', isLyricsOpen: false });
-        return;
-      }
-    } else {
-      previousTabBeforePlayingRef.current = tab;
-    }
-    navigateTo({ tab, isLyricsOpen: false });
-    if (tab === 'search') {
-      setTimeout(() => {
-        const mobileInput = document.getElementById('mobile-search-input');
-        const desktopInput = document.getElementById('global-search-input');
-        if (window.innerWidth < 640 && mobileInput) {
-          mobileInput.focus();
-        } else if (desktopInput) {
-          desktopInput.focus();
-          desktopInput.select();
-        }
-      }, 50);
-    }
   };
 
   const handleToggleLyrics = (open) => {
