@@ -94,12 +94,20 @@ export const PlayerProvider = ({ children }) => {
   const isCrossfadingRef = useRef(false);
   const crossfadeTimerRef = useRef(null);
 
-  // Web Audio API DSP graph (GainNode + DynamicsCompressor / Limiter)
-  // Ensures volume and gain staging work across iOS Safari, iPadOS, Android, and desktop!
-  const audioContextRef = useRef(null);
-  const gainNodeRef = useRef(null);
-  const audioSourceNodeRef = useRef(null);
-  const standbySourceNodeRef = useRef(null);
+  // Set iOS WebKit AudioSession category to 'playback'
+  // Ensures iOS Safari and PWA treat MattLab Music as a background media player
+  // and keep playback active when the screen locks or display turns off.
+  const ensureAudioSessionPlayback = useCallback(() => {
+    if (typeof navigator !== 'undefined' && 'audioSession' in navigator) {
+      try {
+        navigator.audioSession.type = 'playback';
+      } catch (_) {}
+    }
+  }, []);
+
+  useEffect(() => {
+    ensureAudioSessionPlayback();
+  }, [ensureAudioSessionPlayback]);
 
   if (!audioRef.current) {
     const a = new Audio();
@@ -112,51 +120,11 @@ export const PlayerProvider = ({ children }) => {
     standbyAudioRef.current = b;
   }
 
-  const initWebAudio = useCallback(() => {
-    if (audioContextRef.current) {
-      if (audioContextRef.current.state === 'suspended') {
-        audioContextRef.current.resume().catch(() => {});
-      }
-      return audioContextRef.current;
-    }
-    try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtx) return null;
-      const ctx = new AudioCtx();
-      const gainNode = ctx.createGain();
-
-      // NOTE: DynamicsCompressor intentionally removed.
-      // The server already applies EBU R128 loudnorm (I=-14 LUFS, TP=-1.0 dBFS).
-      // A second brick-wall limiter (ratio=20:1, threshold=-0.5 dBFS) in the browser
-      // was selectively compressing dense/mastered tracks (low LRA) far more than
-      // dynamic tracks (high LRA), undoing server-side normalization entirely.
-      gainNode.connect(ctx.destination);
-
-      if (audioRef.current && !audioSourceNodeRef.current) {
-        try {
-          const srcA = ctx.createMediaElementSource(audioRef.current);
-          srcA.connect(gainNode);
-          audioSourceNodeRef.current = srcA;
-        } catch (_) {}
-      }
-      if (standbyAudioRef.current && !standbySourceNodeRef.current) {
-        try {
-          const srcB = ctx.createMediaElementSource(standbyAudioRef.current);
-          srcB.connect(gainNode);
-          standbySourceNodeRef.current = srcB;
-        } catch (_) {}
-      }
-
-      audioContextRef.current = ctx;
-      gainNodeRef.current = gainNode;
-      return ctx;
-    } catch (e) {
-      console.warn('[WebAudio] Initialization notice:', e);
-      return null;
-    }
-  }, []);
-
   const [currentTrack, setCurrentTrack] = useState(() => savedState?.track || null);
+  const currentTrackRef = useRef(currentTrack);
+  useEffect(() => {
+    currentTrackRef.current = currentTrack;
+  }, [currentTrack]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasStartedPlayback, setHasStartedPlayback] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
@@ -191,7 +159,7 @@ export const PlayerProvider = ({ children }) => {
     }
   });
 
-    const getTrackStreamUrl = useCallback((track, qualityOverride = null, normOverride = null) => {
+  const getTrackStreamUrl = useCallback((track, qualityOverride = null, normOverride = null) => {
     if (!track?.id) return "";
     const q = qualityOverride || audioQuality;
     const isNorm = normOverride !== null ? Boolean(normOverride) : audioNormalization;
@@ -212,26 +180,17 @@ export const PlayerProvider = ({ children }) => {
     return `${base}${separator}${params.join("&")}`;
   }, [audioQuality, audioNormalization]);
 
-  // Clean volume staging across Web Audio GainNode (iOS/iPadOS) and HTML5 Audio.
+  // Clean volume staging across HTML5 Audio.
   // Note: Stream audio is already normalized server-side to -14.0 LUFS via EBU R128 loudnorm when norm=1.
   const applyLoudnessGain = useCallback((track = currentTrack, targetVol = volume) => {
     const baseVol = isMuted ? 0 : targetVol;
-
-    // 1. Web Audio GainNode (iOS Safari WebKit respects GainNode for system audio staging)
-    if (gainNodeRef.current && audioContextRef.current) {
-      try {
-        gainNodeRef.current.gain.setTargetAtTime(baseVol, audioContextRef.current.currentTime, 0.02);
-      } catch (_) {}
-    }
-
-    // 2. HTML5 audio.volume
     const audio = audioRef.current;
     if (audio && !isCrossfadingRef.current) {
       try {
         audio.volume = baseVol;
       } catch (_) {}
     }
-  }, [isMuted, volume, currentTrack]);
+  }, [isMuted, volume]);
 
   const getEffectiveVolume = useCallback((baseVol) => {
     if (isMuted) return 0;
@@ -1222,11 +1181,17 @@ export const PlayerProvider = ({ children }) => {
 
     const handlePlay = (e) => {
       if (e.target !== audioRef.current) return;
+      if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = 'playing';
+      }
       setIsPlaying(true);
     };
 
     const handlePause = (e) => {
       if (e.target !== audioRef.current || isCrossfadingRef.current) return;
+      if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = 'paused';
+      }
       setIsPlaying(false);
       setIsBuffering(false);
       if (currentTrack) {
@@ -1366,7 +1331,7 @@ export const PlayerProvider = ({ children }) => {
     }
   }, [currentTrack?.id, karaokeStemStatus, isKaraokeMode]);
 
-  // Update Media Session API for iOS / OS lock screen & PiP controls
+  // Update Media Session Metadata for iOS lock screen, Apple Watch & PiP
   useEffect(() => {
     if ('mediaSession' in navigator && window.MediaMetadata && currentTrack) {
       try {
@@ -1388,24 +1353,8 @@ export const PlayerProvider = ({ children }) => {
       } catch (err) {
         console.warn('[MEDIASESSION] Failed to set metadata:', err);
       }
-
-      try {
-        navigator.mediaSession.setActionHandler('play', () => togglePlay());
-        navigator.mediaSession.setActionHandler('pause', () => togglePlay());
-        navigator.mediaSession.setActionHandler('previoustrack', () => prevTrack());
-        navigator.mediaSession.setActionHandler('nexttrack', () => nextTrack());
-        navigator.mediaSession.setActionHandler('seekto', (details) => {
-          if (details.seekTime !== undefined) seek(details.seekTime);
-        });
-        navigator.mediaSession.setActionHandler('seekbackward', (details) => {
-          seek(Math.max(0, currentTime - (details.seekOffset || 10)));
-        });
-        navigator.mediaSession.setActionHandler('seekforward', (details) => {
-          seek(Math.min(duration || 100, currentTime + (details.seekOffset || 10)));
-        });
-      } catch (_) {}
     }
-  }, [currentTrack, currentTime, duration]);
+  }, [currentTrack]);
 
   // Sync Media Session Playback State (enables OS play/pause toggle icons)
   useEffect(() => {
@@ -1428,6 +1377,10 @@ export const PlayerProvider = ({ children }) => {
   }, [currentTime, duration]);
 
   const playTrack = async (track, newQueue = null, options = {}) => {
+    ensureAudioSessionPlayback();
+    if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = 'playing';
+    }
     setHasStartedPlayback(true);
     // Cancel any in-flight crossfade and reset standby audio
     if (crossfadeTimerRef.current) {
@@ -1578,7 +1531,6 @@ export const PlayerProvider = ({ children }) => {
       audio.src = preloadedBlob || standardUrl;
     }
 
-    initWebAudio();
     audio.play().catch((err) => {
       console.warn('Autoplay prevented:', err);
       setIsBuffering(false);
@@ -1631,82 +1583,121 @@ export const PlayerProvider = ({ children }) => {
     }
   };
 
-  const togglePlay = () => {
+  const pauseTrack = useCallback(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      try { audio.pause(); } catch (_) {}
+    }
+    if (isCrossfadingRef.current && standbyAudioRef.current) {
+      try { standbyAudioRef.current.pause(); } catch (_) {}
+    }
+    if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = 'paused';
+    }
+    setIsPlaying(false);
+    setIsBuffering(false);
+  }, []);
+
+  const resumeTrack = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    if (!currentTrack) {
+    if (!currentTrackRef.current) {
       if (queue.length > 0) {
         playTrack(queue[0]);
       }
       return;
     }
 
-    // Determine playback state directly from the authoritative audio element
-    const isCurrentlyPlaying = !audio.paused;
-
-    if (!isCurrentlyPlaying) {
-      setHasStartedPlayback(true);
+    setHasStartedPlayback(true);
+    ensureAudioSessionPlayback();
+    if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = 'playing';
     }
 
-    if (isCurrentlyPlaying) {
-      audio.pause();
-      setIsPlaying(false);
-      setIsBuffering(false);
-      if (isCrossfadingRef.current && standbyAudioRef.current) {
-        standbyAudioRef.current.pause();
-      }
-    } else {
-      if (!audio.src || audio.src === '' || audio.src === window.location.href) {
-        const preloadedAudio = audioPreloader.getPreloadedAudio(currentTrack.id);
-        const standardUrl = preloadedAudio || getTrackStreamUrl(currentTrack);
-        audio.src = standardUrl;
-      }
+    if (!audio.src || audio.src === '' || audio.src === window.location.href) {
+      const preloadedAudio = audioPreloader.getPreloadedAudio(currentTrackRef.current.id);
+      const standardUrl = preloadedAudio || getTrackStreamUrl(currentTrackRef.current);
+      audio.src = standardUrl;
+    }
 
-      // If at or within 1.5s of the end of the song, restart cleanly from 0:00
-      const trackDur = audio.duration || duration || 0;
-      const targetTime = initialSeekTimeRef.current || currentTimeRef.current || currentTime || 0;
-      if (trackDur > 5 && (audio.currentTime >= trackDur - 1.5 || targetTime >= trackDur - 1.5)) {
-        try {
-          audio.currentTime = 0;
-        } catch (_) {}
-        currentTimeRef.current = 0;
-        setCurrentTime(0);
-        initialSeekTimeRef.current = 0;
-      } else if (targetTime > 0) {
-        // Attempt immediate seek if ready
-        try {
-          audio.currentTime = targetTime;
-        } catch (_) {}
+    // If at or within 1.5s of the end of the song, restart cleanly from 0:00
+    const trackDur = audio.duration || duration || 0;
+    const targetTime = initialSeekTimeRef.current || currentTimeRef.current || currentTime || 0;
+    if (trackDur > 5 && (audio.currentTime >= trackDur - 1.5 || targetTime >= trackDur - 1.5)) {
+      try {
+        audio.currentTime = 0;
+      } catch (_) {}
+      currentTimeRef.current = 0;
+      setCurrentTime(0);
+      initialSeekTimeRef.current = 0;
+    } else if (targetTime > 0) {
+      try {
+        audio.currentTime = targetTime;
+      } catch (_) {}
 
-        // In addition, if audio element is still loading metadata/data, guarantee seek triggers once ready
-        if (audio.readyState < 1) {
-          const applySeekOnReady = () => {
-            if (initialSeekTimeRef.current > 0 || currentTimeRef.current > 0) {
-              try {
-                audio.currentTime = targetTime;
-              } catch (_) {}
+      if (audio.readyState < 1) {
+        const applySeekOnReady = () => {
+          if (initialSeekTimeRef.current > 0 || currentTimeRef.current > 0) {
+            try { audio.currentTime = targetTime; } catch (_) {}
+          }
+        };
+        audio.addEventListener('loadedmetadata', applySeekOnReady, { once: true });
+        audio.addEventListener('canplay', applySeekOnReady, { once: true });
+      }
+    }
+
+    if (audio.readyState < 3) {
+      setIsBuffering(true);
+    }
+    setIsPlaying(true);
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(async (err) => {
+        console.warn('[Player] Direct play failed, attempting reconnect:', err);
+        const curTime = audio.currentTime || currentTimeRef.current || 0;
+        if (currentTrackRef.current) {
+          audio.src = getTrackStreamUrl(currentTrackRef.current);
+          try { audio.currentTime = curTime; } catch (_) {}
+          try {
+            await audio.play();
+            setIsPlaying(true);
+          } catch (e2) {
+            console.warn('[Player] Reload play also failed:', e2);
+            setIsBuffering(false);
+            setIsPlaying(false);
+            if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+              navigator.mediaSession.playbackState = 'paused';
             }
-          };
-          audio.addEventListener('loadedmetadata', applySeekOnReady, { once: true });
-          audio.addEventListener('canplay', applySeekOnReady, { once: true });
+          }
+        } else {
+          setIsBuffering(false);
+          setIsPlaying(false);
         }
-      }
-
-      if (audio.readyState < 3) {
-        setIsBuffering(true);
-      }
-      setIsPlaying(true);
-      audio.play().catch((err) => {
-        console.warn('Play prevented:', err);
-        setIsBuffering(false);
-        setIsPlaying(false);
       });
-      if (isCrossfadingRef.current && standbyAudioRef.current) {
-        standbyAudioRef.current.play().catch(() => {});
-      }
     }
-  };
+    if (isCrossfadingRef.current && standbyAudioRef.current) {
+      standbyAudioRef.current.play().catch(() => {});
+    }
+  }, [ensureAudioSessionPlayback, getTrackStreamUrl, queue, duration, currentTime]);
+
+  const togglePlay = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (!currentTrackRef.current) {
+      if (queue.length > 0) {
+        playTrack(queue[0]);
+      }
+      return;
+    }
+
+    if (!audio.paused) {
+      pauseTrack();
+    } else {
+      resumeTrack();
+    }
+  }, [pauseTrack, resumeTrack, queue]);
 
   const seek = (time) => {
     const audio = audioRef.current;
@@ -2024,10 +2015,56 @@ export const PlayerProvider = ({ children }) => {
   }, [currentTrack, isPlaying, currentTime, duration, currentLyricLine, upcomingLyricLine, lyricsState?.notFound]);
 
   // Keep latest callbacks in ref to ensure IPC handlers never execute stale closures
-  const actionsRef = useRef({ togglePlay, nextTrack, prevTrack });
+  const actionsRef = useRef({ togglePlay, pauseTrack, resumeTrack, nextTrack, prevTrack, seek });
   useEffect(() => {
-    actionsRef.current = { togglePlay, nextTrack, prevTrack };
-  }, [togglePlay, nextTrack, prevTrack]);
+    actionsRef.current = { togglePlay, pauseTrack, resumeTrack, nextTrack, prevTrack, seek };
+  }, [togglePlay, pauseTrack, resumeTrack, nextTrack, prevTrack, seek]);
+
+  // Register MediaSession action handlers (for iOS Lock Screen, AirPods, Android Auto & Apple Watch)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
+
+    try {
+      navigator.mediaSession.setActionHandler('play', () => {
+        actionsRef.current.resumeTrack();
+      });
+      navigator.mediaSession.setActionHandler('pause', () => {
+        actionsRef.current.pauseTrack();
+      });
+      navigator.mediaSession.setActionHandler('previoustrack', () => {
+        actionsRef.current.prevTrack();
+      });
+      navigator.mediaSession.setActionHandler('nexttrack', () => {
+        actionsRef.current.nextTrack();
+      });
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (details.seekTime !== undefined) {
+          actionsRef.current.seek(details.seekTime);
+        }
+      });
+      navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+        const cur = audioRef.current?.currentTime || currentTimeRef.current || 0;
+        actionsRef.current.seek(Math.max(0, cur - (details.seekOffset || 10)));
+      });
+      navigator.mediaSession.setActionHandler('seekforward', (details) => {
+        const cur = audioRef.current?.currentTime || currentTimeRef.current || 0;
+        const dur = audioRef.current?.duration || 100;
+        actionsRef.current.seek(Math.min(dur, cur + (details.seekOffset || 10)));
+      });
+    } catch (_) {}
+
+    return () => {
+      try {
+        navigator.mediaSession.setActionHandler('play', null);
+        navigator.mediaSession.setActionHandler('pause', null);
+        navigator.mediaSession.setActionHandler('previoustrack', null);
+        navigator.mediaSession.setActionHandler('nexttrack', null);
+        navigator.mediaSession.setActionHandler('seekto', null);
+        navigator.mediaSession.setActionHandler('seekbackward', null);
+        navigator.mediaSession.setActionHandler('seekforward', null);
+      } catch (_) {}
+    };
+  }, []);
 
   // Listen for global OS media shortcuts & actions forwarded from Electron desktop shell
   useEffect(() => {
