@@ -2163,25 +2163,18 @@ export const PlayerProvider = ({ children }) => {
     // 3. Document Picture-in-Picture window (Spotify-grade interactive popup)
     if ('documentPictureInPicture' in window) {
       try {
-        const savedMode = localStorage.getItem('mini_player_size_mode') || 'lyrics-small';
-        let width = 360;
-        let height = 140;
-        if (savedMode === 'micro') {
-          width = 185;
-          height = 65;
-        } else if (savedMode === 'compact') {
-          width = 330;
-          height = 105;
-        } else if (savedMode === 'expanded') {
-          width = 340;
-          height = 150;
-        } else if (savedMode === 'lyrics' || savedMode === 'lyrics-full') {
-          width = 380;
-          height = 440;
-        } else if (savedMode === 'lyrics-small') {
-          width = 360;
-          height = 140;
-        }
+        let width = 340;
+        let height = 110;
+        try {
+          const savedDims = localStorage.getItem('mini_player_dimensions');
+          if (savedDims) {
+            const parsed = JSON.parse(savedDims);
+            if (parsed.width && parsed.height) {
+              width = Math.max(200, Math.min(800, parsed.width));
+              height = Math.max(55, Math.min(800, parsed.height));
+            }
+          }
+        } catch (_) {}
 
         const pip = await window.documentPictureInPicture.requestWindow({
           width,
@@ -2219,6 +2212,9 @@ export const PlayerProvider = ({ children }) => {
         });
 
         pip.document.title = 'MattLab Music';
+        // Mirror theme accent classes and CSS variables to PiP window document
+        pip.document.documentElement.className = document.documentElement.className;
+        pip.document.documentElement.style.cssText = document.documentElement.style.cssText;
         pip.document.documentElement.style.width = '100%';
         pip.document.documentElement.style.height = '100%';
         pip.document.body.style.width = '100%';
@@ -2231,7 +2227,20 @@ export const PlayerProvider = ({ children }) => {
         pip.document.body.style.userSelect = 'none';
         pip.document.body.style.fontFamily = 'system-ui, -apple-system, sans-serif';
 
+        // Setup MutationObserver to mirror live theme accent updates to PiP window
+        const themeObserver = new MutationObserver(() => {
+          try {
+            pip.document.documentElement.className = document.documentElement.className;
+            const currentCssText = document.documentElement.style.cssText;
+            pip.document.documentElement.style.cssText = currentCssText;
+            pip.document.documentElement.style.width = '100%';
+            pip.document.documentElement.style.height = '100%';
+          } catch (_) {}
+        });
+        themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['style', 'class'] });
+
         pip.addEventListener('pagehide', () => {
+          themeObserver.disconnect();
           setPipWindow(null);
         });
 

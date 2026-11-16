@@ -41,8 +41,14 @@
         window.onerror = function(msg, url, line, col, err) {
           var strMsg = String(msg || '');
           var strUrl = String(url || '');
-          // Ignore external browser extensions, Safari share sheet internals, and cross-origin script error noise
-          if (strMsg === 'Script error.' || (!strUrl && line === 0 && col === 0) || strUrl.indexOf('safari-extension') !== -1 || strUrl.indexOf('webkit-masked-url') !== -1) {
+          // Ignore external browser extensions, Safari share sheet internals, benign ResizeObserver loop notices, and cross-origin script error noise
+          if (
+            strMsg === 'Script error.' ||
+            strMsg.indexOf('ResizeObserver loop') !== -1 ||
+            (!strUrl && line === 0 && col === 0) ||
+            strUrl.indexOf('safari-extension') !== -1 ||
+            strUrl.indexOf('webkit-masked-url') !== -1
+          ) {
             return;
           }
           displayError('WINDOW ERROR', msg + ' (at ' + url + ':' + line + ':' + col + ')', err ? err.stack : '');
@@ -74,8 +80,8 @@
     <!-- Preload Core Typography (Circular Std) -->
     <link rel="preload" href="/fonts/circular/CircularStd-Book.woff" as="font" type="font/woff" crossorigin />
     <link rel="preload" href="/fonts/circular/CircularStd-Bold.woff" as="font" type="font/woff" crossorigin />
-    <script type="module" crossorigin src="/assets/index-G8YilRyo.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-CerK3OZ5.css">
+    <script type="module" crossorigin src="/assets/index-Cs54LOI9.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-SzPDxvbu.css">
   </head>
   <body class="bg-black text-white overflow-hidden select-none">
     <div id="root"></div>
