@@ -78,6 +78,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
   const lineRefs = useRef([]);
   const [isUserScrolled, setIsUserScrolled] = useState(false);
   const userScrollTimeoutRef = useRef(null);
+  const scrollAnimationRef = useRef(null);
 
   // Hover HUD visibility & auto-fade timer
   const [isHovered, setIsHovered] = useState(false);
@@ -176,27 +177,71 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
     }
   }, [isOpen, pipWindow]);
 
-  // Reset user manual scroll flag on track change
+  // Reset user manual scroll flag and cancel running scroll animation on track change
   useEffect(() => {
     setIsUserScrolled(false);
+    if (scrollAnimationRef.current) {
+      cancelAnimationFrame(scrollAnimationRef.current);
+      scrollAnimationRef.current = null;
+    }
   }, [currentTrack?.id]);
 
-  // Smooth continuous auto-scroll pinning the active lyric cleanly to the top
+  // Cinematic ease-out cubic curve (t: 0 -> 1)
+  const easeOutCubic = useCallback((t) => 1 - Math.pow(1 - t, 3), []);
+
+  // Smooth cinematic auto-scroll pinning the active lyric cleanly to the top
   useEffect(() => {
     if (isUserScrolled) return;
     const container = lyricsContainerRef.current;
     const activeEl = lineRefs.current[activeLyricIndex];
-    if (container && activeEl) {
-      const topPadding = dimensions.height < 100 ? 4 : 8;
-      const targetScroll = activeEl.offsetTop - topPadding;
-      container.scrollTo({
-        top: Math.max(0, targetScroll),
-        behavior: 'smooth',
-      });
+    if (!container || !activeEl) return;
+
+    const topPadding = dimensions.height < 100 ? 4 : 8;
+    const targetScroll = Math.max(0, activeEl.offsetTop - topPadding);
+    const startScroll = container.scrollTop;
+    const delta = targetScroll - startScroll;
+
+    // If already at target or delta is negligible, no animation needed
+    if (Math.abs(delta) < 1) return;
+
+    // Cancel any running animation
+    if (scrollAnimationRef.current) {
+      cancelAnimationFrame(scrollAnimationRef.current);
+      scrollAnimationRef.current = null;
     }
-  }, [activeLyricIndex, isUserScrolled, dimensions.height, dimensions.width]);
+
+    const duration = 520; // 520ms buttery smooth glide
+    const startTime = performance.now();
+
+    const animateScroll = (now) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      const easedProgress = easeOutCubic(progress);
+
+      container.scrollTop = startScroll + delta * easedProgress;
+
+      if (progress < 1) {
+        scrollAnimationRef.current = requestAnimationFrame(animateScroll);
+      } else {
+        scrollAnimationRef.current = null;
+      }
+    };
+
+    scrollAnimationRef.current = requestAnimationFrame(animateScroll);
+
+    return () => {
+      if (scrollAnimationRef.current) {
+        cancelAnimationFrame(scrollAnimationRef.current);
+        scrollAnimationRef.current = null;
+      }
+    };
+  }, [activeLyricIndex, isUserScrolled, dimensions.height, dimensions.width, easeOutCubic]);
 
   const handleLyricsScroll = () => {
+    if (scrollAnimationRef.current) {
+      cancelAnimationFrame(scrollAnimationRef.current);
+      scrollAnimationRef.current = null;
+    }
     setIsUserScrolled(true);
     if (userScrollTimeoutRef.current) clearTimeout(userScrollTimeoutRef.current);
     userScrollTimeoutRef.current = setTimeout(() => {
@@ -267,15 +312,11 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
     const hRatio = Math.max(0.65, Math.min(1.4, currentH / 110));
     const scale = Math.min(wRatio, hRatio);
 
-    const activeFontSize = isTier1 
+    const lyricFontSize = isTier1 
       ? Math.max(11, Math.min(15, Math.round(12.5 * scale * 10) / 10)) 
       : isTier2
       ? Math.max(12, Math.min(17, Math.round(14 * scale * 10) / 10))
       : Math.max(13, Math.min(20, Math.round(16 * scale * 10) / 10));
-
-    const surroundingFontSize = isTier1 
-      ? Math.max(9.5, Math.min(12, Math.round(10.5 * scale * 10) / 10)) 
-      : Math.max(10, Math.min(14, Math.round(11.5 * scale * 10) / 10));
 
     // Extract lyric lines
     const parsed = lyricsState?.parsedLines || [];
@@ -361,16 +402,16 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                         setIsUserScrolled(false);
                       }}
                       style={{
-                        fontSize: `${isActive ? activeFontSize : surroundingFontSize}px`,
+                        fontSize: `${lyricFontSize}px`,
                         color: isActive ? 'var(--brand-primary)' : undefined,
                         textShadow: isActive ? '0 0 14px rgba(var(--brand-500, 34 197 94), 0.35)' : undefined,
                       }}
-                      className={`transition-all duration-300 cursor-pointer px-2.5 py-1 my-0.5 rounded-lg leading-snug whitespace-normal break-words text-wrap max-w-full text-center ${
+                      className={`transition-colors duration-300 cursor-pointer px-2.5 py-0.5 my-[1px] rounded-lg leading-snug whitespace-normal break-words text-wrap max-w-full text-center font-bold ${
                         isActive
-                          ? 'font-bold'
+                          ? ''
                           : isPast
-                          ? 'font-medium text-white/25 hover:text-white/60'
-                          : 'font-medium text-white/50 hover:text-white/85'
+                          ? 'text-white/20 hover:text-white/50'
+                          : 'text-white/45 hover:text-white/80'
                       }`}
                     >
                       {line.text}
@@ -383,7 +424,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
               </>
             ) : plainFallback ? (
               <div
-                style={{ fontSize: `${surroundingFontSize}px` }}
+                style={{ fontSize: `${lyricFontSize}px` }}
                 className="text-white/80 font-medium leading-relaxed whitespace-pre-line py-4 my-auto px-2"
               >
                 {plainFallback}
@@ -408,13 +449,13 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
         <div
           className={`absolute inset-0 z-30 transition-all duration-200 ${
             isHovered
-              ? 'opacity-100 pointer-events-auto scale-100 bg-black/85 backdrop-blur-md'
+              ? 'opacity-100 pointer-events-auto scale-100 backdrop-blur-md bg-black/25'
               : 'opacity-0 pointer-events-none scale-[0.99]'
           }`}
         >
           {/* TIER 1 HOVER (< 100px): Minimalist Single-Row Control Deck */}
           {isTier1 && (
-            <div className="relative w-full h-full flex items-center justify-between px-3 pb-1">
+            <div className="relative w-full h-full flex items-center justify-between px-3.5 pb-1">
               {/* Left: Liked Songs Heart */}
               <div className="flex items-center shrink-0">
                 {currentTrack && (
@@ -422,13 +463,13 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                     type="button"
                     onClick={handleToggleFavorite}
                     style={isFav ? { color: 'var(--brand-primary)' } : undefined}
-                    className={`p-1.5 rounded-full hover:bg-white/10 active:scale-95 transition shrink-0 ${
-                      isFav ? 'text-brand-500' : 'text-white/60 hover:text-white'
+                    className={`p-1.5 rounded-full hover:bg-white/10 active:scale-95 transition drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${
+                      isFav ? 'text-brand-500' : 'text-white/80 hover:text-white'
                     }`}
                     title={isFav ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
                   >
                     <Heart
-                      size={14}
+                      size={17}
                       style={isFav ? { fill: 'var(--brand-primary)', color: 'var(--brand-primary)' } : undefined}
                       className={isFav ? 'fill-brand-500 text-brand-500' : ''}
                     />
@@ -436,49 +477,49 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                 )}
               </div>
 
-              {/* Center: THE MUSIC CONTROLS (Centered & unclipped) */}
-              <div className="flex items-center justify-center gap-3 shrink-0">
+              {/* Center: THE MUSIC CONTROLS (Prev, Round Brand Color Play/Pause, Next) */}
+              <div className="flex items-center justify-center gap-4 shrink-0">
                 <button
                   type="button"
                   onClick={prevTrack}
-                  className="p-1.5 text-white/70 hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
+                  className="p-1.5 text-white/80 hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                   title="Previous track"
                 >
-                  <SkipBack size={14} />
+                  <SkipBack size={17} />
                 </button>
                 <button
                   type="button"
                   onClick={togglePlay}
                   style={{ backgroundColor: 'var(--brand-primary)' }}
-                  className="w-7 h-7 rounded-full bg-brand-500 text-black flex items-center justify-center hover:scale-105 active:scale-95 transition shadow-lg shrink-0"
+                  className="w-8 h-8 rounded-full bg-brand-500 text-black flex items-center justify-center hover:scale-105 active:scale-95 transition shadow-xl shrink-0"
                   title={isPlaying ? 'Pause' : 'Play'}
                 >
                   {isPlaying ? (
-                    <Pause size={13} className="fill-black" />
+                    <Pause size={14} className="fill-black" />
                   ) : (
-                    <Play size={13} className="fill-black ml-0.5" />
+                    <Play size={14} className="fill-black ml-0.5" />
                   )}
                 </button>
                 <button
                   type="button"
                   onClick={nextTrack}
-                  className="p-1.5 text-white/70 hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
+                  className="p-1.5 text-white/80 hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                   title="Next track"
                 >
-                  <SkipForward size={14} />
+                  <SkipForward size={17} />
                 </button>
               </div>
 
               {/* Right: Window Actions (PiP / Close) */}
-              <div className="flex items-center gap-0.5 shrink-0">
+              <div className="flex items-center gap-1 shrink-0">
                 {isPiP ? (
                   <button
                     type="button"
                     onClick={handleOpenWebApp}
-                    className="p-1.5 text-white/60 hover:text-brand-400 rounded-full hover:bg-white/10 transition shrink-0"
+                    className="p-1.5 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                     title="Back to tab"
                   >
-                    <ExternalLink size={13} />
+                    <ExternalLink size={17} />
                   </button>
                 ) : (
                   <>
@@ -486,19 +527,19 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                       <button
                         type="button"
                         onClick={togglePiP}
-                        className="p-1.5 text-white/60 hover:text-brand-400 rounded-full hover:bg-white/10 transition shrink-0"
+                        className="p-1.5 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                         title="Pop out Picture-in-Picture window"
                       >
-                        <PictureInPicture2 size={13} />
+                        <PictureInPicture2 size={16} />
                       </button>
                     )}
                     <button
                       type="button"
                       onClick={onClose}
-                      className="p-1.5 text-white/60 hover:text-white rounded-full hover:bg-white/10 transition shrink-0"
+                      className="p-1.5 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                       title="Close miniplayer"
                     >
-                      <X size={13} />
+                      <X size={16} />
                     </button>
                   </>
                 )}
@@ -508,12 +549,12 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
 
           {/* TIER 2 HOVER (100px <= Height < 200px): Header (Cover + Title + Actions) + Centered Controls */}
           {isTier2 && (
-            <div className="w-full h-full flex flex-col justify-between p-2.5 pb-2 box-border">
+            <div className="w-full h-full flex flex-col justify-between p-3 pb-2 box-border">
               {/* Top Row: Cover Thumbnail + Title/Artist + Window Actions */}
               <div className="flex items-center justify-between w-full gap-2 shrink-0">
                 <div 
                   onClick={isPiP ? handleOpenWebApp : undefined}
-                  className={`flex items-center gap-2 truncate flex-1 min-w-0 pr-1 ${isPiP ? 'cursor-pointer group/title' : ''}`}
+                  className={`flex items-center gap-2 truncate flex-1 min-w-0 pr-2 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${isPiP ? 'cursor-pointer group/title' : ''}`}
                   title={isPiP ? 'Click to bring web app to front' : undefined}
                 >
                   <img
@@ -538,13 +579,13 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                       type="button"
                       onClick={handleToggleFavorite}
                       style={isFav ? { color: 'var(--brand-primary)' } : undefined}
-                      className={`p-1.5 rounded-full hover:bg-white/10 active:scale-95 transition shrink-0 ${
-                        isFav ? 'text-brand-500' : 'text-white/60 hover:text-white'
+                      className={`p-1.5 rounded-full hover:bg-white/10 active:scale-95 transition drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${
+                        isFav ? 'text-brand-500' : 'text-white/80 hover:text-white'
                       }`}
                       title={isFav ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
                     >
                       <Heart
-                        size={14}
+                        size={15}
                         style={isFav ? { fill: 'var(--brand-primary)', color: 'var(--brand-primary)' } : undefined}
                         className={isFav ? 'fill-brand-500 text-brand-500' : ''}
                       />
@@ -554,10 +595,10 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                     <button
                       type="button"
                       onClick={handleOpenWebApp}
-                      className="p-1.5 text-white/60 hover:text-brand-400 rounded-full hover:bg-white/10 transition shrink-0"
+                      className="p-1.5 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                       title="Back to tab"
                     >
-                      <ExternalLink size={14} />
+                      <ExternalLink size={15} />
                     </button>
                   ) : (
                     <>
@@ -565,19 +606,19 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                         <button
                           type="button"
                           onClick={togglePiP}
-                          className="p-1.5 text-white/60 hover:text-brand-400 rounded-full hover:bg-white/10 transition shrink-0"
+                          className="p-1.5 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                           title="Pop out Picture-in-Picture window"
                         >
-                          <PictureInPicture2 size={14} />
+                          <PictureInPicture2 size={15} />
                         </button>
                       )}
                       <button
                         type="button"
                         onClick={onClose}
-                        className="p-1.5 text-white/60 hover:text-white rounded-full hover:bg-white/10 transition shrink-0"
+                        className="p-1.5 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                         title="Close miniplayer"
                       >
-                        <X size={14} />
+                        <X size={15} />
                       </button>
                     </>
                   )}
@@ -589,7 +630,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                 <button
                   type="button"
                   onClick={prevTrack}
-                  className="p-1.5 text-white/70 hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
+                  className="p-1.5 text-white/80 hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                   title="Previous track"
                 >
                   <SkipBack size={16} />
@@ -598,7 +639,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                   type="button"
                   onClick={togglePlay}
                   style={{ backgroundColor: 'var(--brand-primary)' }}
-                  className="w-9 h-9 rounded-full bg-brand-500 text-black flex items-center justify-center hover:scale-105 active:scale-95 transition shadow-lg shrink-0"
+                  className="w-9 h-9 rounded-full bg-brand-500 text-black flex items-center justify-center hover:scale-105 active:scale-95 transition shadow-xl shrink-0"
                   title={isPlaying ? 'Pause' : 'Play'}
                 >
                   {isPlaying ? (
@@ -610,7 +651,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                 <button
                   type="button"
                   onClick={nextTrack}
-                  className="p-1.5 text-white/70 hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
+                  className="p-1.5 text-white/80 hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                   title="Next track"
                 >
                   <SkipForward size={16} />
@@ -626,7 +667,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
               <div className="flex items-center justify-between w-full gap-2 shrink-0">
                 <div 
                   onClick={isPiP ? handleOpenWebApp : undefined}
-                  className={`flex items-center gap-2.5 truncate flex-1 min-w-0 pr-1 ${isPiP ? 'cursor-pointer group/title' : ''}`}
+                  className={`flex items-center gap-2.5 truncate flex-1 min-w-0 pr-1 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${isPiP ? 'cursor-pointer group/title' : ''}`}
                   title={isPiP ? 'Click to bring web app to front' : undefined}
                 >
                   <img
@@ -651,8 +692,8 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                       type="button"
                       onClick={handleToggleFavorite}
                       style={isFav ? { color: 'var(--brand-primary)' } : undefined}
-                      className={`p-1.5 rounded-full hover:bg-white/10 active:scale-95 transition shrink-0 ${
-                        isFav ? 'text-brand-500' : 'text-white/60 hover:text-white'
+                      className={`p-1.5 rounded-full hover:bg-white/10 active:scale-95 transition drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${
+                        isFav ? 'text-brand-500' : 'text-white/80 hover:text-white'
                       }`}
                       title={isFav ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
                     >
@@ -667,7 +708,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                     <button
                       type="button"
                       onClick={handleOpenWebApp}
-                      className="p-1.5 text-white/60 hover:text-brand-400 rounded-full hover:bg-white/10 transition shrink-0"
+                      className="p-1.5 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                       title="Back to tab"
                     >
                       <ExternalLink size={15} />
@@ -678,7 +719,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                         <button
                           type="button"
                           onClick={togglePiP}
-                          className="p-1.5 text-white/60 hover:text-brand-400 rounded-full hover:bg-white/10 transition shrink-0"
+                          className="p-1.5 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                           title="Pop out Picture-in-Picture window"
                         >
                           <PictureInPicture2 size={15} />
@@ -687,7 +728,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                       <button
                         type="button"
                         onClick={onClose}
-                        className="p-1.5 text-white/60 hover:text-white rounded-full hover:bg-white/10 transition shrink-0"
+                        className="p-1.5 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                         title="Close miniplayer"
                       >
                         <X size={15} />
@@ -698,12 +739,12 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
               </div>
 
               {/* Middle: Lyrics remain visible in center */}
-              <div className="flex-1 flex flex-col justify-center items-center text-center px-4 py-2 space-y-2 overflow-hidden my-auto">
+              <div className="flex-1 flex flex-col justify-center items-center text-center px-4 py-2 space-y-1.5 overflow-hidden my-auto drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
                 {activeLineObj && (
                   <p
                     onClick={() => seek(activeLineObj.time)}
                     style={{
-                      fontSize: `${activeFontSize}px`,
+                      fontSize: `${lyricFontSize}px`,
                       color: 'var(--brand-primary)',
                       textShadow: '0 0 14px rgba(var(--brand-500, 34 197 94), 0.35)',
                     }}
@@ -715,8 +756,8 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                 {upcomingLineObj && (
                   <p
                     onClick={() => seek(upcomingLineObj.time)}
-                    style={{ fontSize: `${surroundingFontSize}px` }}
-                    className="font-medium text-white/50 whitespace-normal break-words leading-tight max-w-full text-center"
+                    style={{ fontSize: `${lyricFontSize}px` }}
+                    className="font-bold text-white/45 whitespace-normal break-words leading-tight max-w-full text-center"
                   >
                     {upcomingLineObj.text}
                   </p>
@@ -724,8 +765,8 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                 {upcomingLine2Obj && currentH >= 260 && (
                   <p
                     onClick={() => seek(upcomingLine2Obj.time)}
-                    style={{ fontSize: `${surroundingFontSize}px` }}
-                    className="font-medium text-white/30 whitespace-normal break-words leading-tight max-w-full text-center"
+                    style={{ fontSize: `${lyricFontSize}px` }}
+                    className="font-bold text-white/25 whitespace-normal break-words leading-tight max-w-full text-center"
                   >
                     {upcomingLine2Obj.text}
                   </p>
@@ -733,7 +774,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
               </div>
 
               {/* Bottom: Full Scrubber + Transport Controls */}
-              <div className="flex flex-col gap-1.5 w-full shrink-0 pt-1">
+              <div className="flex flex-col gap-1.5 w-full shrink-0 pt-1 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
                 <div className="w-full">
                   <TimelineScrubber
                     currentTime={currentTime}
@@ -751,7 +792,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                   <button
                     type="button"
                     onClick={prevTrack}
-                    className="p-1.5 text-white/70 hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
+                    className="p-1.5 text-white/80 hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                     title="Previous track"
                   >
                     <SkipBack size={16} />
@@ -760,7 +801,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                     type="button"
                     onClick={togglePlay}
                     style={{ backgroundColor: 'var(--brand-primary)' }}
-                    className="w-9 h-9 rounded-full bg-brand-500 text-black flex items-center justify-center hover:scale-105 active:scale-95 transition shadow-lg shrink-0"
+                    className="w-9 h-9 rounded-full bg-brand-500 text-black flex items-center justify-center hover:scale-105 active:scale-95 transition shadow-xl shrink-0"
                     title={isPlaying ? 'Pause' : 'Play'}
                   >
                     {isPlaying ? (
@@ -772,7 +813,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
                   <button
                     type="button"
                     onClick={nextTrack}
-                    className="p-1.5 text-white/70 hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
+                    className="p-1.5 text-white/80 hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                     title="Next track"
                   >
                     <SkipForward size={16} />
