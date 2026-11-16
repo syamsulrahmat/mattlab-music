@@ -1,20 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { 
-  Play, Pause, SkipBack, SkipForward, X, Maximize2, Minimize2, 
-  ExternalLink, PictureInPicture2, MicOff, Mic2, Music, Heart 
+  Play, Pause, SkipBack, SkipForward, X, 
+  ExternalLink, PictureInPicture2, Music, Heart, RefreshCw 
 } from 'lucide-react';
 import { usePlayer, resolveCoverUrl } from '../context/PlayerContext';
 import { TimelineScrubber } from './TimelineScrubber';
 import { LYRICS_CONFIG } from '../config/lyricsConfig';
 import { DESIGN_TOKENS } from '../config/designTokens';
-
-const formatTime = (secs) => {
-  if (isNaN(secs) || secs < 0) return '0:00';
-  const m = Math.floor(secs / 60);
-  const s = Math.floor(secs % 60);
-  return `${m}:${s < 10 ? '0' : ''}${s}`;
-};
 
 export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp }) => {
   const {
@@ -31,8 +24,6 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
     isMiniPlayerOpen,
     setIsMiniPlayerOpen,
     togglePiP,
-    isKaraokeMode,
-    toggleKaraoke,
     lyricsState,
     activeLyricIndex,
     currentLyricLine,
@@ -54,84 +45,70 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
   const isOpen = isOpenProp !== undefined ? isOpenProp : isMiniPlayerOpen;
   const onClose = onCloseProp || (() => setIsMiniPlayerOpen(false));
 
-  // Mode: 'lyrics-small' (2-line lyrics: current sentence + upcoming), 'lyrics-full' (large scrolling), 'compact', 'micro', 'expanded'
-  const [sizeMode, setSizeMode] = useState(() => {
-    const saved = localStorage.getItem('mini_player_size_mode');
-    if (saved === 'lyrics') return 'lyrics-small';
-    return saved || 'lyrics-small';
-  });
-
-  // Track container dimensions to dynamically scale font size, padding, and UI elements
-  const [dimensions, setDimensions] = useState(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        if (pipWindow) {
-          return {
-            width: pipWindow.innerWidth || 360,
-            height: pipWindow.innerHeight || 140,
-          };
-        }
-      } catch (_) {}
-    }
-    return { width: 360, height: 140 };
-  });
-
-  const smallLyricsRef = useRef(null);
-  const fullLyricsRef = useRef(null);
-
   // Draggable position coordinates for in-page mini player
   const [position, setPosition] = useState(() => {
     try {
       const saved = localStorage.getItem('mini_player_pos');
       if (saved) return JSON.parse(saved);
     } catch (_) {}
-    return { x: Math.max(20, window.innerWidth - 370), y: Math.max(20, window.innerHeight - 180) };
+    return {
+      x: typeof window !== 'undefined' ? Math.max(20, window.innerWidth - 370) : 100,
+      y: typeof window !== 'undefined' ? Math.max(20, window.innerHeight - 170) : 100,
+    };
+  });
+
+  // Track container dimensions to dynamically scale font size and UI density
+  const [dimensions, setDimensions] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mini_player_dimensions');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.width && parsed.height) return parsed;
+      }
+    } catch (_) {}
+    return { width: 340, height: 110 };
   });
 
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef({ startX: 0, startY: 0, posX: 0, posY: 0 });
   const containerRef = useRef(null);
 
-  // Full lyrics scrolling refs & state
+  // Continuous lyrics scrolling refs & state
   const lyricsContainerRef = useRef(null);
   const lineRefs = useRef([]);
   const [isUserScrolled, setIsUserScrolled] = useState(false);
   const userScrollTimeoutRef = useRef(null);
 
-  // Sync sizeMode to localStorage and update PiP window dimensions if open
-  const handleSetSizeMode = (mode) => {
-    setSizeMode(mode);
-    localStorage.setItem('mini_player_size_mode', mode);
-    if (pipWindow) {
-      try {
-        if (mode === 'micro') {
-          pipWindow.resizeTo(185, 65);
-          setDimensions({ width: 185, height: 65 });
-        } else if (mode === 'compact') {
-          pipWindow.resizeTo(330, 105);
-          setDimensions({ width: 330, height: 105 });
-        } else if (mode === 'expanded') {
-          pipWindow.resizeTo(340, 150);
-          setDimensions({ width: 340, height: 150 });
-        } else if (mode === 'lyrics-small') {
-          pipWindow.resizeTo(360, 140);
-          setDimensions({ width: 360, height: 140 });
-        } else if (mode === 'lyrics-full') {
-          pipWindow.resizeTo(380, 440);
-          setDimensions({ width: 380, height: 440 });
-        }
-      } catch (_) {}
-    }
+  // Hover HUD visibility & auto-fade timer
+  const [isHovered, setIsHovered] = useState(false);
+  const hoverTimeoutRef = useRef(null);
+  const isDraggingRef = useRef(false);
+  isDraggingRef.current = isDragging;
+
+  const handlePointerEnter = () => {
+    setIsHovered(true);
+    resetHoverTimer();
   };
 
-  // Cycle between modes: lyrics-small -> lyrics-full -> compact -> micro -> lyrics-small
-  const cycleSizeMode = (e) => {
-    if (e && e.stopPropagation) e.stopPropagation();
-    if (sizeMode === 'lyrics-small') handleSetSizeMode('lyrics-full');
-    else if (sizeMode === 'lyrics-full') handleSetSizeMode('compact');
-    else if (sizeMode === 'compact') handleSetSizeMode('micro');
-    else if (sizeMode === 'micro') handleSetSizeMode('expanded');
-    else handleSetSizeMode('lyrics-small');
+  const handlePointerMove = () => {
+    setIsHovered(true);
+    resetHoverTimer();
+  };
+
+  const resetHoverTimer = () => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    hoverTimeoutRef.current = setTimeout(() => {
+      if (!isDraggingRef.current) {
+        setIsHovered(false);
+      }
+    }, 2800);
+  };
+
+  const handlePointerLeave = () => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    if (!isDraggingRef.current) {
+      setIsHovered(false);
+    }
   };
 
   // Open and focus main MattLab Music web app window from PiP
@@ -149,7 +126,7 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
     } catch (_) {}
   };
 
-  // Listen for native OS window resize events on the PiP window to adapt layout & font scale
+  // Listen for native OS window resize events on the PiP window
   useEffect(() => {
     if (!pipWindow) return;
     const handlePipResize = () => {
@@ -157,23 +134,6 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
         const w = pipWindow.innerWidth;
         const h = pipWindow.innerHeight;
         setDimensions({ width: w, height: h });
-
-        if (h < 70) {
-          if (sizeMode !== 'micro') {
-            setSizeMode('micro');
-            localStorage.setItem('mini_player_size_mode', 'micro');
-          }
-        } else if (h >= 70 && h < 220) {
-          if (sizeMode !== 'lyrics-small' && sizeMode !== 'compact' && sizeMode !== 'expanded') {
-            setSizeMode('lyrics-small');
-            localStorage.setItem('mini_player_size_mode', 'lyrics-small');
-          }
-        } else if (h >= 220) {
-          if (sizeMode !== 'lyrics-full') {
-            setSizeMode('lyrics-full');
-            localStorage.setItem('mini_player_size_mode', 'lyrics-full');
-          }
-        }
       } catch (_) {}
     };
 
@@ -184,57 +144,71 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
         pipWindow.removeEventListener('resize', handlePipResize);
       } catch (_) {}
     };
-  }, [pipWindow, sizeMode]);
+  }, [pipWindow]);
 
-  // ResizeObserver for in-page mini player or container element
+  // ResizeObserver for in-page mini player container
   useEffect(() => {
-    const target = smallLyricsRef.current || fullLyricsRef.current || containerRef.current;
+    const target = containerRef.current;
     if (!target) return;
 
     if (typeof ResizeObserver !== 'undefined') {
       const ro = new ResizeObserver((entries) => {
-        for (const entry of entries) {
-          const { width, height } = entry.contentRect;
-          if (width > 0 && height > 0) {
-            setDimensions((prev) => {
-              if (Math.abs(prev.width - width) < 1 && Math.abs(prev.height - height) < 1) {
-                return prev;
-              }
-              return { width, height };
-            });
+        window.requestAnimationFrame(() => {
+          for (const entry of entries) {
+            const { width, height } = entry.contentRect;
+            if (width > 0 && height > 0) {
+              setDimensions((prev) => {
+                if (Math.abs(prev.width - width) < 2 && Math.abs(prev.height - height) < 2) {
+                  return prev;
+                }
+                const nextDims = { width: Math.round(width), height: Math.round(height) };
+                try {
+                  localStorage.setItem('mini_player_dimensions', JSON.stringify(nextDims));
+                } catch (_) {}
+                return nextDims;
+              });
+            }
           }
-        }
+        });
       });
       ro.observe(target);
       return () => ro.disconnect();
     }
-  }, [sizeMode, pipWindow]);
+  }, [isOpen, pipWindow]);
 
-  // Smooth auto-scroll for full multi-line lyrics container
+  // Reset user manual scroll flag on track change
   useEffect(() => {
-    if (sizeMode !== 'lyrics-full' || isUserScrolled) return;
+    setIsUserScrolled(false);
+  }, [currentTrack?.id]);
+
+  // Smooth continuous auto-scroll pinning the active lyric cleanly to the top
+  useEffect(() => {
+    if (isUserScrolled) return;
     const container = lyricsContainerRef.current;
     const activeEl = lineRefs.current[activeLyricIndex];
     if (container && activeEl) {
-      const targetScroll = activeEl.offsetTop - (container.clientHeight / 2) + (activeEl.clientHeight / 2);
+      const topPadding = dimensions.height < 100 ? 4 : 8;
+      const targetScroll = activeEl.offsetTop - topPadding;
       container.scrollTo({
         top: Math.max(0, targetScroll),
         behavior: 'smooth',
       });
     }
-  }, [activeLyricIndex, isUserScrolled, sizeMode]);
+  }, [activeLyricIndex, isUserScrolled, dimensions.height, dimensions.width]);
 
   const handleLyricsScroll = () => {
     setIsUserScrolled(true);
     if (userScrollTimeoutRef.current) clearTimeout(userScrollTimeoutRef.current);
     userScrollTimeoutRef.current = setTimeout(() => {
       setIsUserScrolled(false);
-    }, 4000);
+    }, 3500);
   };
 
-  // Mouse & Touch Dragging Handlers for in-page mini player
+  // Dragging Handlers for in-page floating mini player
   const handlePointerDown = (e) => {
-    if (e.target.closest('button') || e.target.closest('input')) return;
+    if (e.target.closest('button') || e.target.closest('input') || e.target.closest('[role="slider"]')) {
+      return;
+    }
     
     setIsDragging(true);
     dragRef.current = {
@@ -252,13 +226,15 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
       const dx = e.clientX - dragRef.current.startX;
       const dy = e.clientY - dragRef.current.startY;
       const newX = Math.max(10, Math.min(window.innerWidth - 130, dragRef.current.posX + dx));
-      const newY = Math.max(10, Math.min(window.innerHeight - 70, dragRef.current.posY + dy));
+      const newY = Math.max(10, Math.min(window.innerHeight - 55, dragRef.current.posY + dy));
       setPosition({ x: newX, y: newY });
     };
 
     const handlePointerUp = () => {
       setIsDragging(false);
-      localStorage.setItem('mini_player_pos', JSON.stringify(position));
+      try {
+        localStorage.setItem('mini_player_pos', JSON.stringify(position));
+      } catch (_) {}
     };
 
     window.addEventListener('pointermove', handlePointerMove);
@@ -271,57 +247,72 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
 
   if (!currentTrack && !pipWindow) return null;
   if (!isOpen && !pipWindow) return null;
-  // Never show in-page floating miniplayer mode on mobile devices (< 768px)
   if (!pipWindow && typeof window !== 'undefined' && window.innerWidth < 768) return null;
 
-  // 1. Small 2-Line Lyrics Mode (Current sentence + Upcoming sentence) with Music Controls
-  const renderSmallLyricsContent = (isPiP = false) => {
-    const currentSentence = currentLyricLine || (lyricsState?.isLoading ? 'Loading lyrics...' : (lyricsState?.plainLyrics ? '♪ ... ♪' : 'No lyrics available'));
-    const upcomingSentence = upcomingLyricLine || (currentLyricLine ? '' : (currentTrack ? `"${currentTrack.title}" • ${currentTrack.artist_name}` : ''));
+  // Unified Renderer for Both In-Page Floating MiniPlayer and Picture-in-Picture
+  const renderUnifiedContent = (isPiP = false) => {
+    const currentW = dimensions.width || (pipWindow ? pipWindow.innerWidth : 340);
+    const currentH = dimensions.height || (pipWindow ? pipWindow.innerHeight : 110);
 
-    const currentLineObj = activeLyricIndex >= 0 ? lyricsState?.parsedLines?.[activeLyricIndex] : null;
-    const nextLineObj = activeLyricIndex >= 0 && activeLyricIndex < (lyricsState?.parsedLines?.length || 0) - 1 ? lyricsState?.parsedLines?.[activeLyricIndex + 1] : null;
+    // 3 Responsive Window Tiers matching the design mockup:
+    // Tier 1: Smallest window (< 100px)
+    // Tier 2: Medium window (100px <= height < 200px)
+    // Tier 3: Tall / Expanded window (height >= 200px)
+    const isTier1 = currentH < 100;
+    const isTier2 = currentH >= 100 && currentH < 200;
+    const isTier3 = currentH >= 200;
 
-    // Dynamically scale font size, gaps, and elements based on window/container dimensions
-    const currentW = dimensions.width || (pipWindow ? pipWindow.innerWidth : 360);
-    const currentH = dimensions.height || (pipWindow ? pipWindow.innerHeight : 140);
-    const widthRatio = Math.max(0.48, Math.min(1.4, currentW / 360));
-    const heightRatio = Math.max(0.48, Math.min(1.4, currentH / 140));
+    // Responsive scaling factor calibrated to standard 340x110
+    const wRatio = Math.max(0.65, Math.min(1.4, currentW / 340));
+    const hRatio = Math.max(0.65, Math.min(1.4, currentH / 110));
+    const scale = Math.min(wRatio, hRatio);
 
-    // Minimalist layout: when window gets smaller, hide title/artist and duration slider
-    const isMinimalLayout = currentH < 118 || currentW < 280;
+    const activeFontSize = isTier1 
+      ? Math.max(11, Math.min(15, Math.round(12.5 * scale * 10) / 10)) 
+      : isTier2
+      ? Math.max(12, Math.min(17, Math.round(14 * scale * 10) / 10))
+      : Math.max(13, Math.min(20, Math.round(16 * scale * 10) / 10));
 
-    // In minimal layout, vertical room is freed up, so we can relax vertical font scale penalty
-    const effectiveHScale = isMinimalLayout ? Math.max(0.68, Math.min(1.3, currentH / 110)) : heightRatio;
-    const scale = Math.min(widthRatio, effectiveHScale);
+    const surroundingFontSize = isTier1 
+      ? Math.max(9.5, Math.min(12, Math.round(10.5 * scale * 10) / 10)) 
+      : Math.max(10, Math.min(14, Math.round(11.5 * scale * 10) / 10));
 
-    // Fluid font sizes: shrink smoothly as window gets smaller
-    const currentLyricFontSize = Math.max(8.5, Math.min(18, Math.round(14 * scale * 10) / 10));
-    const upcomingLyricFontSize = Math.max(7.5, Math.min(14, Math.round(11 * scale * 10) / 10));
-    const titleFontSize = Math.max(8.5, Math.min(15, Math.round(12 * scale * 10) / 10));
-    const artistFontSize = Math.max(7.5, Math.min(12, Math.round(10 * scale * 10) / 10));
-    const timeFontSize = Math.max(7, Math.min(11, Math.round(9 * scale * 10) / 10));
+    // Extract lyric lines
+    const parsed = lyricsState?.parsedLines || [];
+    let pastLineObj = null;
+    let activeLineObj = null;
+    let upcomingLineObj = null;
+    let upcomingLine2Obj = null;
 
-    // Dynamic element dimensions
-    const coverSize = Math.max(18, Math.min(32, Math.round(28 * Math.max(0.65, scale))));
-    const headerIconSize = Math.max(10, Math.min(15, Math.round(13 * scale)));
-    const transportIconSize = Math.max(11, Math.min(16, Math.round(13 * (isMinimalLayout ? Math.max(0.9, scale) : scale))));
-    const playButtonSize = Math.max(20, Math.min(32, Math.round(24 * (isMinimalLayout ? Math.max(0.95, scale) : scale))));
-    const playIconSize = Math.max(10, Math.min(15, Math.round(12 * (isMinimalLayout ? Math.max(0.95, scale) : scale))));
+    if (parsed.length > 0) {
+      if (activeLyricIndex >= 0 && activeLyricIndex < parsed.length) {
+        pastLineObj = activeLyricIndex > 0 ? parsed[activeLyricIndex - 1] : null;
+        activeLineObj = parsed[activeLyricIndex];
+        upcomingLineObj = activeLyricIndex + 1 < parsed.length ? parsed[activeLyricIndex + 1] : null;
+        upcomingLine2Obj = activeLyricIndex + 2 < parsed.length ? parsed[activeLyricIndex + 2] : null;
+      } else {
+        activeLineObj = parsed[0];
+        upcomingLineObj = parsed.length > 1 ? parsed[1] : null;
+        upcomingLine2Obj = parsed.length > 2 ? parsed[2] : null;
+      }
+    } else if (lyricsState?.plainLyrics) {
+      activeLineObj = { text: lyricsState.plainLyrics, time: 0 };
+    }
 
-    // Extra compact spacing when window is short (< 115px) or narrow (< 270px)
-    const isUltraCompact = currentH < 115 || currentW < 270;
-    const containerPadding = isUltraCompact ? 'px-2 py-1' : 'px-3 py-2';
+    const plainFallback = lyricsState?.plainLyrics || '';
+    const hasLyrics = parsed.length > 0 || Boolean(plainFallback);
 
     return (
       <div
-        ref={smallLyricsRef}
-        className={`relative w-full h-full flex flex-col justify-between bg-gradient-to-b from-[#181818] to-[#121212] text-content-primary font-sans select-none box-border overflow-hidden ${containerPadding}`}
+        onMouseEnter={handlePointerEnter}
+        onMouseMove={handlePointerMove}
+        onMouseLeave={handlePointerLeave}
+        className="group relative w-full h-full flex flex-col justify-between bg-gradient-to-b from-[#181818] to-[#111111] text-content-primary font-sans select-none box-border overflow-hidden"
       >
-        {/* Ambient album glow */}
+        {/* Ambient Subtle Album Glow */}
         {currentTrack && (
           <div
-            className="absolute inset-0 opacity-15 pointer-events-none blur-2xl transform scale-125"
+            className="absolute inset-0 opacity-20 pointer-events-none blur-3xl transform scale-125 transition-all duration-700"
             style={{
               backgroundImage: `url(${resolveCoverUrl(currentTrack)})`,
               backgroundPosition: 'center',
@@ -329,670 +320,490 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
             }}
           />
         )}
-        {/* Absolute buttons in minimal layout to avoid wasting vertical space */}
-        {isMinimalLayout && (
-          <>
-            {currentTrack && (
-              <div className="absolute top-1 left-1.5 z-20 flex items-center">
-                <button
-                  type="button"
-                  onClick={handleToggleFavorite}
-                  className={`p-1 rounded transition hover:bg-white/10 shrink-0 ${
-                    isFav ? 'text-brand-500' : 'text-content-muted hover:text-content-primary'
-                  }`}
-                  title={isFav ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
-                >
-                  <Heart size={headerIconSize} className={isFav ? 'fill-brand-500 text-brand-500' : ''} />
-                </button>
+
+        {/* ======================================================== */}
+        {/* LAYER 1: IDLE STATE (100% PURE LYRICS CANVAS)            */}
+        {/* ======================================================== */}
+        {/* ======================================================== */}
+        {/* LAYER 1: IDLE STATE (100% PURE LYRICS CANVAS)            */}
+        {/* Unified Continuous Auto-Scrolling Across All Sizes       */}
+        {/* ======================================================== */}
+        <div className="relative z-10 w-full h-full flex flex-col justify-center items-center overflow-hidden px-2 pt-1 pb-2">
+          <div
+            ref={lyricsContainerRef}
+            onWheel={handleLyricsScroll}
+            onTouchMove={handleLyricsScroll}
+            className="w-full h-full overflow-y-auto px-2 text-center scrollbar-none flex flex-col items-center"
+            style={{
+              maskImage: 'linear-gradient(to bottom, black 0%, black 75%, transparent 100%)',
+              WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 75%, transparent 100%)',
+            }}
+          >
+            {lyricsState?.isLoading ? (
+              <div className="flex flex-col items-center justify-center h-full text-white/50 gap-2 my-auto py-4">
+                <RefreshCw size={16} className="animate-spin text-brand-500" style={{ color: 'var(--brand-primary)' }} />
+                <span className="text-xs">Loading lyrics...</span>
+              </div>
+            ) : parsed.length > 0 ? (
+              <>
+                {/* Minimal Top Padding: active lyric sits top-most */}
+                <div style={{ height: currentH < 100 ? 4 : 8 }} className="shrink-0 w-full pointer-events-none" />
+
+                {parsed.map((line, idx) => {
+                  const isActive = idx === activeLyricIndex;
+                  const isPast = idx < activeLyricIndex;
+                  return (
+                    <p
+                      key={`${line.time}-${idx}`}
+                      ref={(el) => (lineRefs.current[idx] = el)}
+                      onClick={() => {
+                        seek(line.time);
+                        setIsUserScrolled(false);
+                      }}
+                      style={{
+                        fontSize: `${isActive ? activeFontSize : surroundingFontSize}px`,
+                        color: isActive ? 'var(--brand-primary)' : undefined,
+                        textShadow: isActive ? '0 0 14px rgba(var(--brand-500, 34 197 94), 0.35)' : undefined,
+                      }}
+                      className={`transition-all duration-300 cursor-pointer px-2.5 py-1 my-0.5 rounded-lg leading-snug whitespace-normal break-words text-wrap max-w-full text-center ${
+                        isActive
+                          ? 'font-bold'
+                          : isPast
+                          ? 'font-medium text-white/25 hover:text-white/60'
+                          : 'font-medium text-white/50 hover:text-white/85'
+                      }`}
+                    >
+                      {line.text}
+                    </p>
+                  );
+                })}
+
+                {/* Dynamic Bottom Spacer: allows the last lyric lines to scroll cleanly to the top */}
+                <div style={{ height: Math.max(60, currentH - 45) }} className="shrink-0 w-full pointer-events-none" />
+              </>
+            ) : plainFallback ? (
+              <div
+                style={{ fontSize: `${surroundingFontSize}px` }}
+                className="text-white/80 font-medium leading-relaxed whitespace-pre-line py-4 my-auto px-2"
+              >
+                {plainFallback}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-white/50 gap-1.5 my-auto py-2">
+                <Music size={20} className="text-brand-500" style={{ color: 'var(--brand-primary)' }} />
+                <p className="text-xs font-semibold text-white/75 truncate max-w-[90%]">
+                  {currentTrack ? currentTrack.title : 'No track playing'}
+                </p>
+                <p className="text-[11px] text-white/45 truncate max-w-[90%]">
+                  {currentTrack ? currentTrack.artist_name : ''}
+                </p>
               </div>
             )}
-            <div className="absolute top-1 right-1.5 z-20 flex items-center gap-0.5">
-              {isPiP ? (
-                <button
-                  type="button"
-                  onClick={handleOpenWebApp}
-                  className="p-1 text-content-muted hover:text-brand-400 rounded transition hover:bg-white/10 shrink-0"
-                  title="Back to tab"
-                >
-                  <ExternalLink size={headerIconSize} />
-                </button>
-              ) : (
-                onClose && (
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="p-1 text-content-muted hover:text-content-primary rounded transition hover:bg-white/10"
-                    title="Close"
-                  >
-                    <X size={headerIconSize} />
-                  </button>
-                )
-              )}
-            </div>
-          </>
-        )}
-
-        {/* Standard top row: Track Info & action buttons (only when NOT minimal) */}
-        {!isMinimalLayout && (
-          <div className="flex items-center justify-between w-full gap-1.5 shrink-0 z-10">
-            <div 
-              onClick={isPiP ? handleOpenWebApp : undefined}
-              className={`flex items-center gap-1.5 truncate flex-1 min-w-0 pr-1 ${isPiP ? 'cursor-pointer group' : ''}`}
-              title={isPiP ? 'Back to tab' : undefined}
-            >
-              <img
-                src={resolveCoverUrl(currentTrack)}
-                alt=""
-                style={{ width: `${coverSize}px`, height: `${coverSize}px` }}
-                className="rounded object-cover bg-surface-elevated shrink-0 shadow-sm group-hover:opacity-85 transition"
-              />
-              <div className="flex-1 min-w-0 truncate">
-                <p
-                  style={{ fontSize: `${titleFontSize}px` }}
-                  className="font-bold text-content-primary truncate leading-tight group-hover:underline"
-                >
-                  {currentTrack?.title || 'No Track'}
-                </p>
-                <p
-                  style={{ fontSize: `${artistFontSize}px` }}
-                  className="text-content-secondary truncate leading-tight"
-                >
-                  {currentTrack?.artist_name || ''}
-                </p>
-              </div>
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex items-center gap-0.5 shrink-0">
-              {currentTrack && (
-                <button
-                  type="button"
-                  onClick={handleToggleFavorite}
-                  className={`p-1 rounded transition hover:bg-white/10 shrink-0 ${
-                    isFav ? 'text-brand-500' : 'text-content-muted hover:text-content-primary'
-                  }`}
-                  title={isFav ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
-                >
-                  <Heart size={headerIconSize} className={isFav ? 'fill-brand-500 text-brand-500' : ''} />
-                </button>
-              )}
-              {isPiP ? (
-                <button
-                  type="button"
-                  onClick={handleOpenWebApp}
-                  className="p-1 text-content-muted hover:text-brand-400 rounded transition hover:bg-white/10 shrink-0"
-                  title="Back to tab"
-                >
-                  <ExternalLink size={headerIconSize} />
-                </button>
-              ) : (
-                <>
-                  {'documentPictureInPicture' in window && (
-                    <button
-                      type="button"
-                      onClick={togglePiP}
-                      className="p-1 text-content-muted hover:text-brand-400 rounded transition hover:bg-white/10"
-                      title="Pop out Picture-in-Picture window"
-                    >
-                      <PictureInPicture2 size={headerIconSize} />
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="p-1 text-content-muted hover:text-content-primary rounded transition hover:bg-white/10"
-                    title="Close"
-                  >
-                    <X size={headerIconSize} />
-                  </button>
-                </>
-              )}
-            </div>
           </div>
-        )}
+        </div>
 
-        {/* Center: The 2 Lines of Lyrics (Current sentence + Upcoming one) */}
+        {/* ======================================================== */}
+        {/* LAYER 2: HOVER-ACTIVATED HUD (REVEALED ON HOVER)         */}
+        {/* ======================================================== */}
         <div
-          title={currentTrack ? `${currentTrack.title} • ${currentTrack.artist_name}` : undefined}
-          className={`flex flex-col justify-center text-center my-auto py-0.5 space-y-0.5 min-h-0 overflow-hidden flex-1 ${
-            isMinimalLayout ? 'px-6' : ''
+          className={`absolute inset-0 z-30 transition-all duration-200 ${
+            isHovered
+              ? 'opacity-100 pointer-events-auto scale-100 bg-black/85 backdrop-blur-md'
+              : 'opacity-0 pointer-events-none scale-[0.99]'
           }`}
         >
-          {/* Line 1: Current Sentence with stable height reservation */}
-          <div className="min-h-[1.4em] flex items-center justify-center overflow-hidden">
-            <p
-              onClick={() => {
-                if (currentLineObj) {
-                  seek(currentLineObj.time);
-                } else if (currentTrack?.id && (lyricsState?.notFound || currentSentence === 'No lyrics available')) {
-                  fetchTrackLyrics(currentTrack.id, true);
-                }
-              }}
-              style={{ fontSize: `${currentLyricFontSize}px` }}
-              className={`${LYRICS_CONFIG.typography.activeWeightClass} truncate leading-normal cursor-pointer transition-[color,opacity] duration-200 ${
-                currentLineObj
-                  ? `${LYRICS_CONFIG.colors.activeClass} drop-shadow-sm hover:underline opacity-100`
-                  : (lyricsState?.notFound || currentSentence === 'No lyrics available')
-                  ? 'text-content-muted hover:text-brand-400 hover:underline opacity-70'
-                  : 'text-content-primary/80 opacity-90'
-              }`}
-              title={
-                currentLineObj
-                  ? `Current lyric: "${currentSentence}" (Click to rewind)`
-                  : (lyricsState?.notFound || currentSentence === 'No lyrics available')
-                  ? 'No lyrics found. Click to recheck server.'
-                  : currentSentence
-              }
-            >
-              {currentSentence}
-            </p>
-          </div>
-
-          {/* Line 2: Upcoming Sentence with stable height reservation */}
-          <div className="min-h-[1.3em] flex items-center justify-center overflow-hidden">
-            <p
-              onClick={() => nextLineObj && seek(nextLineObj.time)}
-              style={{ fontSize: `${upcomingLyricFontSize}px` }}
-              className={`${LYRICS_CONFIG.typography.upcomingWeightClass} ${LYRICS_CONFIG.colors.upcomingClass} truncate leading-normal transition-[color,opacity] duration-200 ${
-                nextLineObj ? 'hover:text-content-primary cursor-pointer hover:underline opacity-70' : 'opacity-40'
-              }`}
-              title={nextLineObj ? `Next lyric: "${upcomingSentence}" (Click to seek)` : upcomingSentence}
-            >
-              {upcomingSentence || '♪'}
-            </p>
-          </div>
-        </div>
-
-        {/* Bottom row: Scrubber (hidden in minimal) + Controls (centered in minimal) */}
-        <div className={`flex items-center ${isMinimalLayout ? 'justify-center' : 'justify-between'} gap-1.5 pt-0.5 shrink-0`}>
-          {/* Scrubber progress - only shown in standard mode */}
-          {!isMinimalLayout && (
-            <div className="flex-1 min-w-0 pr-1">
-              <TimelineScrubber
-                currentTime={currentTime}
-                duration={duration}
-                bufferedTime={bufferedTime}
-                onSeek={seek}
-                disabled={!currentTrack}
-                gapClassName="gap-1.5"
-                timeClassName="text-content-muted font-mono"
-                timeStyle={{ fontSize: `${timeFontSize}px`, minWidth: `${Math.round(24 * scale)}px` }}
-              />
-            </div>
-          )}
-
-          {/* Transport buttons - centered in minimal mode, right-aligned in standard */}
-          <div className={`flex items-center ${isMinimalLayout ? 'gap-3.5' : 'gap-1'} shrink-0`}>
-            <button
-              type="button"
-              onClick={prevTrack}
-              className="p-1 text-content-secondary hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
-              title="Previous"
-            >
-              <SkipBack size={transportIconSize} />
-            </button>
-            <button
-              type="button"
-              onClick={togglePlay}
-              style={{ width: `${playButtonSize}px`, height: `${playButtonSize}px` }}
-              className="rounded-full bg-brand-500 text-black flex items-center justify-center hover:scale-105 active:scale-95 transition shadow"
-              title={isPlaying ? 'Pause' : 'Play'}
-            >
-              {isPlaying ? (
-                <Pause size={playIconSize} className="fill-black" />
-              ) : (
-                <Play size={playIconSize} className="fill-black ml-0.5" />
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={nextTrack}
-              className="p-1 text-content-secondary hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
-              title="Next"
-            >
-              <SkipForward size={transportIconSize} />
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // 2. Large Multi-Line Scrolling Lyrics Mode
-  const renderFullLyricsContent = (isPiP = false) => {
-    const currentW = dimensions.width || (pipWindow ? pipWindow.innerWidth : 380);
-    const currentH = dimensions.height || (pipWindow ? pipWindow.innerHeight : 440);
-    const fullScale = Math.min(
-      Math.max(0.55, Math.min(1.3, currentW / 380)),
-      Math.max(0.55, Math.min(1.3, currentH / 440))
-    );
-
-    const activeFontSize = Math.max(10.5, Math.min(20, Math.round(14 * fullScale * 10) / 10));
-    const inactiveFontSize = Math.max(9, Math.min(15, Math.round(12 * fullScale * 10) / 10));
-    const headerTitleSize = Math.max(9, Math.min(15, Math.round(12 * fullScale * 10) / 10));
-    const headerArtistSize = Math.max(7.5, Math.min(12, Math.round(10 * fullScale * 10) / 10));
-    const headerThumbSize = Math.max(22, Math.min(36, Math.round(32 * Math.max(0.7, fullScale))));
-    const headerIconSize = Math.max(10, Math.min(15, Math.round(13 * fullScale)));
-    const transportIconSize = Math.max(11, Math.min(18, Math.round(16 * fullScale)));
-    const playBtnSize = Math.max(22, Math.min(36, Math.round(32 * fullScale)));
-    const playIcnSize = Math.max(10, Math.min(17, Math.round(15 * fullScale)));
-    const footerTimeSize = Math.max(7.5, Math.min(12, Math.round(10 * fullScale * 10) / 10));
-
-    return (
-      <div
-        ref={fullLyricsRef}
-        className="relative w-full h-full flex flex-col justify-between bg-gradient-to-b from-[#181818] to-[#121212] text-content-primary font-sans select-none box-border overflow-hidden"
-      >
-        {/* Ambient album glow */}
-        {currentTrack && (
-          <div
-            className="absolute inset-0 opacity-15 pointer-events-none blur-3xl transform scale-125"
-            style={{
-              backgroundImage: `url(${resolveCoverUrl(currentTrack)})`,
-              backgroundPosition: 'center',
-              backgroundSize: 'cover',
-            }}
-          />
-        )}
-        {/* Header Bar */}
-        <div className="flex items-center justify-between px-3.5 py-2.5 bg-surface-panel/80 backdrop-blur-md border-b border-white/5 shrink-0">
-          <div 
-            onClick={isPiP ? handleOpenWebApp : undefined}
-            className={`flex items-center gap-2.5 flex-1 min-w-0 pr-2 ${isPiP ? 'cursor-pointer group' : ''}`}
-            title={isPiP ? 'Back to tab' : undefined}
-          >
-            <img
-              src={resolveCoverUrl(currentTrack)}
-              alt=""
-              style={{ width: `${headerThumbSize}px`, height: `${headerThumbSize}px` }}
-              className="rounded-md object-cover bg-surface-elevated shrink-0 shadow group-hover:opacity-85 transition"
-            />
-            <div className="flex-1 min-w-0">
-              <p
-                style={{ fontSize: `${headerTitleSize}px` }}
-                className="font-bold text-content-primary truncate leading-tight group-hover:underline"
-              >
-                {currentTrack?.title || 'No Track'}
-              </p>
-              <p
-                style={{ fontSize: `${headerArtistSize}px` }}
-                className="text-content-secondary truncate mt-0.5 leading-tight"
-              >
-                {currentTrack?.artist_name || ''}
-              </p>
-            </div>
-          </div>
-
-          {/* Action buttons (In PiP: only Back to tab, native titlebar provides the default close button) */}
-          <div className="flex items-center gap-1 shrink-0">
-            {currentTrack && (
-              <button
-                type="button"
-                onClick={handleToggleFavorite}
-                className={`p-1.5 rounded-md transition hover:bg-white/10 shrink-0 ${
-                  isFav ? 'text-brand-500' : 'text-content-muted hover:text-content-primary'
-                }`}
-                title={isFav ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
-              >
-                <Heart size={headerIconSize} className={isFav ? 'fill-brand-500 text-brand-500' : ''} />
-              </button>
-            )}
-            {isPiP ? (
-              <button
-                type="button"
-                onClick={handleOpenWebApp}
-                className="p-1.5 text-content-muted hover:text-brand-400 rounded-md transition hover:bg-white/10"
-                title="Back to tab"
-              >
-                <ExternalLink size={headerIconSize} />
-              </button>
-            ) : (
-              <>
-                {'documentPictureInPicture' in window && (
+          {/* TIER 1 HOVER (< 100px): Minimalist Single-Row Control Deck */}
+          {isTier1 && (
+            <div className="relative w-full h-full flex items-center justify-between px-3 pb-1">
+              {/* Left: Liked Songs Heart */}
+              <div className="flex items-center shrink-0">
+                {currentTrack && (
                   <button
                     type="button"
-                    onClick={togglePiP}
-                    className="p-1.5 text-content-muted hover:text-brand-400 rounded-md transition hover:bg-white/10"
-                    title="Pop out Picture-in-Picture window"
+                    onClick={handleToggleFavorite}
+                    style={isFav ? { color: 'var(--brand-primary)' } : undefined}
+                    className={`p-1.5 rounded-full hover:bg-white/10 active:scale-95 transition shrink-0 ${
+                      isFav ? 'text-brand-500' : 'text-white/60 hover:text-white'
+                    }`}
+                    title={isFav ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
                   >
-                    <PictureInPicture2 size={headerIconSize} />
+                    <Heart
+                      size={14}
+                      style={isFav ? { fill: 'var(--brand-primary)', color: 'var(--brand-primary)' } : undefined}
+                      className={isFav ? 'fill-brand-500 text-brand-500' : ''}
+                    />
                   </button>
                 )}
+              </div>
+
+              {/* Center: THE MUSIC CONTROLS (Centered & unclipped) */}
+              <div className="flex items-center justify-center gap-3 shrink-0">
                 <button
                   type="button"
-                  onClick={onClose}
-                  className="p-1.5 text-content-muted hover:text-content-primary rounded-md transition hover:bg-white/10"
-                  title="Close"
+                  onClick={prevTrack}
+                  className="p-1.5 text-white/70 hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
+                  title="Previous track"
                 >
-                  <X size={headerIconSize} />
+                  <SkipBack size={14} />
                 </button>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Lyrics Area (Scrollable) */}
-        <div
-          ref={lyricsContainerRef}
-          onWheel={handleLyricsScroll}
-          onTouchMove={handleLyricsScroll}
-          className="flex-1 overflow-y-auto px-4 py-5 space-y-3 text-center select-none scrollbar-thin scrollbar-thumb-white/10"
-        >
-          {lyricsState?.isLoading ? (
-            <div className="flex flex-col items-center justify-center h-full text-content-muted gap-2 py-10">
-              <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-              <span className="text-xs">Loading lyrics...</span>
-            </div>
-          ) : lyricsState?.parsedLines?.length > 0 ? (
-            lyricsState.parsedLines.map((line, idx) => {
-              const isActive = idx === activeLyricIndex;
-              const isPast = idx < activeLyricIndex;
-              return (
-                <p
-                  key={`${line.time}-${idx}`}
-                  ref={(el) => (lineRefs.current[idx] = el)}
-                  onClick={() => seek(line.time)}
-                  style={{ fontSize: `${isActive ? activeFontSize : inactiveFontSize}px` }}
-                  className={`transition-all duration-300 cursor-pointer px-2.5 py-1 rounded-lg ${
-                    isActive
-                      ? `${LYRICS_CONFIG.colors.activeClass} ${LYRICS_CONFIG.typography.activeWeightClass} ${LYRICS_CONFIG.colors.activeBgClass} scale-[1.03] shadow-sm`
-                      : isPast
-                      ? `${LYRICS_CONFIG.colors.pastClass} ${LYRICS_CONFIG.typography.pastWeightClass} opacity-60 hover:opacity-90`
-                      : `${LYRICS_CONFIG.colors.upcomingClass} ${LYRICS_CONFIG.typography.upcomingWeightClass} opacity-80 hover:opacity-100`
-                  }`}
-                >
-                  {line.text}
-                </p>
-              );
-            })
-          ) : lyricsState?.plainLyrics ? (
-            <div
-              style={{ fontSize: `${inactiveFontSize}px` }}
-              className={`text-content-primary/80 ${LYRICS_CONFIG.typography.activeWeightClass} leading-relaxed whitespace-pre-line py-4`}
-            >
-              {lyricsState.plainLyrics}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-content-subtle gap-2 py-10">
-              <Music size={24} className="text-content-subtle" />
-              <p className="text-xs font-semibold text-content-muted">No lyrics available</p>
-              <p className="text-[10px] text-content-subtle max-w-[200px]">
-                {currentTrack ? `"${currentTrack.title}"` : 'Play a song to view lyrics'}
-              </p>
-              {currentTrack?.id && (
                 <button
                   type="button"
-                  onClick={() => fetchTrackLyrics(currentTrack.id, true)}
-                  className="mt-1 text-[11px] font-semibold text-brand-400 hover:text-brand-300 hover:underline px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 transition cursor-pointer"
+                  onClick={togglePlay}
+                  style={{ backgroundColor: 'var(--brand-primary)' }}
+                  className="w-7 h-7 rounded-full bg-brand-500 text-black flex items-center justify-center hover:scale-105 active:scale-95 transition shadow-lg shrink-0"
+                  title={isPlaying ? 'Pause' : 'Play'}
                 >
-                  Check server again
+                  {isPlaying ? (
+                    <Pause size={13} className="fill-black" />
+                  ) : (
+                    <Play size={13} className="fill-black ml-0.5" />
+                  )}
                 </button>
-              )}
-            </div>
-          )}
-        </div>
+                <button
+                  type="button"
+                  onClick={nextTrack}
+                  className="p-1.5 text-white/70 hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
+                  title="Next track"
+                >
+                  <SkipForward size={14} />
+                </button>
+              </div>
 
-        {/* Music Button Controls Footer */}
-        <div className="px-3.5 py-2.5 bg-surface-panel border-t border-white/5 shrink-0 flex flex-col gap-2">
-          {/* Scrubber progress */}
-          <div className="w-full">
-            <TimelineScrubber
-              currentTime={currentTime}
-              duration={duration}
-              bufferedTime={bufferedTime}
-              onSeek={seek}
-              disabled={!currentTrack}
-              gapClassName="gap-2"
-              timeClassName="text-content-muted font-mono"
-              timeStyle={{ fontSize: `${footerTimeSize}px`, minWidth: '28px' }}
-            />
-          </div>
-
-          {/* Transport buttons */}
-          <div className="flex items-center justify-center gap-4">
-            <button
-              type="button"
-              onClick={prevTrack}
-              className="p-1.5 text-content-secondary hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
-              title="Previous"
-            >
-              <SkipBack size={transportIconSize} />
-            </button>
-            <button
-              type="button"
-              onClick={togglePlay}
-              style={{ width: `${playBtnSize}px`, height: `${playBtnSize}px` }}
-              className="rounded-full bg-brand-500 text-black flex items-center justify-center hover:scale-105 active:scale-95 transition shadow-lg"
-              title={isPlaying ? 'Pause' : 'Play'}
-            >
-              {isPlaying ? (
-                <Pause size={playIcnSize} className="fill-black" />
-              ) : (
-                <Play size={playIcnSize} className="fill-black ml-0.5" />
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={nextTrack}
-              className="p-1.5 text-content-secondary hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
-              title="Next"
-            >
-              <SkipForward size={transportIconSize} />
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Render content for Document Picture-in-Picture window (always on top across tabs and desktop apps)
-  const renderPiPContent = () => {
-    if (sizeMode === 'lyrics-small' || sizeMode === 'lyrics') {
-      return renderSmallLyricsContent(true);
-    }
-
-    if (sizeMode === 'lyrics-full') {
-      return renderFullLyricsContent(true);
-    }
-
-    if (sizeMode === 'micro') {
-      return (
-        <div className="relative w-full h-full flex items-center justify-center px-2 py-1 bg-surface-island text-content-primary font-sans select-none box-border overflow-hidden">
-          {currentTrack && (
-            <button
-              type="button"
-              onClick={handleToggleFavorite}
-              className={`absolute left-1.5 top-1/2 -translate-y-1/2 p-1 rounded transition hover:bg-white/10 active:scale-95 shrink-0 z-10 ${
-                isFav ? 'text-brand-500' : 'text-content-muted hover:text-content-primary'
-              }`}
-              title={isFav ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
-            >
-              <Heart size={12} className={isFav ? 'fill-brand-500 text-brand-500' : ''} />
-            </button>
-          )}
-          <div className="flex items-center gap-1.5 mx-auto">
-            <button
-              onClick={prevTrack}
-              className="p-1 text-content-secondary hover:text-content-primary rounded-full hover:bg-white/10 active:scale-95 transition shrink-0"
-              title="Previous"
-            >
-              <SkipBack size={13} />
-            </button>
-            <button
-              onClick={togglePlay}
-              className="w-6 h-6 rounded-full bg-brand-500 text-black flex items-center justify-center hover:scale-105 active:scale-95 transition shadow shrink-0"
-              title={isPlaying ? 'Pause' : 'Play'}
-            >
-              {isPlaying ? <Pause size={12} className="fill-black" /> : <Play size={12} className="fill-black ml-0.5" />}
-            </button>
-            <button
-              onClick={nextTrack}
-              className="p-1 text-content-secondary hover:text-content-primary rounded-full hover:bg-white/10 active:scale-95 transition shrink-0"
-              title="Next"
-            >
-              <SkipForward size={13} />
-            </button>
-          </div>
-          <button
-            type="button"
-            onClick={handleOpenWebApp}
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-content-muted hover:text-brand-400 rounded transition hover:bg-white/10 shrink-0 z-10"
-            title="Back to tab"
-          >
-            <ExternalLink size={12} />
-          </button>
-        </div>
-      );
-    }
-
-    if (sizeMode === 'expanded') {
-      return (
-        <div className="w-full h-full flex flex-col justify-between p-2.5 bg-surface-island text-content-primary font-sans select-none box-border space-y-1.5">
-          <div className="flex items-center justify-between w-full">
-            <div 
-              onClick={handleOpenWebApp}
-              className="flex items-center gap-2.5 flex-1 min-w-0 pr-2 cursor-pointer group"
-              title="Back to tab"
-            >
-              <img
-                src={resolveCoverUrl(currentTrack)}
-                alt=""
-                className="w-10 h-10 rounded-lg object-cover shadow shrink-0 bg-surface-elevated2 group-hover:opacity-85 transition"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-content-primary truncate group-hover:underline">
-                  {currentTrack?.title || 'No Track'}
-                </p>
-                <p className="text-[10px] text-content-secondary truncate mt-0.5">
-                  {currentTrack?.artist_name || ''}
-                </p>
+              {/* Right: Window Actions (PiP / Close) */}
+              <div className="flex items-center gap-0.5 shrink-0">
+                {isPiP ? (
+                  <button
+                    type="button"
+                    onClick={handleOpenWebApp}
+                    className="p-1.5 text-white/60 hover:text-brand-400 rounded-full hover:bg-white/10 transition shrink-0"
+                    title="Back to tab"
+                  >
+                    <ExternalLink size={13} />
+                  </button>
+                ) : (
+                  <>
+                    {'documentPictureInPicture' in window && (
+                      <button
+                        type="button"
+                        onClick={togglePiP}
+                        className="p-1.5 text-white/60 hover:text-brand-400 rounded-full hover:bg-white/10 transition shrink-0"
+                        title="Pop out Picture-in-Picture window"
+                      >
+                        <PictureInPicture2 size={13} />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="p-1.5 text-white/60 hover:text-white rounded-full hover:bg-white/10 transition shrink-0"
+                      title="Close miniplayer"
+                    >
+                      <X size={13} />
+                    </button>
+                  </>
+                )}
               </div>
             </div>
+          )}
 
-            <div className="flex items-center gap-0.5 shrink-0">
-              {currentTrack && (
+          {/* TIER 2 HOVER (100px <= Height < 200px): Header (Cover + Title + Actions) + Centered Controls */}
+          {isTier2 && (
+            <div className="w-full h-full flex flex-col justify-between p-2.5 pb-2 box-border">
+              {/* Top Row: Cover Thumbnail + Title/Artist + Window Actions */}
+              <div className="flex items-center justify-between w-full gap-2 shrink-0">
+                <div 
+                  onClick={isPiP ? handleOpenWebApp : undefined}
+                  className={`flex items-center gap-2 truncate flex-1 min-w-0 pr-1 ${isPiP ? 'cursor-pointer group/title' : ''}`}
+                  title={isPiP ? 'Click to bring web app to front' : undefined}
+                >
+                  <img
+                    src={resolveCoverUrl(currentTrack)}
+                    alt=""
+                    className="w-8 h-8 rounded-md object-cover bg-surface-elevated shrink-0 shadow-md group-hover/title:opacity-85 transition"
+                  />
+                  <div className="flex-1 min-w-0 truncate">
+                    <p className="font-bold text-white truncate leading-tight text-xs group-hover/title:underline">
+                      {currentTrack?.title || 'No Track'}
+                    </p>
+                    <p className="text-white/60 truncate leading-tight text-[10px] mt-0.5">
+                      {currentTrack?.artist_name || ''}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Right: Actions */}
+                <div className="flex items-center gap-0.5 shrink-0">
+                  {currentTrack && (
+                    <button
+                      type="button"
+                      onClick={handleToggleFavorite}
+                      style={isFav ? { color: 'var(--brand-primary)' } : undefined}
+                      className={`p-1.5 rounded-full hover:bg-white/10 active:scale-95 transition shrink-0 ${
+                        isFav ? 'text-brand-500' : 'text-white/60 hover:text-white'
+                      }`}
+                      title={isFav ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
+                    >
+                      <Heart
+                        size={14}
+                        style={isFav ? { fill: 'var(--brand-primary)', color: 'var(--brand-primary)' } : undefined}
+                        className={isFav ? 'fill-brand-500 text-brand-500' : ''}
+                      />
+                    </button>
+                  )}
+                  {isPiP ? (
+                    <button
+                      type="button"
+                      onClick={handleOpenWebApp}
+                      className="p-1.5 text-white/60 hover:text-brand-400 rounded-full hover:bg-white/10 transition shrink-0"
+                      title="Back to tab"
+                    >
+                      <ExternalLink size={14} />
+                    </button>
+                  ) : (
+                    <>
+                      {'documentPictureInPicture' in window && (
+                        <button
+                          type="button"
+                          onClick={togglePiP}
+                          className="p-1.5 text-white/60 hover:text-brand-400 rounded-full hover:bg-white/10 transition shrink-0"
+                          title="Pop out Picture-in-Picture window"
+                        >
+                          <PictureInPicture2 size={14} />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={onClose}
+                        className="p-1.5 text-white/60 hover:text-white rounded-full hover:bg-white/10 transition shrink-0"
+                        title="Close miniplayer"
+                      >
+                        <X size={14} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Center: THE MUSIC CONTROLS */}
+              <div className="flex-1 flex items-center justify-center gap-4 my-auto">
                 <button
                   type="button"
-                  onClick={handleToggleFavorite}
-                  className={`p-1 rounded transition hover:bg-white/10 shrink-0 ${
-                    isFav ? 'text-brand-500' : 'text-content-muted hover:text-content-primary'
-                  }`}
-                  title={isFav ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
+                  onClick={prevTrack}
+                  className="p-1.5 text-white/70 hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
+                  title="Previous track"
                 >
-                  <Heart size={13} className={isFav ? 'fill-brand-500 text-brand-500' : ''} />
+                  <SkipBack size={16} />
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={handleOpenWebApp}
-                className="p-1 text-content-muted hover:text-brand-400 rounded transition hover:bg-white/10 shrink-0"
-                title="Back to tab"
-              >
-                <ExternalLink size={13} />
-              </button>
+                <button
+                  type="button"
+                  onClick={togglePlay}
+                  style={{ backgroundColor: 'var(--brand-primary)' }}
+                  className="w-9 h-9 rounded-full bg-brand-500 text-black flex items-center justify-center hover:scale-105 active:scale-95 transition shadow-lg shrink-0"
+                  title={isPlaying ? 'Pause' : 'Play'}
+                >
+                  {isPlaying ? (
+                    <Pause size={15} className="fill-black" />
+                  ) : (
+                    <Play size={15} className="fill-black ml-0.5" />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={nextTrack}
+                  className="p-1.5 text-white/70 hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
+                  title="Next track"
+                >
+                  <SkipForward size={16} />
+                </button>
+              </div>
             </div>
-          </div>
-          {/* Scrubber progress */}
-          <div className="w-full bg-white/10 rounded-full h-1 overflow-hidden">
-            <div
-              className="bg-brand-500 h-full transition-all duration-150"
-              style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
-            />
-          </div>
-          {/* Transport Controls */}
-          <div className="flex items-center justify-center gap-4">
-            <button
-              onClick={prevTrack}
-              className="p-1 text-content-secondary hover:text-content-primary rounded-full hover:bg-white/10 transition"
-              title="Previous"
-            >
-              <SkipBack size={15} />
-            </button>
-            <button
-              onClick={togglePlay}
-              className="w-7 h-7 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition shadow"
-              title={isPlaying ? 'Pause' : 'Play'}
-            >
-              {isPlaying ? <Pause size={14} className="fill-black" /> : <Play size={14} className="fill-black ml-0.5" />}
-            </button>
-            <button
-              onClick={nextTrack}
-              className="p-1 text-content-secondary hover:text-content-primary rounded-full hover:bg-white/10 transition"
-              title="Next"
-            >
-              <SkipForward size={15} />
-            </button>
-          </div>
-        </div>
-      );
-    }
+          )}
 
-    // Default 'compact' mode
-    return (
-      <div className="w-full h-full flex items-center justify-between p-2.5 bg-surface-island text-content-primary font-sans select-none box-border">
-        <div 
-          onClick={handleOpenWebApp}
-          className="flex items-center gap-2.5 flex-1 min-w-0 pr-2 cursor-pointer group"
-          title="Back to tab"
-        >
-          {currentTrack && (
-            <img
-              src={resolveCoverUrl(currentTrack)}
-              alt=""
-              className="w-10 h-10 rounded-lg object-cover shadow shrink-0 bg-surface-elevated2 group-hover:opacity-85 transition"
-            />
+          {/* TIER 3 HOVER (Height >= 200px): Header (Cover + Title) + Lyrics in Middle + Scrubber & Controls at Bottom */}
+          {isTier3 && (
+            <div className="w-full h-full flex flex-col justify-between p-3 pb-2 box-border">
+              {/* Top Row: Metadata Header */}
+              <div className="flex items-center justify-between w-full gap-2 shrink-0">
+                <div 
+                  onClick={isPiP ? handleOpenWebApp : undefined}
+                  className={`flex items-center gap-2.5 truncate flex-1 min-w-0 pr-1 ${isPiP ? 'cursor-pointer group/title' : ''}`}
+                  title={isPiP ? 'Click to bring web app to front' : undefined}
+                >
+                  <img
+                    src={resolveCoverUrl(currentTrack)}
+                    alt=""
+                    className="w-9 h-9 rounded-md object-cover bg-surface-elevated shrink-0 shadow-md group-hover/title:opacity-85 transition"
+                  />
+                  <div className="flex-1 min-w-0 truncate">
+                    <p className="font-bold text-white truncate leading-tight text-sm group-hover/title:underline">
+                      {currentTrack?.title || 'No Track'}
+                    </p>
+                    <p className="text-white/60 truncate leading-tight text-xs mt-0.5">
+                      {currentTrack?.artist_name || ''}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Right: Actions */}
+                <div className="flex items-center gap-1 shrink-0">
+                  {currentTrack && (
+                    <button
+                      type="button"
+                      onClick={handleToggleFavorite}
+                      style={isFav ? { color: 'var(--brand-primary)' } : undefined}
+                      className={`p-1.5 rounded-full hover:bg-white/10 active:scale-95 transition shrink-0 ${
+                        isFav ? 'text-brand-500' : 'text-white/60 hover:text-white'
+                      }`}
+                      title={isFav ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
+                    >
+                      <Heart
+                        size={15}
+                        style={isFav ? { fill: 'var(--brand-primary)', color: 'var(--brand-primary)' } : undefined}
+                        className={isFav ? 'fill-brand-500 text-brand-500' : ''}
+                      />
+                    </button>
+                  )}
+                  {isPiP ? (
+                    <button
+                      type="button"
+                      onClick={handleOpenWebApp}
+                      className="p-1.5 text-white/60 hover:text-brand-400 rounded-full hover:bg-white/10 transition shrink-0"
+                      title="Back to tab"
+                    >
+                      <ExternalLink size={15} />
+                    </button>
+                  ) : (
+                    <>
+                      {'documentPictureInPicture' in window && (
+                        <button
+                          type="button"
+                          onClick={togglePiP}
+                          className="p-1.5 text-white/60 hover:text-brand-400 rounded-full hover:bg-white/10 transition shrink-0"
+                          title="Pop out Picture-in-Picture window"
+                        >
+                          <PictureInPicture2 size={15} />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={onClose}
+                        className="p-1.5 text-white/60 hover:text-white rounded-full hover:bg-white/10 transition shrink-0"
+                        title="Close miniplayer"
+                      >
+                        <X size={15} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Middle: Lyrics remain visible in center */}
+              <div className="flex-1 flex flex-col justify-center items-center text-center px-4 py-2 space-y-2 overflow-hidden my-auto">
+                {activeLineObj && (
+                  <p
+                    onClick={() => seek(activeLineObj.time)}
+                    style={{
+                      fontSize: `${activeFontSize}px`,
+                      color: 'var(--brand-primary)',
+                      textShadow: '0 0 14px rgba(var(--brand-500, 34 197 94), 0.35)',
+                    }}
+                    className="font-bold tracking-wide whitespace-normal break-words leading-tight max-w-full cursor-pointer hover:underline text-center"
+                  >
+                    {activeLineObj.text}
+                  </p>
+                )}
+                {upcomingLineObj && (
+                  <p
+                    onClick={() => seek(upcomingLineObj.time)}
+                    style={{ fontSize: `${surroundingFontSize}px` }}
+                    className="font-medium text-white/50 whitespace-normal break-words leading-tight max-w-full text-center"
+                  >
+                    {upcomingLineObj.text}
+                  </p>
+                )}
+                {upcomingLine2Obj && currentH >= 260 && (
+                  <p
+                    onClick={() => seek(upcomingLine2Obj.time)}
+                    style={{ fontSize: `${surroundingFontSize}px` }}
+                    className="font-medium text-white/30 whitespace-normal break-words leading-tight max-w-full text-center"
+                  >
+                    {upcomingLine2Obj.text}
+                  </p>
+                )}
+              </div>
+
+              {/* Bottom: Full Scrubber + Transport Controls */}
+              <div className="flex flex-col gap-1.5 w-full shrink-0 pt-1">
+                <div className="w-full">
+                  <TimelineScrubber
+                    currentTime={currentTime}
+                    duration={duration}
+                    bufferedTime={bufferedTime}
+                    onSeek={seek}
+                    disabled={!currentTrack}
+                    gapClassName="gap-2"
+                    timeClassName="text-white/60 font-mono text-[10px]"
+                    timeStyle={{ minWidth: '26px' }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-center gap-4">
+                  <button
+                    type="button"
+                    onClick={prevTrack}
+                    className="p-1.5 text-white/70 hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
+                    title="Previous track"
+                  >
+                    <SkipBack size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={togglePlay}
+                    style={{ backgroundColor: 'var(--brand-primary)' }}
+                    className="w-9 h-9 rounded-full bg-brand-500 text-black flex items-center justify-center hover:scale-105 active:scale-95 transition shadow-lg shrink-0"
+                    title={isPlaying ? 'Pause' : 'Play'}
+                  >
+                    {isPlaying ? (
+                      <Pause size={15} className="fill-black" />
+                    ) : (
+                      <Play size={15} className="fill-black ml-0.5" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={nextTrack}
+                    className="p-1.5 text-white/70 hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
+                    title="Next track"
+                  >
+                    <SkipForward size={16} />
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-content-primary truncate group-hover:underline">
-              {currentTrack?.title || 'No Track'}
-            </p>
-            <p className="text-[10px] text-content-secondary truncate mt-0.5">
-              {currentTrack?.artist_name || ''}
-            </p>
-          </div>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          {currentTrack && (
-            <button
-              type="button"
-              onClick={handleToggleFavorite}
-              className={`p-1.5 rounded-full hover:bg-white/10 transition ${
-                isFav ? 'text-brand-500' : 'text-content-muted hover:text-content-primary'
-              }`}
-              title={isFav ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
-            >
-              <Heart size={14} className={isFav ? 'fill-brand-500 text-brand-500' : ''} />
-            </button>
-          )}
-          <button
-            onClick={prevTrack}
-            className="p-1.5 rounded-full hover:bg-white/10 text-content-secondary hover:text-content-primary transition"
-            title="Previous"
-          >
-            <SkipBack size={15} />
-          </button>
-          <button
-            onClick={togglePlay}
-            className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition shadow"
-            title={isPlaying ? 'Pause' : 'Play'}
-          >
-            {isPlaying ? <Pause size={14} className="fill-black" /> : <Play size={14} className="fill-black ml-0.5" />}
-          </button>
-          <button
-            onClick={nextTrack}
-            className="p-1.5 rounded-full hover:bg-white/10 text-content-secondary hover:text-content-primary transition"
-            title="Next"
-          >
-            <SkipForward size={15} />
-          </button>
-          <button
-            type="button"
-            onClick={handleOpenWebApp}
-            className="p-1.5 rounded-full hover:bg-white/10 text-content-muted hover:text-brand-400 transition shrink-0"
-            title="Back to tab"
-          >
-            <ExternalLink size={13} />
-          </button>
+
+        {/* ======================================================== */}
+        {/* PERSISTENT CLIPPED BOTTOM PROGRESS BAR                   */}
+        {/* Always visible at the bottom in both Idle and Hover      */}
+        {/* ======================================================== */}
+        <div
+          onClick={(e) => {
+            if (!duration) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            seek(pct * duration);
+          }}
+          className="absolute bottom-0 left-0 right-0 bg-white/15 hover:bg-white/30 h-1 hover:h-1.5 cursor-pointer transition-all z-50"
+          title={`${Math.floor(currentTime / 60)}:${String(Math.floor(currentTime % 60)).padStart(2, '0')} / ${Math.floor(duration / 60)}:${String(Math.floor(duration % 60)).padStart(2, '0')}`}
+        >
+          <div
+            className="bg-brand-500 h-full transition-all duration-150"
+            style={{
+              width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%`,
+              backgroundColor: 'var(--brand-primary)',
+            }}
+          />
         </div>
       </div>
     );
@@ -1001,338 +812,33 @@ export const FloatingMiniPlayer = ({ isOpen: isOpenProp, onClose: onCloseProp })
   return (
     <>
       {/* 1. Document PiP Portal (Persistent OS desktop window across tabs & apps) */}
-      {pipWindow && createPortal(renderPiPContent(), pipWindow.document.body)}
+      {pipWindow && createPortal(renderUnifiedContent(true), pipWindow.document.body)}
 
       {/* 2. In-App Draggable & Resizable Mini Player Fallback */}
       {isOpen && !pipWindow && (
         <div
           data-dev-component="FloatingMiniPlayer"
           data-dev-file="src/components/FloatingMiniPlayer.jsx"
-          data-dev-desc="Draggable floating interactive miniplayer with playback controls and lyrics"
+          data-dev-desc="Compact lyrics-first miniplayer with 3-tier adaptive hover HUD"
           ref={containerRef}
           onPointerDown={handlePointerDown}
           style={{
             left: `${position.x}px`,
             top: `${position.y}px`,
+            width: `${dimensions.width}px`,
+            height: `${dimensions.height}px`,
+            resize: 'both',
+            minWidth: '200px',
+            minHeight: '55px',
+            maxWidth: '800px',
+            maxHeight: '800px',
             touchAction: 'none',
           }}
-          className={`fixed z-50 transition-[box-shadow,transform] duration-200 select-none shadow-2xl rounded-2xl border border-white/10 bg-[#121212] text-white group cursor-move ${
-            isDragging ? 'shadow-brand-500/20 scale-[1.01]' : ''
+          className={`fixed z-50 transition-[box-shadow,transform] duration-200 select-none shadow-2xl rounded-2xl border border-white/10 bg-[#121212] text-white overflow-hidden cursor-move ${
+            isDragging ? 'shadow-brand-500/25 scale-[1.01]' : ''
           }`}
         >
-          {/* 2-LINE LYRICS MODE */}
-          {(sizeMode === 'lyrics-small' || sizeMode === 'lyrics') && (
-            <div
-              style={{
-                resize: 'both',
-                minWidth: '220px',
-                minHeight: '85px',
-                maxWidth: '600px',
-                maxHeight: '300px',
-              }}
-              className="w-[350px] h-[135px] rounded-2xl overflow-hidden shadow-2xl flex flex-col"
-            >
-              {renderSmallLyricsContent(false)}
-            </div>
-          )}
-
-          {/* FULL MULTI-LINE LYRICS MODE */}
-          {sizeMode === 'lyrics-full' && (
-            <div
-              style={{
-                resize: 'both',
-                minWidth: '240px',
-                minHeight: '220px',
-                maxWidth: '600px',
-                maxHeight: '700px',
-              }}
-              className="w-[360px] h-[410px] rounded-2xl overflow-hidden shadow-2xl flex flex-col"
-            >
-              {renderFullLyricsContent(false)}
-            </div>
-          )}
-
-          {/* MICRO MODE: Only the transport buttons */}
-          {sizeMode === 'micro' && (
-            <div className="flex items-center gap-1 px-2.5 py-1.5 bg-[#121212] rounded-full border border-white/10 shadow-xl">
-              {currentTrack && (
-                <button
-                  type="button"
-                  onClick={handleToggleFavorite}
-                  className={`p-1.5 rounded-full hover:bg-white/10 active:scale-95 transition shrink-0 ${
-                    isFav ? 'text-brand-500' : 'text-content-secondary hover:text-white'
-                  }`}
-                  title={isFav ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
-                >
-                  <Heart size={13} className={isFav ? 'fill-brand-500 text-brand-500' : ''} />
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={prevTrack}
-                className="p-1.5 text-content-secondary hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
-                title="Previous"
-              >
-                <SkipBack size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={togglePlay}
-                className="w-7 h-7 rounded-full bg-brand-500 text-black flex items-center justify-center hover:scale-105 active:scale-95 transition shadow"
-                title={isPlaying ? 'Pause' : 'Play'}
-              >
-                {isPlaying ? <Pause size={13} className="fill-black" /> : <Play size={13} className="fill-black ml-0.5" />}
-              </button>
-              <button
-                type="button"
-                onClick={nextTrack}
-                className="p-1.5 text-content-secondary hover:text-white rounded-full hover:bg-white/10 active:scale-95 transition"
-                title="Next"
-              >
-                <SkipForward size={14} />
-              </button>
-
-              <div className="w-px h-3.5 bg-white/10 mx-0.5" />
-
-              <button
-                type="button"
-                onClick={() => handleSetSizeMode('lyrics-small')}
-                className="p-1 text-content-muted hover:text-brand-400 rounded-md hover:bg-white/10 transition"
-                title="2-Line Lyrics Mode"
-              >
-                <Mic2 size={12} />
-              </button>
-              <button
-                type="button"
-                onClick={cycleSizeMode}
-                className="p-1 text-content-muted hover:text-white rounded-md hover:bg-white/10 transition"
-                title="Expand Mini Player"
-              >
-                <Maximize2 size={12} />
-              </button>
-              {'documentPictureInPicture' in window && (
-                <button
-                  type="button"
-                  onClick={togglePiP}
-                  className="p-1 text-content-muted hover:text-brand-400 rounded-md hover:bg-white/10 transition"
-                  title="Pop out Picture-in-Picture (Cross-tab window)"
-                >
-                  <PictureInPicture2 size={12} />
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-1 text-content-muted hover:text-white rounded-md hover:bg-white/10 transition"
-                title="Close"
-              >
-                <X size={12} />
-              </button>
-            </div>
-          )}
-
-          {/* COMPACT MODE: Cover art + title + 3 buttons */}
-          {sizeMode === 'compact' && (
-            <div className="flex items-center gap-3 p-2 min-w-[260px] max-w-[320px]">
-              <img
-                src={resolveCoverUrl(currentTrack)}
-                alt=""
-                className="w-10 h-10 rounded-lg object-cover bg-surface-elevated shrink-0 shadow-sm"
-              />
-              <div className="flex-1 min-w-0 pr-1">
-                <p className="text-xs font-bold text-white truncate">
-                  {currentTrack?.title || 'No Track'}
-                </p>
-                <p className="text-[10px] text-content-secondary truncate mt-0.5">
-                  {currentTrack?.artist_name || ''}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-1 shrink-0">
-                {currentTrack && (
-                  <button
-                    type="button"
-                    onClick={handleToggleFavorite}
-                    className={`p-1 rounded-full hover:bg-white/10 active:scale-95 transition ${
-                      isFav ? 'text-brand-500' : 'text-content-secondary hover:text-white'
-                    }`}
-                    title={isFav ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
-                  >
-                    <Heart size={13} className={isFav ? 'fill-brand-500 text-brand-500' : ''} />
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={prevTrack}
-                  className="p-1 text-content-secondary hover:text-white transition"
-                  title="Previous"
-                >
-                  <SkipBack size={14} />
-                </button>
-                <button
-                  type="button"
-                  onClick={togglePlay}
-                  className="w-7 h-7 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition shadow"
-                  title={isPlaying ? 'Pause' : 'Play'}
-                >
-                  {isPlaying ? <Pause size={13} className="fill-black" /> : <Play size={13} className="fill-black ml-0.5" />}
-                </button>
-                <button
-                  type="button"
-                  onClick={nextTrack}
-                  className="p-1 text-content-secondary hover:text-white transition"
-                  title="Next"
-                >
-                  <SkipForward size={14} />
-                </button>
-
-                <div className="w-px h-3.5 bg-white/10 mx-0.5" />
-
-                <button
-                  type="button"
-                  onClick={() => handleSetSizeMode('lyrics-small')}
-                  className="p-1 text-content-muted hover:text-brand-400 rounded transition"
-                  title="2-Line Lyrics Mode"
-                >
-                  <Mic2 size={13} />
-                </button>
-                <button
-                  type="button"
-                  onClick={cycleSizeMode}
-                  className="p-1 text-content-muted hover:text-white rounded transition"
-                  title="Resize Mini Player"
-                >
-                  <Maximize2 size={12} />
-                </button>
-                {'documentPictureInPicture' in window && (
-                  <button
-                    type="button"
-                    onClick={togglePiP}
-                    className="p-1 text-content-muted hover:text-brand-400 rounded transition"
-                    title="Pop out Picture-in-Picture (Cross-tab window)"
-                  >
-                    <ExternalLink size={12} />
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="p-1 text-content-muted hover:text-white rounded transition"
-                  title="Close"
-                >
-                  <X size={12} />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* EXPANDED MODE: Larger cover + title + artist + seek progress + controls */}
-          {sizeMode === 'expanded' && (
-            <div className="flex flex-col p-3 min-w-[290px] max-w-[340px] space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5 truncate flex-1 min-w-0">
-                  <img
-                    src={resolveCoverUrl(currentTrack)}
-                    alt=""
-                    className="w-11 h-11 rounded-lg object-cover bg-surface-elevated shrink-0 shadow-md"
-                  />
-                  <div className="truncate flex-1 min-w-0">
-                    <p className="text-xs font-bold text-white truncate">
-                      {currentTrack?.title || 'No Track'}
-                    </p>
-                    <p className="text-[10px] text-content-secondary truncate mt-0.5">
-                      {currentTrack?.artist_name || ''}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1 shrink-0 ml-2">
-                  {currentTrack && (
-                    <button
-                      type="button"
-                      onClick={handleToggleFavorite}
-                      className={`p-1 rounded transition hover:bg-white/10 active:scale-95 ${
-                        isFav ? 'text-brand-500' : 'text-content-muted hover:text-white'
-                      }`}
-                      title={isFav ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
-                    >
-                      <Heart size={13} className={isFav ? 'fill-brand-500 text-brand-500' : ''} />
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => handleSetSizeMode('lyrics-small')}
-                    className="p-1 text-content-muted hover:text-brand-400 rounded transition"
-                    title="2-Line Lyrics Mode"
-                  >
-                    <Mic2 size={13} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={cycleSizeMode}
-                    className="p-1 text-content-muted hover:text-white rounded transition"
-                    title="Shrink to 3-button mode"
-                  >
-                    <Minimize2 size={13} />
-                  </button>
-                  {'documentPictureInPicture' in window && (
-                    <button
-                      type="button"
-                      onClick={togglePiP}
-                      className="p-1 text-content-muted hover:text-brand-400 rounded transition"
-                      title="Pop out Picture-in-Picture"
-                    >
-                      <ExternalLink size={13} />
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="p-1 text-content-muted hover:text-white rounded transition"
-                    title="Close"
-                  >
-                    <X size={13} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Progress bar */}
-              <div className="w-full bg-white/10 rounded-full h-1 overflow-hidden">
-                <div
-                  className="bg-brand-500 h-full transition-all duration-150"
-                  style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
-                />
-              </div>
-
-              {/* Transport Buttons */}
-              <div className="flex items-center justify-center gap-4 pt-1">
-                <button
-                  type="button"
-                  onClick={prevTrack}
-                  className="p-1.5 text-content-secondary hover:text-white rounded-full hover:bg-white/10 transition"
-                  title="Previous"
-                >
-                  <SkipBack size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={togglePlay}
-                  className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition shadow"
-                  title={isPlaying ? 'Pause' : 'Play'}
-                >
-                  {isPlaying ? <Pause size={15} className="fill-black" /> : <Play size={15} className="fill-black ml-0.5" />}
-                </button>
-                <button
-                  type="button"
-                  onClick={nextTrack}
-                  className="p-1.5 text-content-secondary hover:text-white rounded-full hover:bg-white/10 transition"
-                  title="Next"
-                >
-                  <SkipForward size={16} />
-                </button>
-              </div>
-            </div>
-          )}
+          {renderUnifiedContent(false)}
         </div>
       )}
     </>
