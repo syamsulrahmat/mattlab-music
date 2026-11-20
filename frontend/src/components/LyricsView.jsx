@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import { Mic2, Music, RefreshCw, X, ArrowDownCircle, MicOff, Mic, Loader2, Edit3, Play, Pause } from 'lucide-react';
+import { Mic2, Music, RefreshCw, X, ArrowDownCircle, MicOff, Mic, Loader2, Edit3, Play, Pause, Maximize2, Minimize2 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { TimelineScrubber } from './TimelineScrubber';
 import { parseLrc, formatPlainLyrics } from '../utils/lyrics';
@@ -51,6 +51,67 @@ export const LyricsView = ({ onClose }) => {
       return 'both';
     }
   });
+  const [isFullscreen, setIsFullscreen] = useState(Boolean(
+    typeof document !== 'undefined' && (
+      document.fullscreenElement ||
+      document.webkitFullscreenElement ||
+      document.mozFullScreenElement ||
+      document.msFullscreenElement
+    )
+  ));
+
+  const toggleFullscreen = useCallback(async () => {
+    try {
+      const isCurrentlyFs = Boolean(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement
+      );
+
+      if (!isCurrentlyFs) {
+        const rootEl = containerRef.current?.closest('[data-dev-component="LyricsView"]') || document.documentElement;
+        if (rootEl.requestFullscreen) {
+          await rootEl.requestFullscreen();
+        } else if (rootEl.webkitRequestFullscreen) {
+          await rootEl.webkitRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+          await document.webkitExitFullscreen();
+        }
+      }
+    } catch (err) {
+      console.warn('Fullscreen toggle failed:', err);
+    }
+  }, []);
+
+  // Listen to browser native fullscreen events
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isCurrentlyFs = Boolean(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement
+      );
+      setIsFullscreen(isCurrentlyFs);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
+  }, []);
 
   const handleSetRomanizationMode = (mode) => {
     setRomanizationMode(mode);
@@ -62,6 +123,7 @@ export const LyricsView = ({ onClose }) => {
   const containerRef = useRef(null);
   const lineRefs = useRef([]);
   const userScrollTimeoutRef = useRef(null);
+  const anchorLineRef = useRef(-1);
 
   const fetchLyrics = useCallback(async (trackId, forceRefresh = false) => {
     if (!trackId) return;
@@ -245,6 +307,28 @@ export const LyricsView = ({ onClose }) => {
     }
   }, [currentTime, duration, parsedLines.length, lyricsData?.plainLyrics, isUserScrolled, smoothScrollTo]);
 
+  // Helper to find the lyric line closest to vertical center of container
+  const getCenterLineIndex = useCallback(() => {
+    const container = containerRef.current;
+    if (!container || !lineRefs.current || lineRefs.current.length === 0) return -1;
+
+    const viewportCenter = container.scrollTop + (container.clientHeight / 2);
+    let closestIdx = -1;
+    let minDistance = Infinity;
+
+    for (let i = 0; i < lineRefs.current.length; i++) {
+      const el = lineRefs.current[i];
+      if (!el) continue;
+      const elCenter = el.offsetTop + (el.clientHeight / 2);
+      const dist = Math.abs(viewportCenter - elCenter);
+      if (dist < minDistance) {
+        minDistance = dist;
+        closestIdx = i;
+      }
+    }
+    return closestIdx;
+  }, []);
+
   // Detect manual user scrolling to avoid auto-scroll fighting user touch/mouse
   const handleContainerScroll = () => {
     // If a programmatic animation was running, stop it so user has immediate 100% control
@@ -255,6 +339,11 @@ export const LyricsView = ({ onClose }) => {
 
     setIsUserScrolled(true);
 
+    const centerIdx = getCenterLineIndex();
+    if (centerIdx >= 0) {
+      anchorLineRef.current = centerIdx;
+    }
+
     if (userScrollTimeoutRef.current) {
       clearTimeout(userScrollTimeoutRef.current);
     }
@@ -262,11 +351,17 @@ export const LyricsView = ({ onClose }) => {
     // Auto-resume sync after 6 seconds of user inactivity
     userScrollTimeoutRef.current = setTimeout(() => {
       setIsUserScrolled(false);
+      anchorLineRef.current = -1;
     }, 6000);
   };
 
   const handleResumeSync = () => {
     setIsUserScrolled(false);
+    anchorLineRef.current = -1;
+    if (userScrollTimeoutRef.current) {
+      clearTimeout(userScrollTimeoutRef.current);
+      userScrollTimeoutRef.current = null;
+    }
     if (activeLineIdx >= 0 && lineRefs.current[activeLineIdx] && containerRef.current) {
       const container = containerRef.current;
       const activeEl = lineRefs.current[activeLineIdx];
@@ -274,6 +369,57 @@ export const LyricsView = ({ onClose }) => {
       smoothScrollTo(Math.max(0, targetScroll), 600);
     }
   };
+
+  // Seamless anchor preservation when toggling fullscreen
+  useEffect(() => {
+    const targetIdx = isUserScrolled && anchorLineRef.current >= 0 
+      ? anchorLineRef.current 
+      : activeLineIdx;
+
+    if (targetIdx < 0) return;
+
+    let raf1, raf2;
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        const container = containerRef.current;
+        const targetEl = lineRefs.current[targetIdx];
+        if (container && targetEl) {
+          if (animFrameRef.current) {
+            cancelAnimationFrame(animFrameRef.current);
+            animFrameRef.current = null;
+          }
+          const targetScroll = targetEl.offsetTop - (container.clientHeight / 2) + (targetEl.clientHeight / 2);
+          container.scrollTop = Math.max(0, targetScroll);
+        }
+      });
+    });
+
+    return () => {
+      if (raf1) cancelAnimationFrame(raf1);
+      if (raf2) cancelAnimationFrame(raf2);
+    };
+  }, [isFullscreen]);
+
+  // Window resize anchor preservation
+  useEffect(() => {
+    const handleWindowResize = () => {
+      const targetIdx = isUserScrolled && anchorLineRef.current >= 0 
+        ? anchorLineRef.current 
+        : activeLineIdx;
+
+      if (targetIdx < 0) return;
+
+      const container = containerRef.current;
+      const targetEl = lineRefs.current[targetIdx];
+      if (container && targetEl) {
+        const targetScroll = targetEl.offsetTop - (container.clientHeight / 2) + (targetEl.clientHeight / 2);
+        container.scrollTop = Math.max(0, targetScroll);
+      }
+    };
+
+    window.addEventListener('resize', handleWindowResize);
+    return () => window.removeEventListener('resize', handleWindowResize);
+  }, [isUserScrolled, activeLineIdx]);
 
   if (!currentTrack) {
     return (
@@ -290,123 +436,147 @@ export const LyricsView = ({ onClose }) => {
       data-dev-component="LyricsView"
       data-dev-file="src/components/LyricsView.jsx"
       data-dev-desc="Full-screen synchronized lyrics immersion canvas with auto-scrolling and karaoke vocal removal"
-      className="h-full flex flex-col bg-black overflow-hidden select-none relative"
+      className="h-full w-full flex flex-col bg-black overflow-hidden select-none relative"
     >
-      {/* Top Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-black/90 backdrop-blur-md shrink-0">
-        <div className="flex items-center gap-3.5 truncate">
-          <img
-            src={currentTrack.cover_url || '/api/covers/0'}
-            alt=""
-            className="w-11 h-11 rounded-md object-cover shadow bg-surface-elevated shrink-0"
-          />
-          <div className="truncate">
-            <h3 className="text-sm font-bold text-content-primary truncate">{currentTrack.title}</h3>
-            <p className="text-xs text-content-secondary truncate">{currentTrack.artist_name}</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Karaoke Mode Button (Icon only with state title) */}
-          <div className="flex items-center bg-surface-elevated/90 border border-border-medium rounded-full p-1 shadow-sm">
-            <button
-              onClick={toggleKaraoke}
-              className={`p-1.5 rounded-full transition active:scale-95 ${
-                isKaraokeMode 
-                  ? 'bg-brand-500/20 text-brand-400 ring-1 ring-brand-500/50' 
-                  : 'text-content-secondary hover:text-content-primary hover:bg-white/5'
-              }`}
-              title={
-                isKaraokeMode 
-                  ? 'Karaoke Active: Instrumental Playing (Click to restore vocals)' 
-                  : karaokeStemStatus[currentTrack?.id]?.exists
-                  ? 'Click to switch to Karaoke Instrumental'
-                  : 'Generate Studio Instrumental with AI'
-              }
-              aria-label={isKaraokeMode ? 'Restore vocals' : 'Toggle Karaoke'}
-            >
-              {isGeneratingStems || karaokeStemStatus[currentTrack?.id]?.status === 'processing' || karaokeStemStatus[currentTrack?.id]?.status === 'queued' ? (
-                <Loader2 size={16} className="animate-spin text-brand-500" />
-              ) : isKaraokeMode ? (
-                <MicOff size={16} className="text-brand-400" />
-              ) : (
-                <Mic size={16} />
-              )}
-            </button>
+      {/* Top Header - Hidden completely in Fullscreen mode */}
+      {!isFullscreen ? (
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-black/90 backdrop-blur-md shrink-0 z-20">
+          <div className="flex items-center gap-3.5 truncate">
+            <img
+              src={currentTrack.cover_url || '/api/covers/0'}
+              alt=""
+              className="w-11 h-11 rounded-md object-cover shadow bg-surface-elevated shrink-0"
+            />
+            <div className="truncate">
+              <h3 className="text-sm font-bold text-content-primary truncate">{currentTrack.title}</h3>
+              <p className="text-xs text-content-secondary truncate">{currentTrack.artist_name}</p>
+            </div>
           </div>
 
-          {/* Romanization 3-Way Pill (Option C: Original | Both | Romaji) */}
-          {hasRomanization && (
-            <div className="flex items-center bg-surface-elevated/90 border border-border-medium rounded-full p-0.5 text-xs text-content-secondary shadow-sm">
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Karaoke Mode Button (Icon only with state title) */}
+            <div className="flex items-center bg-surface-elevated/90 border border-border-medium rounded-full p-1 shadow-sm">
               <button
-                onClick={() => handleSetRomanizationMode('original')}
-                className={`px-2.5 py-1 rounded-full font-medium transition text-xs ${
-                  romanizationMode === 'original'
-                    ? 'bg-brand-500 text-black font-bold shadow'
-                    : 'hover:text-white text-content-secondary'
+                onClick={toggleKaraoke}
+                className={`p-1.5 rounded-full transition active:scale-95 ${
+                  isKaraokeMode 
+                    ? 'bg-brand-500/20 text-brand-400 ring-1 ring-brand-500/50' 
+                    : 'text-content-secondary hover:text-content-primary hover:bg-white/5'
                 }`}
-                title="Original script only (Hangul / Kanji)"
+                title={
+                  isKaraokeMode 
+                    ? 'Karaoke Active: Instrumental Playing (Click to restore vocals)' 
+                    : karaokeStemStatus[currentTrack?.id]?.exists
+                    ? 'Click to switch to Karaoke Instrumental'
+                    : 'Generate Studio Instrumental with AI'
+                }
+                aria-label={isKaraokeMode ? 'Restore vocals' : 'Toggle Karaoke'}
               >
-                Original
-              </button>
-              <button
-                onClick={() => handleSetRomanizationMode('both')}
-                className={`px-2.5 py-1 rounded-full font-medium transition text-xs ${
-                  romanizationMode === 'both'
-                    ? 'bg-brand-500 text-black font-bold shadow'
-                    : 'hover:text-white text-content-secondary'
-                }`}
-                title="Karaoke dual lines: original with romanized subtitle"
-              >
-                Both
-              </button>
-              <button
-                onClick={() => handleSetRomanizationMode('romaji')}
-                className={`px-2.5 py-1 rounded-full font-medium transition text-xs ${
-                  romanizationMode === 'romaji'
-                    ? 'bg-brand-500 text-black font-bold shadow'
-                    : 'hover:text-white text-content-secondary'
-                }`}
-                title="Romanized pronunciation only"
-              >
-                Romaji
+                {isGeneratingStems || karaokeStemStatus[currentTrack?.id]?.status === 'processing' || karaokeStemStatus[currentTrack?.id]?.status === 'queued' ? (
+                  <Loader2 size={16} className="animate-spin text-brand-500" />
+                ) : isKaraokeMode ? (
+                  <MicOff size={16} className="text-brand-400" />
+                ) : (
+                  <Mic size={16} />
+                )}
               </button>
             </div>
-          )}
 
-          <button
-            onClick={() => setIsEditModalOpen(true)}
-            className="hidden md:inline-flex p-2 rounded-full hover:bg-white/10 text-content-secondary hover:text-content-primary transition"
-            title="Edit or Paste Lyrics"
-          >
-            <Edit3 size={16} />
-          </button>
-          <button
-            onClick={() => fetchLyrics(currentTrack.id, true)}
-            disabled={isLoading}
-            className="p-2 rounded-full hover:bg-white/10 text-content-secondary hover:text-content-primary transition"
-            title="Refresh Lyrics"
-          >
-            <RefreshCw size={16} className={isLoading ? 'animate-spin text-brand-500' : ''} />
-          </button>
-          {onClose && (
+            {/* Romanization 3-Way Pill (Option C: Original | Both | Romaji) */}
+            {hasRomanization && (
+              <div className="flex items-center bg-surface-elevated/90 border border-border-medium rounded-full p-0.5 text-xs text-content-secondary shadow-sm">
+                <button
+                  onClick={() => handleSetRomanizationMode('original')}
+                  className={`px-2.5 py-1 rounded-full font-medium transition text-xs ${
+                    romanizationMode === 'original'
+                      ? 'bg-brand-500 text-black font-bold shadow'
+                      : 'hover:text-white text-content-secondary'
+                  }`}
+                  title={lyricsData?.detectedLanguage === 'russian' ? 'Original Cyrillic script only' : 'Original script only (Hangul / Kanji)'}
+                >
+                  Original
+                </button>
+                <button
+                  onClick={() => handleSetRomanizationMode('both')}
+                  className={`px-2.5 py-1 rounded-full font-medium transition text-xs ${
+                    romanizationMode === 'both'
+                      ? 'bg-brand-500 text-black font-bold shadow'
+                      : 'hover:text-white text-content-secondary'
+                  }`}
+                  title="Karaoke dual lines: original with romanized subtitle"
+                >
+                  Both
+                </button>
+                <button
+                  onClick={() => handleSetRomanizationMode('romaji')}
+                  className={`px-2.5 py-1 rounded-full font-medium transition text-xs ${
+                    romanizationMode === 'romaji'
+                      ? 'bg-brand-500 text-black font-bold shadow'
+                      : 'hover:text-white text-content-secondary'
+                  }`}
+                  title={lyricsData?.detectedLanguage === 'russian' ? 'Transliterated Latin script only' : 'Romanized pronunciation only'}
+                >
+                  {lyricsData?.detectedLanguage === 'russian' ? 'Latin' : (lyricsData?.detectedLanguage === 'korean' ? 'Romanized' : 'Romaji')}
+                </button>
+              </div>
+            )}
+
             <button
-              onClick={handleClose}
-              className="p-2 rounded-full hover:bg-white/10 text-content-secondary hover:text-content-primary transition"
-              title="Close Lyrics"
+              onClick={() => setIsEditModalOpen(true)}
+              className="hidden md:inline-flex p-2 rounded-full hover:bg-white/10 text-content-secondary hover:text-content-primary transition"
+              title="Edit or Paste Lyrics"
             >
-              <X size={18} />
+              <Edit3 size={16} />
             </button>
-          )}
+            <button
+              onClick={() => fetchLyrics(currentTrack.id, true)}
+              disabled={isLoading}
+              className="p-2 rounded-full hover:bg-white/10 text-content-secondary hover:text-content-primary transition"
+              title="Refresh Lyrics"
+            >
+              <RefreshCw size={16} className={isLoading ? 'animate-spin text-brand-500' : ''} />
+            </button>
+            <button
+              onClick={toggleFullscreen}
+              className="p-2 rounded-full hover:bg-white/10 text-content-secondary hover:text-content-primary transition"
+              title="Fullscreen Mode (F)"
+              aria-label="Enter Fullscreen"
+            >
+              <Maximize2 size={17} />
+            </button>
+            {onClose && (
+              <button
+                onClick={handleClose}
+                className="p-2 rounded-full hover:bg-white/10 text-content-secondary hover:text-content-primary transition"
+                title="Close Lyrics"
+              >
+                <X size={18} />
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      ) : (
+        /* Fullscreen Mode: Clean corner exit button with zero header clutter */
+        <div className="absolute top-5 right-6 z-30 opacity-40 hover:opacity-100 transition-opacity duration-300">
+          <button
+            onClick={toggleFullscreen}
+            className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md shadow-lg transition active:scale-95"
+            title="Exit Fullscreen (Esc or F)"
+            aria-label="Exit Fullscreen"
+          >
+            <Minimize2 size={18} />
+          </button>
+        </div>
+      )}
 
       {/* Lyrics Content Container */}
       <div 
         ref={containerRef}
         onWheel={handleContainerScroll}
         onTouchMove={handleContainerScroll}
-        className="flex-1 overflow-y-auto px-6 sm:px-12 md:px-20 py-16 space-y-6 text-center md:text-left relative"
+        className={`flex-1 overflow-y-auto ${
+          isFullscreen ? 'px-8 sm:px-20 md:px-32 py-24' : 'px-6 sm:px-12 md:px-20 py-16'
+        } space-y-6 text-center md:text-left relative`}
       >
         {isLoading && !lyricsData ? (
           <div className="flex flex-col items-center justify-center h-full py-24 text-content-secondary gap-3">
@@ -415,7 +585,7 @@ export const LyricsView = ({ onClose }) => {
           </div>
         ) : parsedLines.length > 0 ? (
           /* Synchronized Karaoke Lyrics */
-          <div className="max-w-3xl mx-auto space-y-6 py-12">
+          <div className={`${isFullscreen ? 'max-w-4xl' : 'max-w-3xl'} mx-auto space-y-6 py-12`}>
             {parsedLines.map((line, idx) => {
               const isActive = idx === activeLineIdx;
               const isPast = idx < activeLineIdx;
@@ -430,19 +600,33 @@ export const LyricsView = ({ onClose }) => {
                 <div
                   key={`${line.time}-${idx}`}
                   ref={(el) => (lineRefs.current[idx] = el)}
-                  onClick={() => seek(line.time)}
-                  className={`transition-[color,opacity] duration-300 cursor-pointer leading-relaxed text-xl sm:text-2xl md:text-3xl ${
+                  onClick={() => {
+                    seek(line.time);
+                    setIsUserScrolled(false);
+                    anchorLineRef.current = -1;
+                    if (userScrollTimeoutRef.current) {
+                      clearTimeout(userScrollTimeoutRef.current);
+                      userScrollTimeoutRef.current = null;
+                    }
+                  }}
+                  className={`transition-[color,opacity,transform] duration-300 cursor-pointer leading-relaxed ${
+                    isFullscreen 
+                      ? 'text-2xl sm:text-3xl md:text-4xl lg:text-5xl py-2.5' 
+                      : 'text-xl sm:text-2xl md:text-3xl'
+                  } ${
                     isActive
-                      ? `${LYRICS_CONFIG.colors.activeClass} ${LYRICS_CONFIG.typography.activeWeightClass} drop-shadow-md opacity-100`
+                      ? `${LYRICS_CONFIG.colors.activeClass} ${LYRICS_CONFIG.typography.activeWeightClass} drop-shadow-md opacity-100 ${isFullscreen ? 'scale-[1.02] origin-center md:origin-left' : ''}`
                       : isPast
-                      ? `${LYRICS_CONFIG.colors.pastClass} ${LYRICS_CONFIG.typography.pastWeightClass} opacity-35 hover:opacity-75`
+                      ? `${LYRICS_CONFIG.colors.pastClass} ${LYRICS_CONFIG.typography.pastWeightClass} opacity-35 hover:opacity-80`
                       : `${LYRICS_CONFIG.colors.upcomingClass} ${LYRICS_CONFIG.typography.upcomingWeightClass} opacity-60 hover:opacity-90`
                   }`}
                 >
                   <p className="transition-opacity duration-300">{displayText}</p>
                   {romanizationMode === 'both' && hasRom && (
                     <p
-                      className={`text-sm sm:text-base md:text-lg font-normal tracking-wide mt-1 transition-opacity duration-300 ${
+                      className={`font-normal tracking-wide mt-1.5 transition-opacity duration-300 ${
+                        isFullscreen ? 'text-base sm:text-xl md:text-2xl' : 'text-sm sm:text-base md:text-lg'
+                      } ${
                         isActive
                           ? 'text-brand-300/90 font-medium opacity-100'
                           : isPast
@@ -459,7 +643,7 @@ export const LyricsView = ({ onClose }) => {
           </div>
         ) : plainLines.length > 0 ? (
           /* Plain Unsynced Lyrics */
-          <div className="max-w-2xl mx-auto py-12 space-y-4 text-center">
+          <div className={`${isFullscreen ? 'max-w-3xl' : 'max-w-2xl'} mx-auto py-12 space-y-4 text-center`}>
             {plainLines.map((line, idx) => {
               const hasRom = Boolean(
                 line.romanized &&
@@ -468,12 +652,16 @@ export const LyricsView = ({ onClose }) => {
               const displayText =
                 romanizationMode === 'romaji' && hasRom ? line.romanized : line.text;
               return (
-                <div key={idx} className="leading-relaxed">
-                  <p className="text-content-primary/90 font-medium text-base sm:text-lg">
+                <div key={idx} className={`leading-relaxed ${isFullscreen ? 'py-1.5' : ''}`}>
+                  <p className={`text-content-primary/90 font-medium ${
+                    isFullscreen ? 'text-xl sm:text-2xl md:text-3xl' : 'text-base sm:text-lg'
+                  }`}>
                     {displayText}
                   </p>
                   {romanizationMode === 'both' && hasRom && (
-                    <p className="text-xs sm:text-sm text-content-muted mt-0.5 tracking-wide">
+                    <p className={`text-content-muted mt-1 tracking-wide ${
+                      isFullscreen ? 'text-sm sm:text-lg' : 'text-xs sm:text-sm'
+                    }`}>
                       {line.romanized}
                     </p>
                   )}
@@ -483,7 +671,7 @@ export const LyricsView = ({ onClose }) => {
           </div>
         ) : lyricsData?.plainLyrics ? (
           /* Plain Unsynced Fallback */
-          <div className="max-w-2xl mx-auto py-12 whitespace-pre-line text-content-primary/80 font-normal text-base sm:text-lg leading-loose text-center">
+          <div className={`${isFullscreen ? 'max-w-3xl text-xl sm:text-2xl' : 'max-w-2xl text-base sm:text-lg'} mx-auto py-12 whitespace-pre-line text-content-primary/80 font-normal leading-loose text-center`}>
             {formatPlainLyrics(lyricsData.plainLyrics)}
           </div>
         ) : (
@@ -520,38 +708,42 @@ export const LyricsView = ({ onClose }) => {
       {isUserScrolled && (parsedLines.length > 0 || lyricsData?.plainLyrics) && (
         <button
           onClick={handleResumeSync}
-          className="absolute bottom-40 md:bottom-6 right-6 bg-brand-500 hover:bg-brand-400 text-black font-bold text-xs px-3.5 py-2 rounded-full shadow-2xl transition-all duration-200 active:scale-95 flex items-center gap-1.5 z-30 animate-bounce"
+          className={`fixed md:absolute ${
+            isFullscreen ? 'bottom-10 md:bottom-12' : 'bottom-40 md:bottom-6'
+          } left-1/2 -translate-x-1/2 bg-brand-500 hover:bg-brand-400 text-black font-bold text-xs sm:text-sm px-4 py-2.5 rounded-full shadow-2xl transition-all duration-200 active:scale-95 flex items-center gap-2 z-40 animate-bounce`}
         >
-          <ArrowDownCircle size={15} />
+          <ArrowDownCircle size={16} />
           <span>Resume Auto-scroll</span>
         </button>
       )}
 
-      {/* Mobile Streamlined Spotify-Style Scrubber & Play Bar */}
-      <div className="md:hidden shrink-0 px-4 pt-5 pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] bg-gradient-to-t from-black via-black/95 to-transparent border-none z-20 flex flex-col gap-6">
-        <TimelineScrubber
-          currentTime={currentTime}
-          duration={duration}
-          bufferedTime={bufferedTime}
-          onSeek={seek}
-          showTimeLabels={true}
-          timeClassName="text-[10px] text-content-muted font-mono"
-        />
-        <div className="flex items-center justify-center -mt-1 pb-3">
-          <button
-            type="button"
-            onClick={togglePlay}
-            className="w-16 h-16 rounded-full bg-white text-black flex items-center justify-center shadow-[0_8px_25px_rgba(255,255,255,0.25)] hover:scale-105 active:scale-95 transition"
-            title={isPlaying ? 'Pause' : 'Play'}
-          >
-            {isPlaying ? (
-              <Pause size={22} className="fill-black" />
-            ) : (
-              <Play size={22} className="fill-black ml-0.5" />
-            )}
-          </button>
+      {/* Mobile Streamlined Spotify-Style Scrubber & Play Bar (Hidden in Fullscreen mode) */}
+      {!isFullscreen && (
+        <div className="md:hidden shrink-0 px-4 pt-5 pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] bg-gradient-to-t from-black via-black/95 to-transparent border-none z-20 flex flex-col gap-6">
+          <TimelineScrubber
+            currentTime={currentTime}
+            duration={duration}
+            bufferedTime={bufferedTime}
+            onSeek={seek}
+            showTimeLabels={true}
+            timeClassName="text-[10px] text-content-muted font-mono"
+          />
+          <div className="flex items-center justify-center -mt-1 pb-3">
+            <button
+              type="button"
+              onClick={togglePlay}
+              className="w-16 h-16 rounded-full bg-white text-black flex items-center justify-center shadow-[0_8px_25px_rgba(255,255,255,0.25)] hover:scale-105 active:scale-95 transition"
+              title={isPlaying ? 'Pause' : 'Play'}
+            >
+              {isPlaying ? (
+                <Pause size={22} className="fill-black" />
+              ) : (
+                <Play size={22} className="fill-black ml-0.5" />
+              )}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Edit / Paste Lyrics Modal */}
       <EditLyricsModal

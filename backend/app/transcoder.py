@@ -94,8 +94,8 @@ def get_transcode_cache_stats() -> dict:
     total_bytes = 0
     file_count = 0
     try:
-        for entry in TRANSCODES_DIR.glob("*.mp3"):
-            if entry.is_file():
+        for entry in TRANSCODES_DIR.iterdir():
+            if entry.is_file() and not entry.name.endswith(".tmp"):
                 file_count += 1
                 total_bytes += entry.stat().st_size
     except Exception as e:
@@ -181,7 +181,7 @@ async def get_or_create_normalized_track(
                 "-filter:a", "loudnorm=I=-14.0:TP=-1.0:LRA=11",
             ]
             if ext == "flac":
-                cmd.extend(["-c:a", "flac", "-f", "flac"])
+                cmd.extend(["-ar", "44100", "-sample_fmt", "s16", "-c:a", "flac", "-f", "flac"])
             elif is_data_saver:
                 cmd.extend(["-c:a", "libmp3lame", "-b:a", "128k", "-compression_level", "5", "-f", "mp3"])
             else:

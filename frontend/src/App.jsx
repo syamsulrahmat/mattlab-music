@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { Check, AlertCircle } from 'lucide-react';
 import { TopBar } from './components/TopBar';
 import { ResizeHandle } from './components/ResizeHandle';
@@ -53,6 +54,7 @@ const MainAppContent = () => {
   const [selectedProfileUserId, setSelectedProfileUserId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLyricsOpen, setIsLyricsOpen] = useState(false);
+  const lyricsOpenedByFsRef = useRef(false);
   const [detailTitle, setDetailTitle] = useState('');
 
   // Layout & Context States
@@ -802,7 +804,49 @@ const MainAppContent = () => {
       // Toggle Lyrics (Single Key L)
       if (!isMod && !e.altKey && !e.shiftKey && keyLower === 'l') {
         e.preventDefault();
+        if (document.fullscreenElement) {
+          if (document.exitFullscreen) {
+            document.exitFullscreen().catch(() => {});
+          } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen().catch(() => {});
+          }
+        }
         setIsLyricsOpen((prev) => !prev);
+        return;
+      }
+
+      // Toggle Fullscreen Lyrics Mode (Single Key F)
+      if (!isMod && !e.altKey && !e.shiftKey && keyLower === 'f') {
+        e.preventDefault();
+        const isCurrentlyFs = Boolean(
+          document.fullscreenElement ||
+          document.webkitFullscreenElement ||
+          document.mozFullScreenElement ||
+          document.msFullscreenElement
+        );
+
+        if (isCurrentlyFs) {
+          if (document.exitFullscreen) {
+            document.exitFullscreen().catch(() => {});
+          } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen().catch(() => {});
+          }
+        } else {
+          lyricsOpenedByFsRef.current = !isLyricsOpen;
+          if (!isLyricsOpen) {
+            flushSync(() => {
+              setIsLyricsOpen(true);
+            });
+          }
+          const rootEl = document.querySelector('[data-dev-component="LyricsView"]');
+          if (rootEl) {
+            if (rootEl.requestFullscreen) {
+              rootEl.requestFullscreen().catch((err) => console.warn('Native fullscreen request error:', err));
+            } else if (rootEl.webkitRequestFullscreen) {
+              rootEl.webkitRequestFullscreen().catch((err) => console.warn('Webkit fullscreen request error:', err));
+            }
+          }
+        }
         return;
       }
 
@@ -881,7 +925,30 @@ const MainAppContent = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [handleGoBack, handleGoForward, handleGoHome, togglePlay, seek, currentTime, duration, volume, setVolume, toggleMute, nextTrack, prevTrack, toggleKaraoke, togglePiP]);
+  }, [handleGoBack, handleGoForward, handleGoHome, togglePlay, seek, currentTime, duration, volume, setVolume, toggleMute, nextTrack, prevTrack, toggleKaraoke, togglePiP, isLyricsOpen]);
+
+  // Handle cleanup if fullscreen lyrics was launched via global F shortcut
+  useEffect(() => {
+    const handleFsChange = () => {
+      const isFs = Boolean(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement
+      );
+      if (!isFs && lyricsOpenedByFsRef.current) {
+        lyricsOpenedByFsRef.current = false;
+        setIsLyricsOpen(false);
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFsChange);
+    document.addEventListener('webkitfullscreenchange', handleFsChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFsChange);
+      document.removeEventListener('webkitfullscreenchange', handleFsChange);
+    };
+  }, []);
 
   // Global Context Menu Interceptor (replaces browser right-click)
   useEffect(() => {
@@ -1584,6 +1651,8 @@ const MainAppContent = () => {
           />
         )}
       </div>
+
+
 
       {/* Custom Right-Click Context Menu */}
       {contextMenu.isOpen && (

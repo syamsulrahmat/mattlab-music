@@ -65,15 +65,60 @@ def _log_repair_event(message: str):
 
 # ── Canonical Metadata Resolution ──────────────────────────────────────────
 
+def clean_title_for_search(title: str) -> str:
+    """
+    Cleans metadata title for search API lookups, preserving key musical qualifiers
+    (Part, Pt, Act, Vol, Remix, Acoustic, Live, Version) while stripping junk tags
+    (feat., official video, remaster tags, etc.).
+    """
+    t = re.sub(r'[\(\[]\s*(?:feat\.?|ft\.?)\s+[^)\]]+[\)\]]', '', title, flags=re.IGNORECASE)
+    t = re.sub(r'[\(\[]\s*(?:official\s+(?:video|audio|music\s+video)|lyric\s+video|audio|visualizer|stream)\s*[\)\]]', '', t, flags=re.IGNORECASE)
+    t = re.sub(r'[\(\[]\s*(?:explicit|clean)\s*[\)\]]', '', t, flags=re.IGNORECASE)
+    t = re.sub(r'\s*-\s*(?:[0-9]{4}\s+)?remaster(?:ed)?(?:\s+[0-9]{4})?', '', t, flags=re.IGNORECASE)
+    t = re.sub(r'\s*-\s*single\s+version', '', t, flags=re.IGNORECASE)
+    
+    parts = re.findall(r'[\(\[](.*?)[\)\]]', t)
+    for p in parts:
+        if not re.search(r'\b(?:part|pt\.?|act|vol\.?|remix|acoustic|live|version|theme|chapter|suite)\b', p, re.IGNORECASE):
+            t = t.replace(f"({p})", "").replace(f"[{p}]", "")
+
+    t = re.sub(r'\s+', ' ', t).strip(' -')
+    return t or title
+
+
+def titles_match(target: str, candidate: str) -> bool:
+    """
+    Evaluates whether candidate track title from iTunes/YouTube matches the target title,
+    strictly enforcing presence of part/version qualifiers (e.g. Pt. 2 vs Part 1).
+    """
+    t_clean = re.sub(r'[^\w\s]', ' ', target.lower())
+    c_clean = re.sub(r'[^\w\s]', ' ', candidate.lower())
+    t_words = set(t_clean.split())
+    c_words = set(c_clean.split())
+    
+    qualifiers = {"2", "ii", "part", "pt", "remix", "acoustic", "live", "instrumental"}
+    target_qualifiers = t_words & qualifiers
+    candidate_qualifiers = c_words & qualifiers
+    
+    # If target has Part 2 / II, candidate cannot be Part 1 (or lacking Part 2 / II)
+    if ("2" in target_qualifiers or "ii" in target_qualifiers) and not ("2" in candidate_qualifiers or "ii" in candidate_qualifiers):
+        return False
+    if "remix" in target_qualifiers and "remix" not in candidate_qualifiers:
+        return False
+        
+    overlap = len(t_words & c_words)
+    return overlap >= min(len(t_words), len(c_words)) * 0.6
+
+
 def resolve_canonical_metadata(artist: str, title: str, album: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """
     Queries iTunes Search API to resolve exact canonical track duration,
     official title/artist names, and 1400x1400 cover art URL.
     """
     clean_artist = artist.split(",")[0].split("/")[0].split("&")[0].strip()
-    clean_title = title.split("(")[0].split("-")[0].strip()
+    clean_title = clean_title_for_search(title)
     term = urllib.parse.quote_plus(f"{clean_artist} {clean_title}")
-    url = f"https://itunes.apple.com/search?term={term}&entity=song&limit=5"
+    url = f"https://itunes.apple.com/search?term={term}&entity=song&limit=8"
 
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
@@ -87,11 +132,11 @@ def resolve_canonical_metadata(artist: str, title: str, album: Optional[str] = N
             best = None
             for item in results:
                 it_artist = item.get("artistName", "").lower()
-                it_title = item.get("trackName", "").lower()
+                it_title = item.get("trackName", "")
                 dur_ms = item.get("trackTimeMillis", 0)
 
                 if dur_ms > 45000:  # Skip tiny ringtones/snippets
-                    if clean_title.lower() in it_title or it_title in clean_title.lower():
+                    if titles_match(title, it_title):
                         best = item
                         break
 
@@ -355,7 +400,7 @@ def fetch_highres_cover_image(artist: str, album: str, title: Optional[str] = No
     if clean_album and clean_album.lower() not in ["single", "unknown", "untitled"]:
         queries.append(f"https://itunes.apple.com/search?term={urllib.parse.quote_plus(f'{clean_artist} {clean_album}')}&entity=album&limit=3")
     if title:
-        clean_title = title.split("(")[0].strip()
+        clean_title = clean_title_for_search(title)
         queries.append(f"https://itunes.apple.com/search?term={urllib.parse.quote_plus(f'{clean_artist} {clean_title}')}&entity=song&limit=3")
 
     for url in queries:
@@ -522,7 +567,7 @@ def repair_track_audio(track_id: int) -> Dict[str, Any]:
         # Purge transcode cache
         transcode_dir = Path("/data/transcodes")
         if transcode_dir.exists():
-            for tc in transcode_dir.glob(f"{track_id}_*.mp3"):
+            for tc in transcode_dir.glob(f"{track_id}_*"):
                 try:
                     tc.unlink()
                 except Exception:
@@ -535,7 +580,8 @@ def repair_track_audio(track_id: int) -> Dict[str, Any]:
             cursor.execute("""
                 UPDATE tracks
                 SET file_path = ?, file_format = 'mp3', duration_seconds = ?,
-                    file_size = ?, bitrate = ?, mtime = ?
+                    file_size = ?, bitrate = ?, mtime = ?,
+                    lufs_i = NULL, gain_db = NULL, true_peak = NULL
                 WHERE id = ?
             """, (str(final_mp3_path), new_dur, new_size, new_bitrate, now_time, track_id))
             conn.commit()

@@ -23,13 +23,51 @@ def get_cutlet():
     return _CUTLET_INSTANCE if _CUTLET_INSTANCE is not False else None
 
 
-def detect_cjk_language(text: str) -> Optional[str]:
+CYRILLIC_LOWER_MAP = {
+    'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
+    'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+    'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+    'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'shch',
+    'ъ': '', 'ы': 'y', 'ь': "'", 'э': 'e', 'ю': 'yu', 'я': 'ya',
+    'і': 'i', 'ї': 'yi', 'є': 'ye', 'ґ': 'g', 'ў': 'u'
+}
+
+
+def romanize_russian_text(text: str) -> str:
+    """Romanize Russian / Cyrillic text to standard Latin phonetics."""
+    if not text or not text.strip():
+        return text
+
+    n = len(text)
+    out = []
+    for i, ch in enumerate(text):
+        lower_ch = ch.lower()
+        if lower_ch in CYRILLIC_LOWER_MAP:
+            trans = CYRILLIC_LOWER_MAP[lower_ch]
+            if ch.isupper():
+                is_all_caps = False
+                if i + 1 < n and text[i + 1].isupper():
+                    is_all_caps = True
+                elif i > 0 and text[i - 1].isupper():
+                    is_all_caps = True
+                out.append(trans.upper() if is_all_caps else trans.capitalize())
+            else:
+                out.append(trans)
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def detect_lyrics_language(text: str) -> Optional[str]:
     """
-    Detect whether text contains Korean (Hangul) or Japanese (Kana/Kanji).
-    Returns 'korean', 'japanese', or None.
+    Detect whether text contains Russian (Cyrillic), Korean (Hangul), or Japanese (Kana/Kanji).
+    Returns 'russian', 'korean', 'japanese', or None.
     """
     if not text:
         return None
+
+    # Count Cyrillic letters (\u0400-\u04FF)
+    cyrillic_count = len(re.findall(r"[\u0400-\u04FF]", text))
 
     # Count Hangul syllables & jamo
     hangul_count = len(re.findall(r"[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]", text))
@@ -40,6 +78,9 @@ def detect_cjk_language(text: str) -> Optional[str]:
     # Count Kanji / CJK Ideographs
     kanji_count = len(re.findall(r"[\u4E00-\u9FAF]", text))
 
+    if cyrillic_count >= 5:
+        return "russian"
+
     if hangul_count >= 5 and hangul_count >= kana_count:
         return "korean"
 
@@ -47,6 +88,8 @@ def detect_cjk_language(text: str) -> Optional[str]:
         return "japanese"
 
     # Edge case: single line or short text
+    if cyrillic_count > 0 and hangul_count == 0 and kana_count == 0 and kanji_count == 0:
+        return "russian"
     if hangul_count > 0 and kana_count == 0:
         return "korean"
     if kana_count > 0:
@@ -57,6 +100,9 @@ def detect_cjk_language(text: str) -> Optional[str]:
         return "japanese"
 
     return None
+
+
+detect_cjk_language = detect_lyrics_language
 
 
 def romanize_korean_text(text: str) -> str:
@@ -97,7 +143,9 @@ def romanize_japanese_text(text: str) -> str:
 
 def romanize_line(line: str, lang: str) -> str:
     """Romanize a single lyric line according to detected language."""
-    if lang == "korean":
+    if lang == "russian":
+        return romanize_russian_text(line)
+    elif lang == "korean":
         return romanize_korean_text(line)
     elif lang == "japanese":
         return romanize_japanese_text(line)
@@ -157,15 +205,15 @@ def enrich_lyrics_with_romanization(lyrics_dict: Dict[str, Any]) -> Dict[str, An
     if not lyrics_dict or lyrics_dict.get("notFound"):
         return lyrics_dict
 
-    # Check if already cached/computed
-    if "hasRomanization" in lyrics_dict and lyrics_dict.get("hasRomanization"):
+    # Check if already cached/computed with actual romanized content
+    if lyrics_dict.get("hasRomanization") and (lyrics_dict.get("romanizedSynced") or lyrics_dict.get("romanizedPlain")):
         return lyrics_dict
 
     synced = lyrics_dict.get("syncedLyrics")
     plain = lyrics_dict.get("plainLyrics")
 
     sample_text = (synced or "") + "\n" + (plain or "")
-    detected_lang = detect_cjk_language(sample_text)
+    detected_lang = detect_lyrics_language(sample_text)
 
     if detected_lang:
         romanized_synced = romanize_lrc(synced, detected_lang) if synced else None
