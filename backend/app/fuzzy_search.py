@@ -5,6 +5,7 @@ import threading
 from typing import Optional, List, Dict, Any, Tuple
 from collections import Counter
 import sqlite3
+from app.database import normalize_search
 
 _BUILD_LOCK = threading.Lock()
 _LAST_BUILD_TIME: float = 0.0
@@ -54,7 +55,13 @@ def ensure_catalog_loaded(conn: sqlite3.Connection, force: bool = False):
             if r["name"]:
                 low = r["name"].strip().lower()
                 toks = [t for t in re.findall(r"[a-zA-Z0-9']+", low) if len(t) >= 2]
-                artists.append({"id": r["id"], "name": r["name"], "lower": low, "tokens": toks})
+                artists.append({
+                    "id": r["id"],
+                    "name": r["name"],
+                    "lower": low,
+                    "norm": normalize_search(r["name"]),
+                    "tokens": toks
+                })
 
         # 2. Fetch albums
         cursor.execute("SELECT id, title, artist_id FROM albums")
@@ -69,6 +76,8 @@ def ensure_catalog_loaded(conn: sqlite3.Connection, force: bool = False):
                     "artist_id": r["artist_id"],
                     "lower": low,
                     "base_lower": base_low,
+                    "norm": normalize_search(r["title"]),
+                    "base_norm": normalize_search(base_low),
                 })
 
         # 3. Fetch tracks
@@ -85,6 +94,8 @@ def ensure_catalog_loaded(conn: sqlite3.Connection, force: bool = False):
                     "album_id": r["album_id"],
                     "lower": low,
                     "base_lower": base_low,
+                    "norm": normalize_search(r["title"]),
+                    "base_norm": normalize_search(base_low),
                 })
 
         # 4. Fetch lyrics text from FTS table if available
@@ -201,15 +212,20 @@ def find_matched_artist(query: str, threshold: float = 0.75) -> Optional[Tuple[D
     Returns (artist_dict, match_score).
     """
     q_low = query.strip().lower()
+    q_norm = normalize_search(query)
     q_tokens = [t for t in q_low.split() if t]
     best_artist = None
     best_score = 0.0
 
     for a in _ARTISTS_CACHE:
         a_low = a["lower"]
-        if q_low == a_low:
+        a_norm = a.get("norm", a_low)
+        if q_low == a_low or (q_norm and q_norm == a_norm):
             return (a, 1.0)
-        s_full = difflib.SequenceMatcher(None, q_low, a_low).ratio()
+        s_full = max(
+            difflib.SequenceMatcher(None, q_low, a_low).ratio(),
+            difflib.SequenceMatcher(None, q_norm, a_norm).ratio() if q_norm and a_norm else 0.0
+        )
         s_tok = 0.0
         if len(q_tokens) == 1 and a.get("tokens"):
             s_tok = max((difflib.SequenceMatcher(None, q_low, tok).ratio() for tok in a["tokens"]), default=0.0) * 0.88
@@ -230,17 +246,22 @@ def find_matched_track(query: str, threshold: float = 0.75) -> Optional[Tuple[Di
     Returns (track_dict, match_score).
     """
     q_low = query.strip().lower()
+    q_norm = normalize_search(query)
     best_track = None
     best_score = 0.0
 
     for t in _TRACKS_CACHE:
         t_low = t["lower"]
         base_low = t.get("base_lower", t_low)
-        if q_low == t_low or q_low == base_low:
+        t_norm = t.get("norm", t_low)
+        base_norm = t.get("base_norm", t_norm)
+        if q_low == t_low or q_low == base_low or (q_norm and (q_norm == t_norm or q_norm == base_norm)):
             return (t, 1.0)
         score = max(
             difflib.SequenceMatcher(None, q_low, t_low).ratio(),
             difflib.SequenceMatcher(None, q_low, base_low).ratio(),
+            difflib.SequenceMatcher(None, q_norm, t_norm).ratio() if q_norm and t_norm else 0.0,
+            difflib.SequenceMatcher(None, q_norm, base_norm).ratio() if q_norm and base_norm else 0.0,
         )
         if score > best_score:
             best_score = score
@@ -258,17 +279,22 @@ def find_matched_album(query: str, threshold: float = 0.75) -> Optional[Tuple[Di
     Returns (album_dict, match_score).
     """
     q_low = query.strip().lower()
+    q_norm = normalize_search(query)
     best_album = None
     best_score = 0.0
 
     for al in _ALBUMS_CACHE:
         al_low = al["lower"]
         base_low = al.get("base_lower", al_low)
-        if q_low == al_low or q_low == base_low:
+        al_norm = al.get("norm", al_low)
+        base_norm = al.get("base_norm", al_norm)
+        if q_low == al_low or q_low == base_low or (q_norm and (q_norm == al_norm or q_norm == base_norm)):
             return (al, 1.0)
         score = max(
             difflib.SequenceMatcher(None, q_low, al_low).ratio(),
             difflib.SequenceMatcher(None, q_low, base_low).ratio(),
+            difflib.SequenceMatcher(None, q_norm, al_norm).ratio() if q_norm and al_norm else 0.0,
+            difflib.SequenceMatcher(None, q_norm, base_norm).ratio() if q_norm and base_norm else 0.0,
         )
         if score > best_score:
             best_score = score

@@ -1,11 +1,28 @@
 import sqlite3
-from typing import Generator
+import unicodedata
+import re
+from typing import Generator, Optional
 from contextlib import contextmanager
 from app.config import DB_PATH
+
+def normalize_search(text: Optional[str]) -> str:
+    """
+    Normalizes search strings and database entries by:
+    1. Decomposing unicode and stripping diacritics / accents (e.g., 'É' -> 'E', 'ö' -> 'o').
+    2. Stripping straight & curly apostrophes, smart quotes, backticks (e.g., ain't -> aint, don't -> dont).
+    3. Lowercasing and trimming whitespace for seamless match equality.
+    """
+    if not text:
+        return ""
+    text = unicodedata.normalize('NFKD', str(text))
+    text = ''.join(c for c in text if not unicodedata.combining(c))
+    text = re.sub(r"['’`\"“”]", "", text)
+    return text.lower().strip()
 
 def get_connection() -> sqlite3.Connection:
     conn = sqlite3.connect(str(DB_PATH), timeout=60.0)
     conn.row_factory = sqlite3.Row
+    conn.create_function("norm", 1, normalize_search)
     conn.execute("PRAGMA busy_timeout = 60000;")
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA foreign_keys=ON;")
@@ -332,7 +349,6 @@ def init_db() -> None:
         else:
             try:
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_tracks_lyrics_status ON tracks(lyrics_status)")
-                _backfill_existing_lyrics_cache(conn)
             except Exception:
                 pass
 
@@ -527,27 +543,27 @@ def _init_lyrics_fts(conn: sqlite3.Connection):
             except Exception:
                 continue
 
-            if batch:
-                cursor.execute("""
-                    SELECT t.id, t.title, ar.name as artist, a.title as album
-                    FROM tracks t
-                    JOIN artists ar ON t.artist_id = ar.id
-                    JOIN albums a ON t.album_id = a.id
-                """)
-                meta = {r["id"]: (r["title"], r["artist"], r["album"]) for r in cursor.fetchall()}
+        if batch:
+            cursor.execute("""
+                SELECT t.id, t.title, ar.name as artist, a.title as album
+                FROM tracks t
+                JOIN artists ar ON t.artist_id = ar.id
+                JOIN albums a ON t.album_id = a.id
+            """)
+            meta = {r["id"]: (r["title"], r["artist"], r["album"]) for r in cursor.fetchall()}
 
-                insert_rows = []
-                for tid, clean_lyrics in batch:
-                    if tid in meta:
-                        title, artist, album = meta[tid]
-                        insert_rows.append((tid, title, artist, album, clean_lyrics))
+            insert_rows = []
+            for tid, clean_lyrics in batch:
+                if tid in meta:
+                    title, artist, album = meta[tid]
+                    insert_rows.append((tid, title, artist, album, clean_lyrics))
 
-                if insert_rows:
-                    cursor.executemany("""
-                        INSERT INTO tracks_lyrics_fts (track_id, title, artist_name, album_title, plain_lyrics)
-                        VALUES (?, ?, ?, ?, ?)
-                    """, insert_rows)
-                    print(f"[FTS] Successfully indexed {len(insert_rows)} tracks into tracks_lyrics_fts.")
+            if insert_rows:
+                cursor.executemany("""
+                    INSERT INTO tracks_lyrics_fts (track_id, title, artist_name, album_title, plain_lyrics)
+                    VALUES (?, ?, ?, ?, ?)
+                """, insert_rows)
+                print(f"[FTS] Successfully indexed {len(insert_rows)} tracks into tracks_lyrics_fts.")
     except Exception as e:
         print(f"[FTS] Error initializing tracks_lyrics_fts: {e}")
 

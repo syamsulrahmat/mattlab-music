@@ -4,7 +4,7 @@ from typing import Optional, List, Dict, Any
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Query, Request, Depends
 from pydantic import BaseModel
-from app.database import get_db
+from app.database import get_db, normalize_search
 from app.auth import get_current_user_optional, get_current_user
 from app.popularity import backfill_library_popularity_background
 
@@ -587,18 +587,22 @@ async def search_library(
     from app.routes.request_music import resolve_smart_canonical_query
 
     cleaned_q = q.strip()
+    norm_q = normalize_search(cleaned_q)
     tokens = [t.strip() for t in cleaned_q.split() if t.strip()]
-    if not tokens:
+    norm_tokens = [normalize_search(t) for t in tokens if normalize_search(t)]
+    if not tokens or not norm_tokens:
         return {"query": q, "tracks": [], "lyrics_matches": [], "albums": [], "artists": []}
 
     with get_db() as conn:
         cursor = conn.cursor()
 
-        # 1. Search tracks matching all tokens across title, artist name, and album title
-        track_where_clauses = ["(t.title LIKE ? OR ar.name LIKE ? OR a.title LIKE ?)" for _ in tokens]
+        # 1. Search tracks matching all tokens across title, artist name, and album title with accent/punctuation folding
+        track_where_clauses = ["(norm(t.title) LIKE ? OR norm(ar.name) LIKE ? OR norm(a.title) LIKE ?)" for _ in norm_tokens]
         track_params = []
-        for tok in tokens:
+        for tok in norm_tokens:
             track_params.extend([f"%{tok}%", f"%{tok}%", f"%{tok}%"])
+
+        order_params = [norm_q, f"{norm_q}%", f"%{norm_q}%", f"{norm_q}%", f"%{norm_q}%"]
 
         cursor.execute(f"""
             SELECT 
@@ -610,9 +614,18 @@ async def search_library(
             JOIN albums a ON t.album_id = a.id
             JOIN artists ar ON t.artist_id = ar.id
             WHERE {' AND '.join(track_where_clauses)}
-            ORDER BY t.title COLLATE NOCASE ASC
+            ORDER BY 
+                CASE 
+                    WHEN norm(t.title) = ? THEN 1
+                    WHEN norm(t.title) LIKE ? THEN 2
+                    WHEN norm(t.title) LIKE ? THEN 3
+                    WHEN norm(ar.name) LIKE ? THEN 4
+                    WHEN norm(ar.name) LIKE ? THEN 5
+                    ELSE 6
+                END,
+                t.title COLLATE NOCASE ASC
             LIMIT {limit}
-        """, tuple(track_params))
+        """, tuple(track_params + order_params))
         tracks = [
             {
                 **dict(row),
@@ -666,11 +679,13 @@ async def search_library(
                 # Track matched specifically by lyrics - append to general tracks list as well
                 tracks.append(lm)
 
-        # 3. Search albums matching tokens
-        album_where_clauses = ["(a.title LIKE ? OR ar.name LIKE ?)" for _ in tokens]
+        # 3. Search albums matching tokens with accent/punctuation folding
+        album_where_clauses = ["(norm(a.title) LIKE ? OR norm(ar.name) LIKE ?)" for _ in norm_tokens]
         album_params = []
-        for tok in tokens:
+        for tok in norm_tokens:
             album_params.extend([f"%{tok}%", f"%{tok}%"])
+
+        album_order_params = [norm_q, f"{norm_q}%", f"%{norm_q}%"]
 
         cursor.execute(f"""
             SELECT 
@@ -682,9 +697,16 @@ async def search_library(
             LEFT JOIN tracks t ON t.album_id = a.id
             WHERE {' AND '.join(album_where_clauses)}
             GROUP BY a.id
-            ORDER BY a.title COLLATE NOCASE ASC
+            ORDER BY 
+                CASE 
+                    WHEN norm(a.title) = ? THEN 1
+                    WHEN norm(a.title) LIKE ? THEN 2
+                    WHEN norm(a.title) LIKE ? THEN 3
+                    ELSE 4
+                END,
+                a.title COLLATE NOCASE ASC
             LIMIT 15
-        """, tuple(album_params))
+        """, tuple(album_params + album_order_params))
         albums = [
             {
                 **dict(row),
@@ -693,7 +715,8 @@ async def search_library(
             for row in cursor.fetchall()
         ]
 
-        # 4. Search artists matching query
+        # 4. Search artists matching query with accent/punctuation folding
+        artist_order_params = [norm_q, f"{norm_q}%"]
         cursor.execute("""
             SELECT 
                 ar.id, ar.name,
@@ -702,11 +725,17 @@ async def search_library(
             FROM artists ar
             LEFT JOIN albums al ON al.artist_id = ar.id
             LEFT JOIN tracks t ON t.artist_id = ar.id
-            WHERE ar.name LIKE ?
+            WHERE norm(ar.name) LIKE ?
             GROUP BY ar.id
-            ORDER BY ar.name COLLATE NOCASE ASC
+            ORDER BY 
+                CASE 
+                    WHEN norm(ar.name) = ? THEN 1
+                    WHEN norm(ar.name) LIKE ? THEN 2
+                    ELSE 3
+                END,
+                ar.name COLLATE NOCASE ASC
             LIMIT 10
-        """, (f"%{cleaned_q}%",))
+        """, (f"%{norm_q}%", *artist_order_params))
         artists = [
             {
                 **dict(row),
@@ -720,9 +749,9 @@ async def search_library(
         corrected_query = None
         did_you_mean = None
 
-        # Check if an exact artist match was found
-        exact_artist = next((a for a in artists if a["name"].strip().lower() == cleaned_q.lower()), None)
-        if not exact_artist and len(artists) == 1 and len(cleaned_q) >= 4 and artists[0]["name"].lower().startswith(cleaned_q.lower()):
+        # Check if an exact artist match was found (folded)
+        exact_artist = next((a for a in artists if normalize_search(a["name"]) == norm_q), None)
+        if not exact_artist and len(artists) == 1 and len(cleaned_q) >= 4 and normalize_search(artists[0]["name"]).startswith(norm_q):
             exact_artist = artists[0]
 
         if exact_artist:
